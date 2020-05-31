@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Zea-Gearbox Demo</title>
+    <meta charset="UTF-8"/>
+    <link rel="shortcut icon" href="img/favicon-32x32.png" type="image/x-icon">
+    <link rel="stylesheet" type="text/css" href="./src/App.css">
+    <script type="module" src="./dist/zea-web-components/dist/zeainc-zea-web-components/zeainc-zea-web-components.js"></script>
+    <script type="module" src="./src/zea-fps-display.js"></script>
+    <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
+  </head>
+  <body>
+    <div class="App">
+    <zea-layout
+      orientation="vertical"
+      cell-a-size="40"
+      resize-cell-a="false"
+      cell-b-size="100%"
+      cell-c-size="5px"
+      resize-cell-c="false"
+    >
+      <div slot="a" class="App-header">
+        <img class="App-logo" src="img/logo-zea.svg" height="30px"/>
+        <zea-user-chip-set id="zea-user-chip-set"></zea-user-chip-set>
+        <zea-user-chip id="zea-user-chip"></zea-user-chip>
+      </div>
+      <zea-layout slot="b" cell-a-size="200" cell-b-size="100%" cell-c-size="3px" resize-cell-c="false">
+        <div slot="a">
+          <zea-tree-view id="zea-tree-view"></zea-tree-view>
+        </div>
+        <div slot="b" id="renderer"></div>
+      </zea-layout>
+    </zea-layout>
+  </div>
+  </body>
+  <script type="module" src="./src/index.js"></script>
+</html>
