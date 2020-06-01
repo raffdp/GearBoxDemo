@@ -1,0 +1,17 @@
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.zea-param-widget-boolean {
+  color: var(--color-foreground-1);
+  background-color: var(--color-background-2);
+}
+
+.user-edited {
+  box-shadow: 0 0 8px var(--color-success-1);
+  margin: 0px;
+}

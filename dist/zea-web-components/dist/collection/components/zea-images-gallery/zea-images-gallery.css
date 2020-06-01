@@ -1,0 +1,64 @@
+:host {
+  width: 100%;
+  height: 100%;
+}
+
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.zea-ig-container {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  grid-template-rows: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.7em;
+}
+
+.zea-ig-image.featured {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.zea-ig-image {
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.zea-ig-image:hover {
+  filter: brightness(1.15);
+  box-shadow: 0px 0.25em 0.5em var(--color-shadow);
+  z-index: 1;
+}
+
+.zea-ig-zoomed.inactive {
+  display: none;
+}
+
+.zea-ig-zoomed.active {
+  display: block;
+  position: fixed;
+  background-color: var(--color-background-1);
+  padding: 1%;
+  box-sizing: border-box;
+  transition: all 0.5s;
+  z-index: 1000;
+}
+
+.zea-ig-zoomed-inner {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 100%;
+  height: 100%;
+}
+
+.zea-ig-zoomed.active.animate .zea-ig-zoomed-inner {
+  background-size: contain;
+}

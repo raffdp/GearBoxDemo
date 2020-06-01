@@ -1,0 +1,26 @@
+.ruler {
+  overflow: hidden;
+  margin: 5px auto;
+  height: 1px;
+  background-color: var(--color-grey-3);
+}
+
+.zea-menu-separator {
+  /* background-color: var(--color-background-2); */
+}
+
+.zea-menu-separator.vertical {
+  height: 24px;
+  width: 21px;
+}
+
+.vertical .ruler {
+  width: 1px;
+  margin: 0 10px;
+  height: 100%;
+}
+
+.dropdown .ruler {
+  height: 100%;
+  width: 1px;
+}

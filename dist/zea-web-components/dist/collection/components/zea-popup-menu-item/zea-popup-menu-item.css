@@ -1,0 +1,39 @@
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.zea-popup-menu-item {
+  color: var(--color-foreground-1);
+  font-family: sans-serif;
+  padding: 0.3em 0.6em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: left;
+}
+
+.zea-popup-menu-item:hover {
+  background-color: var(--color-grey-3);
+}
+
+.zea-popup-menu-item.twinkled {
+  background-color: var(--color-secondary-3);
+}
+
+.start-icon {
+  margin-right: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.end-icon {
+  margin-left: 0.5em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

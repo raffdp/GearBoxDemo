@@ -1,0 +1,11 @@
+.zea-dialog-drawing-settings {
+  color: var(--color-freground-1);
+}
+
+zea-form-disciplines-settings {
+  height: 100%;
+}
+
+#tabs-container {
+  padding: 20px;
+}
