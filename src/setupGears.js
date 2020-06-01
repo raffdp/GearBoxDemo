@@ -1,4 +1,5 @@
-import { Color, Xfo, Vec3, Group, GearsOperator } from "../dist/zea-engine/dist/index.esm.js"
+import { Color, EulerAngles, Xfo, Vec3, Group, GearsOperator, NumberParameter } from "../dist/zea-engine/dist/index.esm.js"
+import { SliderHandle } from "../dist/zea-ux/dist/index.rawimport.js"
 
 const setupGears = (asset) => {
 
@@ -10,14 +11,15 @@ const setupGears = (asset) => {
   
   asset.addChild(gearsOp);
 
+  let currGearSetting
   const setGearBoxSetting = (gearboxSetting) => {
     if (gearboxSetting == 1) {
       const gear2 = gearsOp.getParameter("Gears").getElement(2);
       gear2.getMember("Ratio").setValue(1);
       const gear3 = gearsOp.getParameter("Gears").getElement(3);
-      gear3.getMember("Ratio").setValue(-30/20);
+      gear3.getMember("Ratio").setValue(-60/40);
       const gear4 = gearsOp.getParameter("Gears").getElement(4);
-      gear4.getMember("Ratio").setValue(10/40);
+      gear4.getMember("Ratio").setValue(32/104);
       const brearings = gearsOp.getParameter("Gears").getElement(7);
       brearings.getMember("Ratio").setValue(-1);
 
@@ -25,15 +27,62 @@ const setupGears = (asset) => {
       const gear4 = gearsOp.getParameter("Gears").getElement(4);
       gear4.getMember("Ratio").setValue(1);
       const gear3 = gearsOp.getParameter("Gears").getElement(3);
-      gear3.getMember("Ratio").setValue(-40/10);
+      gear3.getMember("Ratio").setValue(-104/32);
       const gear2 = gearsOp.getParameter("Gears").getElement(2);
-      gear2.getMember("Ratio").setValue(30/10);
+      gear2.getMember("Ratio").setValue(60/40);
       const brearings = gearsOp.getParameter("Gears").getElement(7);
       brearings.getMember("Ratio").setValue(-2);
     }
+    currGearSetting = gearboxSetting
   }
 
+
   asset.loaded.connect(()=>{
+    asset.addParameter(new NumberParameter("GearSliderValue"));
+      
+    const slider = new SliderHandle("GearSlider")
+    const xfo = new Xfo();
+    xfo.ori.setFromEulerAngles(new EulerAngles(Math.PI * 0.5, 0, Math.PI, 'ZXY'));
+    xfo.tr.set(.067, -.21, 0.12);
+    slider.setLocalXfo(xfo);
+    slider.getParameter('Length').setValue(0.02);
+    slider.getParameter('Bar Radius').setValue(0.000);
+    slider.getParameter('Handle Radius').setValue(0.015);
+    slider.colorParam.setValue(new Color('#F9CE03'))
+    slider.setTargetParam(asset.getParameter("GearSliderValue"))
+    slider.getParameter("Visible").setValue(false)
+    asset.addChild(slider);
+    
+    {
+      const group = new Group('FRONT_PROPELLER_HOUSING');
+      group.getParameter('InitialXfoMode').setValue('average');
+      asset.addChild(group);
+      group.resolveItems([
+          [".", "GEAR_SHAFT_ASSM_ASM", "SHIFTER"],
+          [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_SHAFT_1"],
+          [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_SHAFT_2"],
+          [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_5"],
+          [".", "GEAR_SHAFT_ASSM_ASM", "DOWEL_PIN"],
+          [".", "GEAR_SHAFT_ASSM_ASM", "DOWEL_PIN_005", "DOWEL_PIN"]
+          ]);
+      const sliderParam = asset.getParameter("GearSliderValue")
+      const initialXfo = group.getGlobalXfo().clone()
+      sliderParam.valueChanged.connect(()=>{
+        const value = sliderParam.getValue()
+        const xfo = group.getGlobalXfo().clone()
+        xfo.tr.y = initialXfo.tr.y + value * 0.02
+        group.setGlobalXfo(xfo)
+
+        if (value < 0.3) {
+          if (currGearSetting != 1)
+             setGearBoxSetting(1)
+        }
+        else if (value > 0.7) {
+          if (currGearSetting != 2)
+             setGearBoxSetting(2)
+        }
+      })
+    }
     
     {
       const group = new Group('FRONT_PROPELLER_HOUSING');
@@ -106,7 +155,7 @@ const setupGears = (asset) => {
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
       group.resolveItems([
-          [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_5"]
+          // [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_5"]
           ]);
       
       const gear = gearsOp.getParameter("Gears").addElement();
