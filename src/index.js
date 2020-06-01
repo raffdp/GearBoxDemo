@@ -125,7 +125,9 @@ const userData = {
 }
 
 const session = new Session(userData, socketUrl);
-session.joinRoom('sassdfghjssasdasd');
+
+let roomId = urlParams.get('room-id');
+session.joinRoom(document.location.origin+roomId);
 
 const sessionSync = new SessionSync(session, appData, userData, {});
 

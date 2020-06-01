@@ -1,18 +1,41 @@
 import wildcardMiddleware from 'socketio-wildcard';
-import { TreeItem, Color, Plane, Camera, LDRImage, Disc, Label, Material, GeomItem, Xfo, Vec3, VideoStreamImage2D, Cuboid, Lines, Quat, BaseItem, typeRegistry } from '@zeainc/zea-engine';
+import { Vec3, TreeItem, Color, Plane, Camera, Disc, LDRImage, Label, Material, GeomItem, Xfo, VideoStreamImage2D, Cuboid, Lines, Quat, BaseItem, typeRegistry } from '@zeainc/zea-engine';
 import { UndoRedoManager, SelectionManager } from '@zeainc/zea-ux';
 
 // Note: this import is disabled for the rawimport version of collab
 
 // import debug from 'debug'
 
+/**
+ * User specific room actions.
+ * @enum
+ */
 const private_actions = {
   JOIN_ROOM: 'join-room',
   PING_ROOM: 'ping-room',
   LEAVE_ROOM: 'leave-room',
 };
-
+/**
+ * Session is used to store information about users and the communication method(Sockets).
+ * <br>
+ * Also has the actions to stream media.
+ */
 class Session {
+  /**
+   * Instantiates a new session object that contains user's data and the socketUrl that is going to connect to.
+   * <br>
+   * In the userData object you can pass any information you want, but you must provide an `id`. 
+   * In case you would like to use the [`zea-user-chip`](https://github.com/ZeaInc/zea-web-components/tree/staging/src/components/zea-user-chip) component, 
+   * some specific data will be required, although they are not mandatory, it would be nice to have:
+   *
+   * * **firstName** or **given_name**
+   * * **lastName** or **family_name**
+   * * **avatar** or **picture** - The URL to the image
+   * * **color** - The RGBA hexadecimal string. i.e. #FFFFFF. (Random color in case you don't specify it)
+   * 
+   * @param {object} userData - Specifies user's information
+   * @param {string} socketUrl - Socket server you're connecting to.
+   */
   constructor(userData, socketUrl) {
     this.userData = userData;
     this.socketUrl = socketUrl;
@@ -25,6 +48,11 @@ class Session {
     // this.debugCollab = debug('zea-collab')
   }
 
+  /**
+   * Looks in the media stream tracks for an object that has the `kind` attribute to `video` and **disables** the first one in the list.
+   * 
+   * @param {boolean} publish - Determines if the socket emits/publishes or not the `USER_VIDEO_STOPPED` event. **See:** [action](#action)
+   */
   stopCamera(publish = true) {
     if (this.stream) {
       this.stream.getVideoTracks()[0].enabled = false;
@@ -32,6 +60,11 @@ class Session {
     }
   }
 
+  /**
+   * Looks in the media stream tracks for an object that has the `kind` attribute to `video` and **enables** the first one in the list.
+   * 
+   * @param {boolean} publish - Determines if the socket emits/publishes or not the `USER_VIDEO_STARTED` event. **See:** [action](#action)
+   */
   startCamera(publish = true) {
     if (this.stream) {
       this.stream.getVideoTracks()[0].enabled = true;
@@ -39,13 +72,23 @@ class Session {
     }
   }
 
+  /**
+   * Looks in the media stream tracks for an object that has the `kind` attribute to `audio` and **disables** the first one in the list.
+   *
+   * @param {boolean} publish - Determines if the socket emits/publishes or not the `USER_AUDIO_STOPPED` event. **See:** [action](#action)
+   */
   muteAudio(publish = true) {
     if (this.stream) {
       this.stream.getAudioTracks()[0].enabled = false;
-      if (publish) this.pub(Session.actions.USER_VIDEO_STOPPED, {});
+      if (publish) this.pub(Session.actions.USER_AUDIO_STOPPED, {});
     }
   }
 
+  /**
+   * Looks in the media stream tracks for an object that has the `kind` attribute to `audio` and **enables** the first one in the list.
+   *
+   * @param {boolean} publish - Determines if the socket emits/publishes or not the `USER_AUDIO_STARTED` event. **See:** [action](#action)
+   */
   unmuteAudio(publish = true) {
     if (this.stream) {
       this.stream.getAudioTracks()[0].enabled = true;
@@ -53,10 +96,25 @@ class Session {
     }
   }
 
+  /**
+   * Returns the [HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement) of requested user(If exists).
+   * 
+   * @param {string | number} userId - User id specified in userData
+   * @returns {MediaStream | undefined} - User's video stream
+   */
   getVideoStream(userId) {
     return this.userStreams[userId]
   }
 
+  /**
+   * Creates the [HTMLVideoElement](https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement) and adds it to the body.
+   * The video will start playing as soon as the duration and dimensions of the media have been determined
+   * <br>
+   * In case the user already has a stream nothing would happend.
+   * 
+   * @param {MediaStream | MediaSource | Blob | File} remoteStream 
+   * @param {string | number} userId 
+   */
   setVideoStream(remoteStream, userId) {
     if (this.userStreams[userId]) {
       return
@@ -73,12 +131,26 @@ class Session {
     document.body.appendChild(video);
   }
 
+  /**
+   * Checks if this Session's roomId is the same as the passed in the parameters.
+   *
+   * @param {boolean} roomId 
+   */
   isJoiningTheSameRoom(roomId) {
     return (
       this.roomId === roomId
     )
   }
 
+  /**
+   * Joins the user to a room and subscribes to all [private actions](#private_actions). 
+   * Also subscribes the user to a wildcard event that can recieve any custom action(Excluding private actions). 
+   * This is very useful when you wanna emit/publish custom events that are not in the pre-stablished custom [actions](#actions).
+   * <br>
+   * Emits/publishes the `JOIN_ROOM` event. **See:** [action](#action)
+   *
+   * @param {string | number} roomId - Room ID value
+   */
   joinRoom(roomId) {
     this.roomId = roomId;
 
@@ -231,6 +303,11 @@ class Session {
     return this.__streamPromise
   }
 
+  /**
+   * Disconnects the user from his current room, emitting/publishing the `LEFT_ROOM` event. **See:** [action](#action)
+   * <br>
+   * If the socket exists then `USER_LEFT` will be also emitted, check [joinRoom](#joinRoom) method.
+   */
   leaveRoom() {
     // Instruct Collab's clients to cleanup session user data.
     this._emit(Session.actions.LEFT_ROOM);
@@ -251,14 +328,30 @@ class Session {
     }
   }
 
+  /**
+   * Returns userData for all the users in the session.
+   */
   getUsers() {
     return this.users
   }
 
+  /**
+   * Returns the specific user information using the userId.
+   * 
+   * @param {string| number} id - id specified in userData param.
+   * @returns {object | undefined}
+   */
   getUser(id) {
     return this.users[id]
   }
 
+  /**
+   * Emits/Publishes an event action to the socket.
+   * 
+   * @param {string} messageType - Represents the event action that is published
+   * @param {any} payload - It could be anything that you want to send to other users
+   * @param {function} ack - Function that will be called right after server response
+   */
   pub(messageType, payload, ack) {
     if (!messageType) throw new Error('Missing messageType')
 
@@ -280,6 +373,13 @@ class Session {
     }
   }
 
+  /**
+   * Registers a new handler for a given event.
+   * **Note:** The session can handle multiple callbacks for a single event.
+   * 
+   * @param {string} messageType - Represents the event action subscribed to.
+   * @param {function} callback - Recieves by parameters the payload sent by the publisher
+   */
   sub(messageType, callback) {
     if (!messageType) throw new Error('Missing messageType')
     if (!callback) throw new Error('Missing callback')
@@ -299,6 +399,10 @@ class Session {
   }
 }
 
+/**
+ * Represents Custom Default Events used by `Session` class.
+ * @enum
+ */
 Session.actions = {
   USER_JOINED: 'user-joined',
   USER_VIDEO_STARTED: 'user-video-started',
@@ -356,7 +460,15 @@ function getRandomInt(max) {
   return Math.floor(Math.random() * Math.floor(max))
 }
 
+/**
+ * Utility class that lets you record/play/download all the `pub` actions triggered on user's session.
+ */
 class SessionRecorder {
+  /**
+   * Initializes the state of the SessionRecorder object declaring the start and stop recording methods.
+   * 
+   * @param {Session} session - An instance of the Session class.
+   */
   constructor(session) {
     this.session = session;
 
@@ -418,10 +530,16 @@ class SessionRecorder {
     }
   }
   
+  /**
+   * Starts recording all the `pub` action methods triggered in user's session.
+   */
   startRecording() {
     this.__startRecording();
   }
   
+  /**
+   * Stops the recording of all `pub` actions and starts playing the recording.
+   */
   stopRecording() {
     this.__stopRecording();
   }
@@ -459,6 +577,10 @@ class SessionRecorder {
     }
   }
   
+  /**
+   * Downloads the recorded data from an external url and starts playing it.
+   * @param {string} url 
+   */
   downloadAndPlayRecording(url) {
     const file = this.__recordings[name];
     fetch(new Request(url))
@@ -477,12 +599,17 @@ class SessionRecorder {
 
 const up = new Vec3(0, 0, 1);
 
-/** Class representing an avatar. */
+/**
+ * Represents the state on steroids of a user in the session. 
+ */
 class Avatar {
   /**
-   * Create an avatar.
-   * @param {any} appData - The appData value.
-   * @param {any} userData - The userData value.
+   * Initializes all the components of the Avatar like, user image, labels, tranformations, color, etc.
+   * <br>
+   * Contains a TreeItem property to which all the children items can be attached to. i.e. Camera.
+   * 
+   * @param {object} appData - The appData value. Must contain the renderer
+   * @param {object} userData - The userData value.
    * @param {boolean} currentUserAvatar - The currentUserAvatar value.
    */
   constructor(appData, userData, currentUserAvatar = false) {
@@ -504,29 +631,24 @@ class Avatar {
       this.__cameraBound = false;
 
       let avatarImage;
-      let geom;
+      let geom = new Disc(0.5, 64);
       if (this.__userData.picture && this.__userData.picture != '') {
         avatarImage = new LDRImage('user' + this.__userData.id + 'AvatarImage');
         avatarImage.setImageURL(this.__userData.picture);
-        geom = new Disc(0.5, 64);
       } else {
         const firstName = this.__userData.name || this.__userData.given_name || "";
         const lastName = this.__userData.lastName || this.__userData.family_name || "";
         avatarImage = new Label("Name");
-        const bgColor = new Color(1, 1, 1, 0);
-        avatarImage.getParameter('BackgroundColor').setValue(bgColor);
+        avatarImage.getParameter('BackgroundColor').setValue(this.__avatarColor);
         avatarImage.getParameter('FontSize').setValue(42);
-        avatarImage.getParameter('BorderRadius').setValue(42);
-        avatarImage.getParameter('BorderWidth').setValue(1);
-        avatarImage.getParameter('Margin').setValue(18);
-        avatarImage.getParameter('Text').setValue(`${firstName.charAt(0)} ${lastName.charAt(0)}`);
-
-        geom = new Plane(1, 1);
+        avatarImage.getParameter('BorderRadius').setValue(0);
+        avatarImage.getParameter('BorderWidth').setValue(0);
+        avatarImage.getParameter('Margin').setValue(12);
+        avatarImage.getParameter('StrokeBackgroundOutline').setValue(false);
+        avatarImage.getParameter('Text').setValue(`${firstName.charAt(0)}${lastName.charAt(0)}`);
+        
         avatarImage.labelRendered.connect((event) => {
-          console.log(event);
-          const aspect = event.width / event.height;
-          // geom.getParameter('SizeX').setValue(0.1 * aspect)
-          this.__avatarImageXfo.sc.set(0.15 * aspect, 0.15, 1);
+          this.__avatarImageXfo.sc.set(0.15, 0.15, 1);
           this.__avatarImageGeomItem.setLocalXfo(this.__avatarImageXfo);
         });
       }
@@ -549,12 +671,33 @@ class Avatar {
       this.__avatarImageXfo.sc.set(0.2, 0.2, 1);
       this.__avatarImageXfo.ori.setFromAxisAndAngle(new Vec3(0, 1, 0), Math.PI);
       this.__avatarImageGeomItem.setLocalXfo(this.__avatarImageXfo);
+
+      ///////////////////////////////////////////////
+      
+      const avatarImageBorderMaterial = new Material(
+        'avatarImageBorderMaterial',
+        'FlatSurfaceShader'
+      );
+      avatarImageBorderMaterial.getParameter('BaseColor').setValue(new Color(0,0,0,1));
+      avatarImageBorderMaterial.visibleInGeomDataBuffer = false;
+      const avatarImageBorderGeomItem = new GeomItem(
+        'avatarImageBorder',
+        geom,
+        avatarImageBorderMaterial
+      );
+
+      const borderXfo = new Xfo();
+      borderXfo.sc.set(1.1, 1.1, 1.1);
+      borderXfo.tr.set(0.0, 0.0, -0.001);
+      avatarImageBorderGeomItem.setLocalXfo(borderXfo);
+      this.__avatarImageGeomItem.addChild(avatarImageBorderGeomItem, false);
     }
   }
 
   /**
-   * The attachRTCStream method.
-   * @param {any} video - The video param.
+   * Usually called on `USER_VIDEO_STARTED` Session action this attaches the video MediaStream to the avatar cam geometry item.
+   *
+   * @param {MediaStream} video - The video param.
    */
   attachRTCStream(video) {
     if (!this.__avatarCamGeomItem) {
@@ -594,7 +737,7 @@ class Avatar {
   }
 
   /**
-   * The detachRTCStream method.
+   * As opposite of the `attachRTCStream` method, this is usually called on `USER_VIDEO_STOPPED` Session action, removing the RTC Stream from the treeItem
    */
   detachRTCStream() {
     if (this.__currentViewMode == 'CameraAndPointer') {
@@ -609,15 +752,16 @@ class Avatar {
   }
 
   /**
-   * The getCamera method.
-   * @return {any} The return value.
+   * Returns Avatar's Camera tree item.
+   *
+   * @return {Camera} The return value.
    */
   getCamera() {
     return this.__camera
   }
 
   /**
-   * The bindCamera method.
+   * Traverses Camera's sibling items and hide them, but shows Camera item.
    */
   bindCamera() {
     this.__cameraBound = true;
@@ -631,7 +775,7 @@ class Avatar {
   }
 
   /**
-   * The unbindCamera method.
+   * Traverses Camera's sibling items and show them, but hides Camera item.
    */
   unbindCamera() {
     this.__cameraBound = false;
@@ -646,6 +790,7 @@ class Avatar {
 
   /**
    * The setCameraAndPointerRepresentation method.
+   * @private
    */
   setCameraAndPointerRepresentation() {
     this.__treeItem.removeAllChildren();
@@ -666,7 +811,7 @@ class Avatar {
       'SimpleSurfaceShader'
     );
     material.visibleInGeomDataBuffer = false;
-    material.getParameter('BaseColor').setValue(this.__avatarColor);
+    material.getParameter('BaseColor').setValue(new Color(0.5, 0.5, 0.5, 0));
     const geomItem = new GeomItem('camera', shape, material);
     const geomXfo = new Xfo();
     geomItem.setGeomOffsetXfo(geomXfo);
@@ -713,7 +858,8 @@ class Avatar {
 
   /**
    * The updateCameraAndPointerPose method.
-   * @param {any} data - The data param.
+   * @param {object} data - The data param.
+   * @private
    */
   updateCameraAndPointerPose(data) {
     if (this.__currentUserAvatar) return
@@ -746,7 +892,8 @@ class Avatar {
 
   /**
    * The setVRRepresentation method.
-   * @param {any} data - The data param.
+   * @param {object} data - The data param.
+   * @private
    */
   setVRRepresentation(data) {
     this.__treeItem.removeAllChildren();
@@ -832,7 +979,8 @@ class Avatar {
 
   /**
    * The updateVRPose method.
-   * @param {any} data - The data param.
+   * @param {object} data - The data param.
+   * @private
    */
   updateVRPose(data) {
     const setupController = (i) => {
@@ -925,8 +1073,11 @@ class Avatar {
   }
 
   /**
-   * The updatePose method.
-   * @param {any} data - The data param.
+   * Method that executes the representation methods for the specified `interfaceType` in the data object.
+   * <br>
+   * Valid `interfaceType` values: `CameraAndPointer`, `Vive` and `VR`
+   * 
+   * @param {object} data - The data param.
    */
   updatePose(data) {
     switch (data.interfaceType) {
@@ -947,7 +1098,7 @@ class Avatar {
   }
 
   /**
-   * The destroy method.
+   * Removes Avatar's TreeItem from the renderer.
    */
   destroy() {
     this.__appData.renderer.removeTreeItem(this.__treeItem);
@@ -999,13 +1150,18 @@ const convertValuesFromJSON = (value, scene) => {
   }
 };
 
-/* * Class representing a session sync. */
+/** 
+ * Helper class with default session sync behaviour 
+ */
 class SessionSync {
   /**
-   * Create a session sync.
-   * @param {any} session - The session value.
-   * @param {any} appData - The appData value.
-   * @param {any} currentUser - The currentUser value.
+   * All default behaviours for session sub actions are defined here. 
+   * You can use this as a guide or as the starter configuration for sub actions.
+   * 
+   * @see [Session](api/Session.md)
+   * @param {Session} session - The session value.
+   * @param {object} appData - The appData value.
+   * @param {object} currentUser - The currentUser value.
    */
   constructor(session, appData, currentUser, options) {
     // const currentUserAvatar = new Avatar(appData, currentUser, true);

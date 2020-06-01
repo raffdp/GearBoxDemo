@@ -17020,7 +17020,7 @@ class Label extends DataImage {
     this.__canvasElem = document.createElement('canvas');
     const fontSize = 22;
 
-    const libraryParam = this.addParameter(new StringParameter('library'));
+    const libraryParam = this.addParameter(new StringParameter('Library'));
     this.addParameter(new StringParameter('Text', ''));
     // or load the label when it is loaded.
 
@@ -17094,7 +17094,7 @@ class Label extends DataImage {
 
     const loadText = () => {
       return new Promise(resolve => {
-        const library = this.getParameter('library').getValue();
+        const library = this.getParameter('Library').getValue();
         if (library == '') {
           resolve();
           return
@@ -40866,7 +40866,7 @@ void main(void) {
 #ifndef ENABLE_TEXTURES
     vec4 baseColor = BaseColor;
 #else
-    vec4 baseColor      = getColorParamValue(BaseColor, BaseColorTex, BaseColorTexType, v_textureCoord);
+    vec4 baseColor = getColorParamValue(BaseColor, BaseColorTex, BaseColorTexType, v_textureCoord);
 #endif
 
 #ifndef ENABLE_ES3
