@@ -111,7 +111,7 @@ const setupCutaway = (asset) => {
   asset.getParameter('CutPlaneColor').setValue(new Color(0, 0, 0))
   asset.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
   asset.getParameter('CutPlaneDist').setValue(-0.17)
-  asset.getParameter('CutPlaneDist').setValue(0)
+  // asset.getParameter('CutPlaneDist').setValue(0)
   
   // asset.loaded.connect(()=>{
   //   let cutAmount = -0.17;

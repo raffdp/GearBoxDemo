@@ -1,4 +1,17 @@
-import { Color, Xfo, Vec3, Group, ExplodePartsOperator, RouterOperator } from "../dist/zea-engine/dist/index.esm.js"
+import { 
+  Color,
+  Xfo,
+  Vec3,
+  Group,
+  ExplodePartsOperator,
+  RouterOperator,
+  Material,
+  TreeItem,
+  Lines,
+  GeomItem,
+  Label,
+  BillboardItem
+} from "../dist/zea-engine/dist/index.esm.js"
 import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 
 const setupExplode = (asset) => {
@@ -10,12 +23,6 @@ const setupExplode = (asset) => {
   opExplodeFront1.getParameter('Stages').setValue(0);
   opExplodeFront1.getParameter('Cascade').setValue(true);
 
-  const opExplodeFront2 = new ExplodePartsOperator("opExplodeFront2");
-  asset.addChild(opExplodeFront2);
-  opExplodeFront2.getParameter('Dist').setValue(1.0);
-  opExplodeFront2.getParameter('Stages').setValue(8);
-  opExplodeFront2.getParameter('Cascade').setValue(true);
-
 
   const opExplodeBack1 = new ExplodePartsOperator("opExplodeBack1");
   asset.addChild(opExplodeBack1);
@@ -24,10 +31,66 @@ const setupExplode = (asset) => {
   opExplodeBack1.getParameter('Cascade').setValue(true);
 
   const explodedAmount = new RouterOperator('ExplodeAmount')
+  explodedAmount.addRoute().setParam(opExplodeFront1.getParameter('Explode'))
+  explodedAmount.addRoute().setParam(opExplodeBack1.getParameter('Explode'))
   asset.addChild(explodedAmount)
 
+  const labelOpacity = new RouterOperator('LabelOpacity')
+  asset.addChild(labelOpacity)
+
+  const labelTree = new TreeItem('labels');
+  const labelOutlineColor = new Color("#3B3B3B");
+  const linesMaterial = new Material('LabelLinesMaterial', 'LinesShader');
+  linesMaterial.getParameter('BaseColor').setValue(labelOutlineColor);
+  labelOpacity.addRoute().setParam(linesMaterial.getParameter('Opacity'))
+  // linesMaterial.getParameter('Opacity').setValue(0.0);
+  let index = 0;
+  // let fontColor = new Color(.85, .85, .0);
+  // let backgroundColor = new Color(0.1, 0.1, .1);
+
+  // const labelFontColor = new Color(1, 1, 1);
+  // const labelBackgroundColor = new Color(0.4, 0.4, 0.4);
+  const labelBackgroundColor = new Color('#FBC02D');
+  asset.addChild(labelTree);
+  const addLabel = (pos, basePose, name)=> {
+    const label = new Label(name);
+    // label.getParameter('font').setValue("Arial");
+    label.getParameter('FontSize').setValue(48);
+    // label.getParameter('fontColor').setValue(labelFontColor);
+    label.getParameter('BackgroundColor').setValue(labelBackgroundColor);
+    label.getParameter('OutlineColor').setValue(labelOutlineColor);
+    label.getParameter('BorderWidth').setValue(3);
+    label.getParameter('Margin').setValue(16);
+
+    const billboard = new BillboardItem('billboard'+index, label);
+    const xfo = new Xfo(pos);
+    billboard.setLocalXfo(xfo);
+    billboard.getParameter('PixelsPerMeter').setValue(1500);
+    billboard.getParameter('AlignedToCamera').setValue(true);
+    // billboard.getParameter('Alpha').setValue(0.0);
+    labelOpacity.addRoute().setParam(billboard.getParameter('Alpha'))
+    labelTree.addChild(billboard);
+
+    const line = new Lines();
+    line.setNumVertices(2);
+    line.setNumSegments(1);
+    line.setSegment(0, 0, 1);
+    line.setVertex(1, basePose.subtract(pos));
+    const lineItem = new GeomItem('Line', line, linesMaterial);
+
+    billboard.addChild(lineItem, false);
+    index++;
+}
 
   asset.loaded.connect(()=>{
+    
+    addLabel(new Vec3(0.08, -1.6, 0.3), new Vec3(0.08, -1.6, 0.05), "Front Propeller Housing");
+    addLabel(new Vec3(-0.1, -1.05, 0.3), new Vec3(-0.1, -1.05, 0.05), "Motor Housing");
+    addLabel(new Vec3(0.07, -0.035, 0.4), new Vec3(0.07, -0.035, 0.25), "Shifter");
+    addLabel(new Vec3(0.08, -0.15, 0.3), new Vec3(0.08, -0.15, 0.03), "Gear 1");
+    addLabel(new Vec3(0.08, -0.4, 0.3), new Vec3(0.08, -0.4, 0.06), "Gear 2");
+    addLabel(new Vec3(-0.08, -0.17, 0.3), new Vec3(-0.08, -0.17, 0.06), "Gear 3");
+    addLabel(new Vec3(0.08, 0.16, 0.3), new Vec3(0.08, 0.16, 0.06), "Gear 4");
     
     {
       const group = new Group('mainShaft4Bolts');
@@ -133,6 +196,11 @@ const setupExplode = (asset) => {
         [".", "10X30_HEX_BOLT_058"],
         [".", "10X30_HEX_BOLT_059"],
         [".", "10X30_HEX_BOLT_060"],
+        
+        [".", "8X30_ALLEN_BOLT"],
+        [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
+        [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
+        [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"]
           ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
@@ -191,7 +259,9 @@ const setupExplode = (asset) => {
       group.resolveItems([
         [".", "GEAR_HOUSING_ASSM_ASM", "GEAR_SHIFTER_HOUSING", "MANIFOLD_SOLID_BREP #281226"],
         [".", "GEAR_HOUSING_ASSM_ASM", "GEAR_SHIFTER_HOUSING", "OPEN_SHELL #281225"],
-        [".", "GEAR_HOUSING_ASSM_ASM", "GEAR_SHIFTER_HOUSING", "OPEN_SHELL #281127"]
+        [".", "GEAR_HOUSING_ASSM_ASM", "GEAR_SHIFTER_HOUSING", "OPEN_SHELL #281127"],
+        
+        [".", "MOTOR_HOUSING"]
           ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
@@ -236,7 +306,8 @@ const setupExplode = (asset) => {
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
       group.resolveItems([
-        [".", "GASKET_FOR_SHIFTER"]
+        [".", "GASKET_FOR_SHIFTER"],
+        [".", "6210_BALL_BEARING_SKF_ASM"],
           ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
@@ -315,6 +386,7 @@ const setupExplode = (asset) => {
           ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
+      part.setStage(part.getStage() + 1)
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
 
@@ -351,48 +423,62 @@ const setupExplode = (asset) => {
           ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
+      part.setStage(part.getStage() + 1)
+      part.getOutput().setParam(group.getParameter('GlobalXfo'));
+    }
+    {
+      const group = new Group("SHIFTER");
+      group.getParameter('InitialXfoMode').setValue('average');
+      asset.addChild(group);
+      group.resolveItems([
+        [".", "GEAR_SHAFT_ASSM_ASM", "SHIFTER"],
+        [".", "GEAR_SHAFT_ASSM_ASM", "DOWEL_PIN"],
+        [".", "GEAR_SHAFT_ASSM_ASM", "DOWEL_PIN_005", "DOWEL_PIN"],
+          ]);
+      const part = opExplodeFront1.getParameter('Parts').addElement();
+      part.getParameter("Axis").setValue(new Vec3(0,0,2))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
 
     ///////////////////////////////////
     //
     
-    {
-      const group = new Group('8X30_ALLEN_BOLTs');
-      group.getParameter('InitialXfoMode').setValue('average');
-      asset.addChild(group);
-      group.resolveItems([
-          [".", "8X30_ALLEN_BOLT"],
-          [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
-          [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
-          [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"]
-          ]);
-      const part = opExplodeFront2.getParameter('Parts').addElement();
-      part.getParameter("Axis").setValue(new Vec3(0,-1,0))
-      part.getOutput().setParam(group.getParameter('GlobalXfo'));
-    }
-    {
-      const group = new Group('MOTOR_HOUSING');
-      group.getParameter('InitialXfoMode').setValue('average');
-      asset.addChild(group);
-      group.resolveItems([
-          [".", "MOTOR_HOUSING"]
-          ]);
-      const part = opExplodeFront2.getParameter('Parts').addElement();
-      part.getParameter("Axis").setValue(new Vec3(0,-1,0))
-      part.getOutput().setParam(group.getParameter('GlobalXfo'));
-    }
-    {
-      const group = new Group('FRONT_PROPELLER_HOUSING');
-      group.getParameter('InitialXfoMode').setValue('average');
-      asset.addChild(group);
-      group.resolveItems([
-          [".", "6210_BALL_BEARING_SKF_ASM"],
-          ]);
-      const part = opExplodeFront2.getParameter('Parts').addElement();
-      part.getParameter("Axis").setValue(new Vec3(0,-1,0))
-      part.getOutput().setParam(group.getParameter('GlobalXfo'));
-    }
+    // {
+    //   const group = new Group('8X30_ALLEN_BOLTs');
+    //   group.getParameter('InitialXfoMode').setValue('average');
+    //   asset.addChild(group);
+    //   group.resolveItems([
+    //       [".", "8X30_ALLEN_BOLT"],
+    //       [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
+    //       [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
+    //       [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"]
+    //       ]);
+    //   const part = opExplodeFront2.getParameter('Parts').addElement();
+    //   part.getParameter("Axis").setValue(new Vec3(0,-1,0))
+    //   part.getOutput().setParam(group.getParameter('GlobalXfo'));
+    // }
+    // {
+    //   const group = new Group('MOTOR_HOUSING');
+    //   group.getParameter('InitialXfoMode').setValue('average');
+    //   asset.addChild(group);
+    //   group.resolveItems([
+    //       [".", "MOTOR_HOUSING"]
+    //       ]);
+    //   const part = opExplodeFront2.getParameter('Parts').addElement();
+    //   part.getParameter("Axis").setValue(new Vec3(0,-1,0))
+    //   part.getOutput().setParam(group.getParameter('GlobalXfo'));
+    // }
+    // {
+    //   const group = new Group('FRONT_PROPELLER_HOUSING');
+    //   group.getParameter('InitialXfoMode').setValue('average');
+    //   asset.addChild(group);
+    //   group.resolveItems([
+    //       [".", "6210_BALL_BEARING_SKF_ASM"],
+    //       ]);
+    //   const part = opExplodeFront2.getParameter('Parts').addElement();
+    //   part.getParameter("Axis").setValue(new Vec3(0,-1,0))
+    //   part.getOutput().setParam(group.getParameter('GlobalXfo'));
+    // }
 
 
     ///////////////////////////////////
@@ -493,14 +579,10 @@ const setupExplode = (asset) => {
       part.getParameter("Axis").setValue(new Vec3(0,1,0))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
-    
-
-    explodedAmount.addRoute().setParam(opExplodeFront1.getParameter('Explode'))
-    explodedAmount.addRoute().setParam(opExplodeFront2.getParameter('Explode'))
-    explodedAmount.addRoute().setParam(opExplodeBack1.getParameter('Explode'))
   })
   
-  
+  explodedAmount.getParameter('Input').setValue(0);
+  labelOpacity.getParameter('Input').setValue(0);
   // asset.loaded.connect(()=>{
   //   let explodedAmountP = 0;
   //   let animatingValue = false;

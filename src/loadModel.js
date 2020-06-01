@@ -74,9 +74,6 @@ const loadModel = () => {
     asset.addChild(shinyMetalGroup);
   }
 
-
-
-
   const goldMetalGroup = new Group('goldMetalGroup');
   {
     const material = new Material('goldMetal');
@@ -135,9 +132,7 @@ const loadModel = () => {
       [".", "GEAR_4"],
       [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_5"],
       [".", "NEEDLE_BEARING_ASSM_ASM", "NEEDLE_BALL", "MANIFOLD_SOLID_BREP #122689"]
-      
     ]);
-      
 
     goldMetalGroup.resolveItems([
       // Ball Brearing Housing
@@ -151,7 +146,6 @@ const loadModel = () => {
       [".", "PROPELLER_HOUSING_ASSM_ASM", "6308_BALL_BEARING_SKF_ASM", "6308_BALL_BEARING_BALL_SKF_008", "6308_BALL_BEARING_BALL_SKF"],
       [".", "PROPELLER_HOUSING_ASSM_ASM", "6308_BALL_BEARING_SKF_ASM", "6308_BALL_BEARING_BALL_SKF_009", "6308_BALL_BEARING_BALL_SKF"],
       [".", "PROPELLER_HOUSING_ASSM_ASM", "6308_BALL_BEARING_SKF_ASM", "6308_BALL_BEARING_BALL_SKF_010", "6308_BALL_BEARING_BALL_SKF"],
-
       
       [".", "6210_BALL_BEARING_SKF_ASM", "6210_BALL_BEARING_CASE_SKF"],
       [".", "6210_BALL_BEARING_SKF_ASM", "6210_BALL_BEARING_COLLAR_SKF"],
@@ -275,6 +269,7 @@ const loadModel = () => {
       [".", "BUNDH_PLUG_ASSM_ASM", "20_MM_O_RING_FOR_BUNDH_PLUG"],
       [".", "BUNDH_PLUG_ASSM_ASM_062", "20_MM_O_RING_FOR_BUNDH_PLUG"]
     ]);
+
     orangeRubberGroup.resolveItems([
       [".", "WASHER_1"],
       [".", "GASKET_FOR_BODY"]

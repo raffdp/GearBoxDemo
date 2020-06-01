@@ -96,8 +96,6 @@ const setupGears = (asset) => {
       const gear = gearsOp.getParameter("Gears").addElement();
       gear.getMember("Ratio").setValue(1);
       gear.getMember("Axis").setValue(axis);
-      // const gearGeoms = gear.getMember('Items')
-      // gearGeoms.addElement(binding.geomItem);
       gear.getOutput().setParam(group.getParameter("GlobalXfo"));
     }
     {
@@ -111,8 +109,6 @@ const setupGears = (asset) => {
       const gear = gearsOp.getParameter("Gears").addElement();
       gear.getMember("Ratio").setValue(1);
       gear.getMember("Axis").setValue(axis);
-      // const gearGeoms = gear.getMember('Items')
-      // gearGeoms.addElement(binding.geomItem);
       gear.getOutput().setParam(group.getParameter("GlobalXfo"));
     }
     {

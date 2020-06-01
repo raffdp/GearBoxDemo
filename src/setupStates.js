@@ -125,6 +125,14 @@ const setupStates = (asset, renderer) => {
           setExplode.getParameter("Value").setValue(1.0)
           setExplode.getParameter("InterpTime").setValue(3.0)
           setCut.addChild(setExplode)
+
+
+          const labelOpacity = asset.getChildByName('LabelOpacity')
+          const showLabels = new SetParameterValue()
+          showLabels.getOutput("Param").setParam(labelOpacity.getParameter('Input'))
+          showLabels.getParameter("Value").setValue(1.0)
+          showLabels.getParameter("InterpTime").setValue(1.0)
+          setExplode.addChild(showLabels)
         }
         
         const moveCamera = new SetCameraPositionAndTarget()
@@ -155,6 +163,15 @@ const setupStates = (asset, renderer) => {
         setExplode.getParameter("InterpTime").setValue(2.0)
         state.addDeactivationAction(setExplode)
       }
+      
+
+      const labelOpacity = asset.getChildByName('LabelOpacity')
+      const hideLabels = new SetParameterValue()
+      hideLabels.getOutput("Param").setParam(labelOpacity.getParameter('Input'))
+      hideLabels.getParameter("Value").setValue(0.0)
+      hideLabels.getParameter("InterpTime").setValue(0.5)
+      state.addDeactivationAction(hideLabels)
+
       stateMachine.addState(state)
     }
     

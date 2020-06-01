@@ -1,4 +1,4 @@
-import { Color, Xfo, Vec3, EulerAngles, Group, Material, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
+import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
 import { SelectionManager } from "../dist/zea-ux/dist/index.rawimport.js"
 import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
@@ -99,16 +99,7 @@ document.addEventListener("keydown", event => {
 ////////////////////////////////////
 // Setup Collaboration
 
-const API_CONFIG = {
-  auth0: {
-    audience: 'https://apistage.visualive.io/',
-    domain: 'visualive-stage.auth0.com',
-    clientID: 'cQmTLJau7Md9d6TXHAg2uPoX1yG9Oz9N',
-  },
-  apiUrl: 'https://api-staging.zea.live/api/v1/',
-  socketUrl: 'https://websocket-staging.zea.live',
-};
-
+const socketUrl = 'https://websocket-staging.zea.live';
 
 const urlParams = new URLSearchParams(window.location.search);
 let userId = urlParams.get('user-id');
@@ -133,7 +124,7 @@ const userData = {
   color: color.toHex()
 }
 
-const session = new Session(userData, API_CONFIG.socketUrl);
+const session = new Session(userData, socketUrl);
 session.joinRoom('sassdfghjssasdasd');
 
 const sessionSync = new SessionSync(session, appData, userData, {});
