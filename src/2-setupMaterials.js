@@ -7,7 +7,8 @@ const setupMaterials = (asset) => {
   {
     const material = new Material('casingMetal');
     material.modifyParams({
-      BaseColor: new Color(0.55,0.05,0.05),
+      // BaseColor: new Color(0.55,0.05,0.05),
+      BaseColor: new Color(0.85,0.55,0.55),
       Metallic: 0.75,
       Roughness: 0.35,
       Reflectance: 0.8
@@ -20,7 +21,8 @@ const setupMaterials = (asset) => {
   {
     const material = new Material('blackMetal');
     material.modifyParams({
-      BaseColor: new Color(0.1, 0.1, .1),
+      // BaseColor: new Color(0.1, 0.1, .1),
+      BaseColor: new Color(0.4, 0.4, 0.4),
       Metallic: 0.85,
       Roughness: 0.35,
       Reflectance: 0.7
@@ -28,12 +30,13 @@ const setupMaterials = (asset) => {
     blackMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(blackMetalGroup);
   }
-  /*
+  
   const blackPlasticGroup = new Group('blackPlasticGroup');
   {
     const material = new Material('blackPlastic');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.45,
       Reflectance: 0.03
@@ -47,7 +50,8 @@ const setupMaterials = (asset) => {
   {
     const material = new Material('blackRubber');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
       Reflectance: 0.01
@@ -61,7 +65,8 @@ const setupMaterials = (asset) => {
   {
     const material = new Material('orangeRubber');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
       Reflectance: 0.01
@@ -97,8 +102,6 @@ const setupMaterials = (asset) => {
     asset.addChild(goldMetalGroup);
   }
 
-
-  */
   asset.loaded.connect(()=>{
     
     casingMetalGroup.resolveItems([
@@ -159,7 +162,7 @@ const setupMaterials = (asset) => {
       [".", "BODY_1_ASSM_ASM", "DOVEL_FOR_BODY"],
     ]);
     
-    /*
+    
     shinyMetalGroup.resolveItems([
       [".", "FRONT_PROPELLER_HOUSING"],
       [".", "GEAR_1"],
@@ -257,7 +260,7 @@ const setupMaterials = (asset) => {
       [".", "WASHER_1"],
       [".", "GASKET_FOR_BODY"]
     ]);
-    */
+  
   })
   return asset;
 }

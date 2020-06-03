@@ -42,12 +42,8 @@ const setupExplode = (asset) => {
   labelOpacity.addRoute().setParam(linesMaterial.getParameter('Opacity'))
   // linesMaterial.getParameter('Opacity').setValue(0.0);
   let index = 0;
-  // let fontColor = new Color(.85, .85, .0);
-  // let backgroundColor = new Color(0.1, 0.1, .1);
 
-  // const labelFontColor = new Color(1, 1, 1);
-  // const labelBackgroundColor = new Color(0.4, 0.4, 0.4);
-  const labelBackgroundColor = new Color('#FBC02D');
+  const labelBackgroundColor = new Color('#EEEEEE');
   asset.addChild(labelTree);
   const addLabel = (pos, basePose, name)=> {
     const label = new Label(name);

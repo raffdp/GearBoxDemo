@@ -16,7 +16,7 @@ const scene = new Scene();
 
 const renderer = new GLRenderer( domElement, {
   webglOptions: {
-    antialias: false, 
+    antialias: true, 
     canvasPosition: 'relative',
   },
 });
@@ -25,10 +25,11 @@ renderer.getViewport().getCamera().setPositionAndTarget(new Vec3({"x":0.56971,"y
 
 
 
-const envMap = new EnvMap("SmartLocEnv");
-envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
-const backgroundColor = new Color('#e3e3e3');
-scene.getSettings().getParameter('EnvMap').setValue(envMap);
+// const envMap = new EnvMap("SmartLocEnv");
+// envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
+// const backgroundColor = new Color('#e3e3e3');
+// scene.getSettings().getParameter('EnvMap').setValue(envMap);
+scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#ffffff'))
 
 const cadPass = new GLCADPass(true)
 cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
@@ -56,34 +57,34 @@ setupMaterials(asset)
 setupCutaway(asset);
 setupGears(asset);
 setupExplode(asset);
-// setupStates(asset, renderer);
+setupStates(asset, renderer);
 
 scene.getRoot().addChild(asset)
 
 // // https://grabcad.com/library/two-speed-gear-box-1
 
-// ////////////////////////////////////
-// // Setup the Left side Tree view.
+////////////////////////////////////
+// Setup the Left side Tree view.
 
-// const appData = {
-//   scene,
-//   renderer
-// }
+const appData = {
+  scene,
+  renderer
+}
 
-// appData.selectionManager  = new SelectionManager(appData);
+appData.selectionManager  = new SelectionManager(appData);
 
-// // // Note: the alpha value determines  the fill of the highlight.
-// const selectionColor = new Color("#F9CE03");
-// selectionColor.a = 0.1
-// const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
-// appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
-// appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor)
+// // Note: the alpha value determines  the fill of the highlight.
+const selectionColor = new Color("#111111");
+selectionColor.a = 0.1
+const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
+appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
+appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor)
 
-// const sceneTreeView = document.getElementById(
-//   "zea-tree-view"
-// );
-// sceneTreeView.appData = appData
-// sceneTreeView.rootItem  = scene.getRoot()
+const sceneTreeView = document.getElementById(
+  "zea-tree-view"
+);
+sceneTreeView.appData = appData
+sceneTreeView.rootItem  = scene.getRoot()
 
 // document.addEventListener("keydown", event => {
 //   if(event.key==="f"){
@@ -91,11 +92,11 @@ scene.getRoot().addChild(asset)
 //   }
 // });
 
-// // const camera = renderer.getViewport().getCamera();
-// // renderer.viewChanged.connect(() =>{
-// //   const xfoParam =  camera.getParameter('GlobalXfo')
-// //   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
-// // })
+const camera = renderer.getViewport().getCamera();
+renderer.viewChanged.connect(() =>{
+  const xfoParam =  camera.getParameter('GlobalXfo')
+  console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
+})
 
 
 // ////////////////////////////////////

@@ -106,7 +106,7 @@ const setupGears = (asset) => {
       gear.getMember("Ratio").setValue((-60/39) * -(32/108));
       gear.getOutput().setParam(group.getParameter("GlobalXfo"));
     }
-    /*
+    
     {
       const group = new Group('GEAR_5');
       group.getParameter('InitialXfoMode').setValue('average');
@@ -192,34 +192,33 @@ const setupGears = (asset) => {
           }
         })
       }
-      */
     
-    // setGearBoxSetting(1)
+    setGearBoxSetting(1)
   })
   
-  // let currGearSetting
-  // const setGearBoxSetting = (gearboxSetting) => {
-  //   if (gearboxSetting == 1) {
-  //     const gear2 = gearsOp.getParameter("Gears").getElement(2);
-  //     gear2.getMember("Ratio").setValue(1);
-  //     const gear3 = gearsOp.getParameter("Gears").getElement(3);
-  //     gear3.getMember("Ratio").setValue(-60/39);
-  //     const gear4 = gearsOp.getParameter("Gears").getElement(4);
-  //     gear4.getMember("Ratio").setValue(32/104);
-  //     const brearings = gearsOp.getParameter("Gears").getElement(7);
-  //     brearings.getMember("Ratio").setValue(-1);
-  //   } else if (gearboxSetting == 2) {
-  //     const gear4 = gearsOp.getParameter("Gears").getElement(4);
-  //     gear4.getMember("Ratio").setValue(1);
-  //     const gear3 = gearsOp.getParameter("Gears").getElement(3);
-  //     gear3.getMember("Ratio").setValue(-104/32);
-  //     const gear2 = gearsOp.getParameter("Gears").getElement(2);
-  //     gear2.getMember("Ratio").setValue(60/39);
-  //     const brearings = gearsOp.getParameter("Gears").getElement(7);
-  //     brearings.getMember("Ratio").setValue(-2);
-  //   }
-  //   currGearSetting = gearboxSetting
-  // }
+  let currGearSetting
+  const setGearBoxSetting = (gearboxSetting) => {
+    if (gearboxSetting == 1) {
+      const gear2 = gearsOp.getParameter("Gears").getElement(1);
+      gear2.getMember("Ratio").setValue(1);
+      const gear3 = gearsOp.getParameter("Gears").getElement(2);
+      gear3.getMember("Ratio").setValue(-60/39);
+      const gear4 = gearsOp.getParameter("Gears").getElement(4);
+      gear4.getMember("Ratio").setValue(32/104);
+      const brearings = gearsOp.getParameter("Gears").getElement(6);
+      brearings.getMember("Ratio").setValue(-1);
+    } else if (gearboxSetting == 2) {
+      const gear4 = gearsOp.getParameter("Gears").getElement(4);
+      gear4.getMember("Ratio").setValue(1);
+      const gear3 = gearsOp.getParameter("Gears").getElement(2);
+      gear3.getMember("Ratio").setValue(-104/32);
+      const gear2 = gearsOp.getParameter("Gears").getElement(1);
+      gear2.getMember("Ratio").setValue(60/39);
+      const brearings = gearsOp.getParameter("Gears").getElement(6);
+      brearings.getMember("Ratio").setValue(-2);
+    }
+    currGearSetting = gearboxSetting
+  }
 
 }
 export default setupGears

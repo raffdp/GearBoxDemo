@@ -12,7 +12,6 @@ const setupCutaway = (asset) => {
       [".", "GASKET_FOR_BODY"],
       [".", "MOTOR_HOUSING"],
       
-      /*
       [".", "10X30_HEX_BOLT"],
       [".", "10X30_HEX_BOLT_010", "10X30_HEX_BOLT"],
       [".", "10X30_HEX_BOLT_011", "10X30_HEX_BOLT"],
@@ -101,22 +100,18 @@ const setupCutaway = (asset) => {
       [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
       [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
       [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"],
-      
-
 
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_008", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_009", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_010", "STUD_FOR_DIFFERENTIAL_MOUNTING"]
-      */
+      
     ]);
   })
   
   cutAwayGroup.getParameter('CutAwayEnabled').setValue(true);  
   asset.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
-  asset.getParameter('CutPlaneDist').setValue(0)
-
-  // asset.getParameter('CutPlaneColor').setValue(new Color(0, 0, 0))
-  // asset.getParameter('CutPlaneDist').setValue(-0.17)
+  // asset.getParameter('CutPlaneDist').setValue(0)
+  asset.getParameter('CutPlaneDist').setValue(-0.17)
   
   
   // asset.loaded.connect(()=>{
