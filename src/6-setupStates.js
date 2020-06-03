@@ -1,8 +1,5 @@
 import { 
-  Color,
-  Xfo,
   Vec3,
-  Group,
   StateMachine,
   State,
   SetCameraPositionAndTarget,

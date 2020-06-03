@@ -12,17 +12,14 @@ import {
   Label,
   BillboardItem
 } from "../dist/zea-engine/dist/index.esm.js"
-import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 
 const setupExplode = (asset) => {
   
-
   const opExplodeFront1 = new ExplodePartsOperator("opExplodeFront1");
   asset.addChild(opExplodeFront1);
   opExplodeFront1.getParameter('Dist').setValue(1.6);
   opExplodeFront1.getParameter('Stages').setValue(0);
   opExplodeFront1.getParameter('Cascade').setValue(true);
-
 
   const opExplodeBack1 = new ExplodePartsOperator("opExplodeBack1");
   asset.addChild(opExplodeBack1);
@@ -161,6 +158,7 @@ const setupExplode = (asset) => {
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
+    
     {
       const group = new Group('FRONT_PROPELLER_HOUSING');
       group.getParameter('InitialXfoMode').setValue('average');
@@ -181,6 +179,7 @@ const setupExplode = (asset) => {
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
+
     {
       const group = new Group('10X30_HEX_BOLTs');
       group.getParameter('InitialXfoMode').setValue('average');
