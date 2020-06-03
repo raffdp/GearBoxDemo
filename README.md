@@ -1,3 +1,3 @@
-# FARO-BIM-LiDAR
+# Gearbox Demo
 
-Sample application demonstrating BIM and LiDAR data loading using Zea Engine.
+Sample application demonstrating Loading CAD data, Gear Operators, Cutaways, and Exploded views.
