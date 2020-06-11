@@ -12,17 +12,14 @@ import {
   Label,
   BillboardItem
 } from "../dist/zea-engine/dist/index.esm.js"
-import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 
 const setupExplode = (asset) => {
   
-
   const opExplodeFront1 = new ExplodePartsOperator("opExplodeFront1");
   asset.addChild(opExplodeFront1);
   opExplodeFront1.getParameter('Dist').setValue(1.6);
   opExplodeFront1.getParameter('Stages').setValue(0);
   opExplodeFront1.getParameter('Cascade').setValue(true);
-
 
   const opExplodeBack1 = new ExplodePartsOperator("opExplodeBack1");
   asset.addChild(opExplodeBack1);
@@ -45,12 +42,8 @@ const setupExplode = (asset) => {
   labelOpacity.addRoute().setParam(linesMaterial.getParameter('Opacity'))
   // linesMaterial.getParameter('Opacity').setValue(0.0);
   let index = 0;
-  // let fontColor = new Color(.85, .85, .0);
-  // let backgroundColor = new Color(0.1, 0.1, .1);
 
-  // const labelFontColor = new Color(1, 1, 1);
-  // const labelBackgroundColor = new Color(0.4, 0.4, 0.4);
-  const labelBackgroundColor = new Color('#FBC02D');
+  const labelBackgroundColor = new Color('#EEEEEE');
   asset.addChild(labelTree);
   const addLabel = (pos, basePose, name)=> {
     const label = new Label(name);
@@ -161,6 +154,7 @@ const setupExplode = (asset) => {
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
+    
     {
       const group = new Group('FRONT_PROPELLER_HOUSING');
       group.getParameter('InitialXfoMode').setValue('average');
@@ -181,6 +175,7 @@ const setupExplode = (asset) => {
       part.getParameter("Axis").setValue(new Vec3(0,-1,0))
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
     }
+
     {
       const group = new Group('10X30_HEX_BOLTs');
       group.getParameter('InitialXfoMode').setValue('average');

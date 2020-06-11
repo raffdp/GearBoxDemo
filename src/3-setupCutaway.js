@@ -1,4 +1,4 @@
-import { Color, Xfo, Vec3, Group } from "../dist/zea-engine/dist/index.esm.js"
+import { Vec3, Group } from "../dist/zea-engine/dist/index.esm.js"
 const setupCutaway = (asset) => {
 
   const cutAwayGroup = new Group('cutAwayGroup');
@@ -7,6 +7,11 @@ const setupCutaway = (asset) => {
   asset.loaded.connect(()=>{
   
     cutAwayGroup.resolveItems([
+      [".", "BODY_1_ASSM_ASM", "BODY_1"],
+      [".", "BODY-2"],
+      [".", "GASKET_FOR_BODY"],
+      [".", "MOTOR_HOUSING"],
+      
       [".", "10X30_HEX_BOLT"],
       [".", "10X30_HEX_BOLT_010", "10X30_HEX_BOLT"],
       [".", "10X30_HEX_BOLT_011", "10X30_HEX_BOLT"],
@@ -85,7 +90,6 @@ const setupCutaway = (asset) => {
       [".", "10MM_SPRING_WASHER_049"],
       [".", "10MM_SPRING_WASHER_050"],
 
-      [".", "BODY-2"],
       [".", "PROPELLER_HOSING_PAKING"],
       
       [".", "WASHER_1"],
@@ -96,22 +100,19 @@ const setupCutaway = (asset) => {
       [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
       [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
       [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"],
-      
-      [".", "MOTOR_HOUSING"],
-      [".", "BODY_1_ASSM_ASM", "BODY_1"],
-
 
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_008", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_009", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
       [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_010", "STUD_FOR_DIFFERENTIAL_MOUNTING"]
+      
     ]);
   })
   
   cutAwayGroup.getParameter('CutAwayEnabled').setValue(true);  
-  asset.getParameter('CutPlaneColor').setValue(new Color(0, 0, 0))
   asset.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
-  asset.getParameter('CutPlaneDist').setValue(-0.17)
   // asset.getParameter('CutPlaneDist').setValue(0)
+  asset.getParameter('CutPlaneDist').setValue(-0.17)
+  
   
   // asset.loaded.connect(()=>{
   //   let cutAmount = -0.17;

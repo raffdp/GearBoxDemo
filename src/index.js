@@ -2,11 +2,12 @@ import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-en
 import { SelectionManager } from "../dist/zea-ux/dist/index.rawimport.js"
 import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
-import loadModel from "./loadModel.js"
-import setupGears from "./setupGears.js"
-import setupExplode from "./setupExplode.js"
-import setupCutaway from "./setupCutaway.js"
-import setupStates from "./setupStates.js"
+import loadModel from "./1-loadModel.js"
+import setupMaterials from "./2-setupMaterials.js"
+import setupCutaway from "./3-setupCutaway.js"
+import setupGears from "./4-setupGears.js"
+import setupExplode from "./5-setupExplode.js"
+import setupStates from "./6-setupStates.js"
 
 const domElement = document.getElementById("renderer");
 
@@ -15,7 +16,7 @@ const scene = new Scene();
 
 const renderer = new GLRenderer( domElement, {
   webglOptions: {
-    antialias: false, 
+    antialias: true, 
     canvasPosition: 'relative',
   },
 });
@@ -24,42 +25,44 @@ renderer.getViewport().getCamera().setPositionAndTarget(new Vec3({"x":0.56971,"y
 
 
 
-const envMap = new EnvMap("SmartLocEnv");
-envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
-const backgroundColor = new Color('#e3e3e3');
-scene.getSettings().getParameter('EnvMap').setValue(envMap);
+// const envMap = new EnvMap("SmartLocEnv");
+// envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
+// const backgroundColor = new Color('#e3e3e3');
+// scene.getSettings().getParameter('EnvMap').setValue(envMap);
+scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#ffffff'))
 
 const cadPass = new GLCADPass(true)
 cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
 cadPass.setShaderPreprocessorValue('#define ENABLE_PBR');
 renderer.addPass(cadPass, PassType.OPAQUE)
 
-
 renderer.setScene(scene);
 renderer.resumeDrawing();
-
-
-////////////////////////////////////
-// Load the Model
-const asset = loadModel();
-asset.loaded.connect(()=>{
-  renderer.frameAll()
-})
-
-setupGears(asset);
-setupExplode(asset);
-setupCutaway(asset);
-setupStates(asset, renderer);
-
-// https://grabcad.com/library/two-speed-gear-box-1
-
-scene.getRoot().addChild(asset)
 
 renderer.getViewport().mouseDownOnGeom.connect((event)=>{
   const intersectionData = event.intersectionData;
   const geomItem = intersectionData.geomItem
   console.log(geomItem.getPath());
 });
+
+////////////////////////////////////
+// Load the Model
+// Page 1 - load and setup the cad Model.
+const asset = loadModel();
+asset.loaded.connect(()=>{
+  renderer.frameAll()
+})
+
+setupMaterials(asset)
+setupCutaway(asset);
+setupGears(asset);
+setupExplode(asset);
+setupStates(asset, renderer);
+
+scene.getRoot().addChild(asset)
+
+// // https://grabcad.com/library/two-speed-gear-box-1
+
 ////////////////////////////////////
 // Setup the Left side Tree view.
 
@@ -71,7 +74,7 @@ const appData = {
 appData.selectionManager  = new SelectionManager(appData);
 
 // // Note: the alpha value determines  the fill of the highlight.
-const selectionColor = new Color("#F9CE03");
+const selectionColor = new Color("#111111");
 selectionColor.a = 0.1
 const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
 appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
@@ -83,77 +86,77 @@ const sceneTreeView = document.getElementById(
 sceneTreeView.appData = appData
 sceneTreeView.rootItem  = scene.getRoot()
 
-document.addEventListener("keydown", event => {
-  if(event.key==="f"){
-    renderer.frameAll()
-  }
-});
+// document.addEventListener("keydown", event => {
+//   if(event.key==="f"){
+//     renderer.frameAll()
+//   }
+// });
 
-// const camera = renderer.getViewport().getCamera();
-// renderer.viewChanged.connect(() =>{
-//   const xfoParam =  camera.getParameter('GlobalXfo')
-//   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
-// })
-
-
-////////////////////////////////////
-// Setup Collaboration
-
-const socketUrl = 'https://websocket-staging.zea.live';
-
-const urlParams = new URLSearchParams(window.location.search);
-let userId = urlParams.get('user-id');
-if (!userId) {
-  userId = localStorage.getItem('userId');
-  if(!userId) {
-    userId = Math.random().toString(36).slice(2, 12);
-    localStorage.setItem('userId', userId);
-  }
-} else {
-  localStorage.setItem('userId', userId);
-}
+const camera = renderer.getViewport().getCamera();
+renderer.viewChanged.connect(() =>{
+  const xfoParam =  camera.getParameter('GlobalXfo')
+  console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
+})
 
 
-const color = Color.random();
-const firstNames = ["Phil", "Froilan", "Alvaro", "Dan", "Mike", "Rob", "Steve"]
-const lastNames = ["Taylor", "Smith", "Haines", "Moore", "Elías Pájaro Torreglosa", "Moreno"]
-const userData = {
-  given_name: firstNames[Math.randomInt(0, firstNames.length)],
-  family_name: lastNames[Math.randomInt(0, lastNames.length)],
-  id: userId,
-  color: color.toHex()
-}
+// ////////////////////////////////////
+// // Setup Collaboration
 
-const session = new Session(userData, socketUrl);
+// const socketUrl = 'https://websocket-staging.zea.live';
 
-let roomId = urlParams.get('room-id');
-session.joinRoom(document.location.origin+roomId);
-
-const sessionSync = new SessionSync(session, appData, userData, {});
-
-
-const userChipSet = document.getElementById(
-  "zea-user-chip-set"
-);
-userChipSet.session = session
-userChipSet.showImages = true;//boolean('Show Images', true)
-
-document.addEventListener(
-  'zeaUserClicked',
-  () => {
-    console.log('user clicked')
-  },
-  false
-)
-
-const userChip = document.getElementById(
-  "zea-user-chip"
-);
-userChip.userData = userData
+// const urlParams = new URLSearchParams(window.location.search);
+// let userId = urlParams.get('user-id');
+// if (!userId) {
+//   userId = localStorage.getItem('userId');
+//   if(!userId) {
+//     userId = Math.random().toString(36).slice(2, 12);
+//     localStorage.setItem('userId', userId);
+//   }
+// } else {
+//   localStorage.setItem('userId', userId);
+// }
 
 
-////////////////////////////////////
-// Display the Fps
-const fpsDisplay = document.createElement("zea-fps-display")
-fpsDisplay.renderer  = renderer
-domElement.appendChild(fpsDisplay)
+// const color = Color.random();
+// const firstNames = ["Phil", "Froilan", "Alvaro", "Dan", "Mike", "Rob", "Steve"]
+// const lastNames = ["Taylor", "Smith", "Haines", "Moore", "Elías Pájaro Torreglosa", "Moreno"]
+// const userData = {
+//   given_name: firstNames[Math.randomInt(0, firstNames.length)],
+//   family_name: lastNames[Math.randomInt(0, lastNames.length)],
+//   id: userId,
+//   color: color.toHex()
+// }
+
+// const session = new Session(userData, socketUrl);
+
+// let roomId = urlParams.get('room-id');
+// session.joinRoom(document.location.origin+roomId);
+
+// const sessionSync = new SessionSync(session, appData, userData, {});
+
+
+// const userChipSet = document.getElementById(
+//   "zea-user-chip-set"
+// );
+// userChipSet.session = session
+// userChipSet.showImages = true;//boolean('Show Images', true)
+
+// document.addEventListener(
+//   'zeaUserClicked',
+//   () => {
+//     console.log('user clicked')
+//   },
+//   false
+// )
+
+// const userChip = document.getElementById(
+//   "zea-user-chip"
+// );
+// userChip.userData = userData
+
+
+// ////////////////////////////////////
+// // Display the Fps
+// const fpsDisplay = document.createElement("zea-fps-display")
+// fpsDisplay.renderer  = renderer
+// domElement.appendChild(fpsDisplay)

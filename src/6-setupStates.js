@@ -1,8 +1,5 @@
 import { 
-  Color,
-  Xfo,
   Vec3,
-  Group,
   StateMachine,
   State,
   SetCameraPositionAndTarget,
@@ -137,7 +134,7 @@ const setupStates = (asset, renderer) => {
         
         const moveCamera = new SetCameraPositionAndTarget()
         moveCamera.setCameraPositionAndTarget(
-          new Vec3({"x":1.4609,"y":-1.26659,"z":0.6383}), new Vec3({"x":-0.09374,"y":-0.68975,"z":0.01536}),
+          new Vec3({"x":1.37228,"y":-1.42257,"z":0.55485}), new Vec3({"x":-0.13244,"y":-0.84973,"z":-0.05278}),
         )
         moveCamera.getParameter('Camera').setValue(renderer.getViewport().getCamera())
         moveCamera.getParameter("InterpTime").setValue(3.0)

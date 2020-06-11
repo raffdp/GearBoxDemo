@@ -1,29 +1,42 @@
-import { Color, Xfo, Vec3, EulerAngles, Group, Material, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
-import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
+import { Color, Group, Material } from "../dist/zea-engine/dist/index.esm.js"
 
-const loadModel = () => {
+const setupMaterials = (asset) => {
   
 
-  ////////////////////////////////////
-  // Load the Model
-  const asset = new CADAsset()
-  asset.getParameter('DataFilePath').setUrl('data/gear_box_final_asm.zcad')
+  const casingMetalGroup = new Group('casingMetalGroup');
+  {
+    const material = new Material('casingMetal');
+    material.modifyParams({
+      // BaseColor: new Color(0.55,0.05,0.05),
+      BaseColor: new Color(0.85,0.55,0.55),
+      Metallic: 0.75,
+      Roughness: 0.35,
+      Reflectance: 0.8
+    }, "GLDrawCADSurfaceShader")
+    casingMetalGroup.getParameter('Material').setValue(material);  
+    asset.addChild(casingMetalGroup);
+  }
 
-  const xfo = new Xfo();
-  xfo.ori.setFromEulerAngles(new EulerAngles(Math.PI * 0.5, 0, 0, 'ZXY'));
-  // xfo.sc.set(0.0254 * 0.5);
-  // const materialLibrary = asset.getMaterialLibrary();
-  // materialLibrary.setMaterialTypeMapping({
-  //     '*': 'SimpleSurfaceShader'
-  // });
-  asset.setLocalXfo(xfo);
-
-
+  const blackMetalGroup = new Group('blackMetalGroup');
+  {
+    const material = new Material('blackMetal');
+    material.modifyParams({
+      // BaseColor: new Color(0.1, 0.1, .1),
+      BaseColor: new Color(0.4, 0.4, 0.4),
+      Metallic: 0.85,
+      Roughness: 0.35,
+      Reflectance: 0.7
+    }, "GLDrawCADSurfaceShader")
+    blackMetalGroup.getParameter('Material').setValue(material);  
+    asset.addChild(blackMetalGroup);
+  }
+  
   const blackPlasticGroup = new Group('blackPlasticGroup');
   {
     const material = new Material('blackPlastic');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.45,
       Reflectance: 0.03
@@ -37,7 +50,8 @@ const loadModel = () => {
   {
     const material = new Material('blackRubber');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
       Reflectance: 0.01
@@ -51,7 +65,8 @@ const loadModel = () => {
   {
     const material = new Material('orangeRubber');
     material.modifyParams({
-      BaseColor: new Color(0.01, 0.01, .01),
+      // BaseColor: new Color(0.01, 0.01, .01),
+      BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
       Reflectance: 0.01
@@ -87,33 +102,6 @@ const loadModel = () => {
     asset.addChild(goldMetalGroup);
   }
 
-
-  const casingMetalGroup = new Group('casingMetalGroup');
-  {
-    const material = new Material('darkGreyMetal');
-    material.modifyParams({
-      BaseColor: new Color(0.55,0.05,0.05),
-      Metallic: 0.75,
-      Roughness: 0.35,
-      Reflectance: 0.8
-    }, "GLDrawCADSurfaceShader")
-    casingMetalGroup.getParameter('Material').setValue(material);  
-    asset.addChild(casingMetalGroup);
-  }
-
-
-  const blackMetalGroup = new Group('blackMetalGroup');
-  {
-    const material = new Material('blackMetal');
-    material.modifyParams({
-      BaseColor: new Color(0.1, 0.1, .1),
-      Metallic: 0.85,
-      Roughness: 0.35,
-      Reflectance: 0.7
-    }, "GLDrawCADSurfaceShader")
-    blackMetalGroup.getParameter('Material').setValue(material);  
-    asset.addChild(blackMetalGroup);
-  }
   asset.loaded.connect(()=>{
     
     casingMetalGroup.resolveItems([
@@ -123,6 +111,57 @@ const loadModel = () => {
       [".", "BODY_1_ASSM_ASM", "BODY_1"],
       [".", "PROPELLER_HOUSING_ASSM_ASM", "PROPELLER_HOUSING"]
     ]);
+
+    blackMetalGroup.resolveItems([
+      [".", "PROPELLER_SHAFT_NUT"],
+
+      [".", "10X30_HEX_BOLT"],
+      [".", "10X30_HEX_BOLT_010", "10X30_HEX_BOLT"],
+      [".", "10X30_HEX_BOLT_011", "10X30_HEX_BOLT"],
+      [".", "10X30_HEX_BOLT_012", "10X30_HEX_BOLT"],
+
+      [".", "10X30_HEX_BOLT_051"],
+      [".", "10X30_HEX_BOLT_052"],
+      [".", "10X30_HEX_BOLT_053"],
+      [".", "10X30_HEX_BOLT_054"],
+      [".", "10X30_HEX_BOLT_055"],
+      [".", "10X30_HEX_BOLT_056"],
+      [".", "10X30_HEX_BOLT_057"],
+      [".", "10X30_HEX_BOLT_058"],
+      [".", "10X30_HEX_BOLT_059"],
+      [".", "10X30_HEX_BOLT_060"],
+
+      [".", "8X30_ALLEN_BOLT"],
+      [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
+      [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
+      [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"],
+      
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_004", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_005", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_006", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_007", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_008", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_009", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_010", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
+      
+      [".", "BODY_FLANGE_COUPLE"],
+
+      [".", "BUNDH_PLUG_ASSM_ASM", "BUNDH_PLUG_FOR_BODY"],
+      [".", "BUNDH_PLUG_ASSM_ASM_062", "BUNDH_PLUG_FOR_BODY"],
+
+      [".", "10X45_HEX_BOT"],
+      [".", "10X45_HEX_BOT_037", "10X45_HEX_BOT"],
+      [".", "10MM_SPRING_WASHER"],
+      [".", "10MM_SPRING_WASHER_035", "10MM_SPRING_WASHER"],
+      
+      [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_SHAFT_1"],
+      [".", "SHIFTER_HOUSING_PLATE"],
+      
+      [".", "BODY_1_ASSM_ASM", "DOVEL_FOR_BODY_012", "DOVEL_FOR_BODY"],
+      [".", "BODY_1_ASSM_ASM", "DOVEL_FOR_BODY"],
+    ]);
+    
     
     shinyMetalGroup.resolveItems([
       [".", "FRONT_PROPELLER_HOUSING"],
@@ -183,59 +222,6 @@ const loadModel = () => {
       [".", "DOVEL_FOR_SHIFTER_HOUSING_029", "DOVEL_FOR_SHIFTER_HOUSING"]
     ]);
 
-    blackMetalGroup.resolveItems([
-      [".", "PROPELLER_SHAFT_NUT"],
-
-      [".", "10X30_HEX_BOLT"],
-      [".", "10X30_HEX_BOLT_010", "10X30_HEX_BOLT"],
-      [".", "10X30_HEX_BOLT_011", "10X30_HEX_BOLT"],
-      [".", "10X30_HEX_BOLT_012", "10X30_HEX_BOLT"],
-
-      [".", "10X30_HEX_BOLT_051"],
-      [".", "10X30_HEX_BOLT_052"],
-      [".", "10X30_HEX_BOLT_053"],
-      [".", "10X30_HEX_BOLT_054"],
-      [".", "10X30_HEX_BOLT_055"],
-      [".", "10X30_HEX_BOLT_056"],
-      [".", "10X30_HEX_BOLT_057"],
-      [".", "10X30_HEX_BOLT_058"],
-      [".", "10X30_HEX_BOLT_059"],
-      [".", "10X30_HEX_BOLT_060"],
-
-      [".", "8X30_ALLEN_BOLT"],
-      [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
-      [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
-      [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"],
-
-      
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_004", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_005", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_006", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_007", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_008", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_009", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-      [".", "BODY_1_ASSM_ASM", "STUD_FOR_DIFFERENTIAL_MOUNTING_010", "STUD_FOR_DIFFERENTIAL_MOUNTING"],
-
-      
-      [".", "BODY_FLANGE_COUPLE"],
-
-      [".", "BUNDH_PLUG_ASSM_ASM", "BUNDH_PLUG_FOR_BODY"],
-      [".", "BUNDH_PLUG_ASSM_ASM_062", "BUNDH_PLUG_FOR_BODY"],
-
-      [".", "10X45_HEX_BOT"],
-      [".", "10X45_HEX_BOT_037", "10X45_HEX_BOT"],
-      [".", "10MM_SPRING_WASHER"],
-      [".", "10MM_SPRING_WASHER_035", "10MM_SPRING_WASHER"],
-      
-      [".", "GEAR_SHAFT_ASSM_ASM", "GEAR_SHAFT_1"],
-      [".", "SHIFTER_HOUSING_PLATE"],
-
-      
-      [".", "BODY_1_ASSM_ASM", "DOVEL_FOR_BODY_012", "DOVEL_FOR_BODY"],
-      [".", "BODY_1_ASSM_ASM", "DOVEL_FOR_BODY"],
-    ]);
-    
     blackRubberGroup.resolveItems([
       [".", "PROPELLER_HOUSING_ASSM_ASM", "60-80-10_OIL_SEAL"],
 
@@ -274,8 +260,8 @@ const loadModel = () => {
       [".", "WASHER_1"],
       [".", "GASKET_FOR_BODY"]
     ]);
-    
+  
   })
   return asset;
 }
-export default loadModel
+export default setupMaterials
