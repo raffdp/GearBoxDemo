@@ -1,10 +1,9 @@
 import { r as registerInstance, h } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import { E, d as de, y, P as Pe } from './zea-ux.esm-7961f302.js';
-import { u as uxFactory } from './UxFactory-ec90b28e.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './buffer-es6-d7e2ddd2.js';
+import { E, N, y, U as Ue } from './index.esm-f69112c9.js';
+import { u as uxFactory } from './UxFactory-caff4fc5.js';
 import { i as iro } from './iro.es-02ba6fa3.js';
 var zeaParamWidgetMaterialColorCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-param-widget-material-color{color:var(--color-foreground-1)}.color-sample{height:30px;line-height:30px;border:1px solid var(--color-foreground-1);margin-bottom:0.5em;text-align:center;font-size:0.8em}";
 var ZeaParamWidgetMaterialColor = /** @class */ (function () {
@@ -32,10 +31,12 @@ var ZeaParamWidgetMaterialColor = /** @class */ (function () {
     ZeaParamWidgetMaterialColor.prototype.componentDidLoad = function () {
         var _this = this;
         this.setUpColorPicker();
-        this.parameter.valueChanged.connect(function (mode) {
-            _this.onValueChange(mode);
-        });
-        this.onValueChange(E.USER_SETVALUE);
+        if (this.parameter) {
+            this.parameter.on('valueChanged', function (event) {
+                _this.onValueChange(event.mode);
+            });
+            this.onValueChange(E.USER_SETVALUE);
+        }
     };
     /**
      * Called when the parameter value changes externally
@@ -108,7 +109,7 @@ var ZeaParamWidgetMaterialColor = /** @class */ (function () {
             ],
         });
         this.colorPicker.on('input:start', function () {
-            _this.change = new de(_this.parameter);
+            _this.change = new N(_this.parameter);
             _this.appData.undoRedoManager.addChange(_this.change);
         });
         this.colorPicker.on('input:end', function () {
@@ -122,7 +123,7 @@ var ZeaParamWidgetMaterialColor = /** @class */ (function () {
             _this.sampleColor = _this.colorPicker.color.hslString;
             _this.setSampleTextColor();
             if (!_this.change) {
-                _this.change = new de(_this.parameter, value);
+                _this.change = new N(_this.parameter, value);
                 _this.appData.undoRedoManager.addChange(_this.change);
             }
             else {
@@ -145,6 +146,6 @@ var ZeaParamWidgetMaterialColor = /** @class */ (function () {
     };
     return ZeaParamWidgetMaterialColor;
 }());
-uxFactory.registerWidget('zea-param-widget-material-color', function (p) { return p.constructor.name == Pe.name; });
+uxFactory.registerWidget('zea-param-widget-material-color', function (p) { return p.constructor.name == Ue.name; });
 ZeaParamWidgetMaterialColor.style = zeaParamWidgetMaterialColorCss;
 export { ZeaParamWidgetMaterialColor as zea_param_widget_material_color };

@@ -145,7 +145,11 @@ const ZeaTreeView = class {
      * @return {JSX} The generated markup
      */
     render() {
-        return (index.h(index.Host, null, index.h("div", { class: "wrap", onMouseEnter: this.onMouseEnter.bind(this), onMouseLeave: this.onMouseLeave.bind(this) }, index.h("zea-tree-item-element", { ref: (el) => (this.rootItem.titleElement = el), "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
+        return (index.h(index.Host, null, index.h("div", { class: "wrap", onMouseEnter: this.onMouseEnter.bind(this), onMouseLeave: this.onMouseLeave.bind(this) }, index.h("zea-tree-item-element", { ref: (el) => {
+                if (this.rootItem) {
+                    this.rootItem.titleElement = el;
+                }
+            }, "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
     }
 };
 ZeaTreeView.style = zeaTreeViewCss;

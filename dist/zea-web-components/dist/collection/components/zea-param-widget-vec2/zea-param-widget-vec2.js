@@ -23,20 +23,22 @@ export class ZeaParamWidgetVec2 {
      * Run when component loads
      */
     componentDidLoad() {
-        this.setUpInputs();
-        this.onValueChanged(0);
+        if (this.parameter) {
+            this.setUpInputs();
+            this.onValueChanged(0);
+        }
     }
     /**
      * Set the inputs up
      */
     setUpInputs() {
-        this.parameter.valueChanged.connect((mode) => {
-            this.onValueChanged(mode);
+        this.parameter.on('valueChanged', (event) => {
+            this.onValueChanged(event.mode);
         });
     }
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     onValueChanged(mode) {
         if (!this.change) {

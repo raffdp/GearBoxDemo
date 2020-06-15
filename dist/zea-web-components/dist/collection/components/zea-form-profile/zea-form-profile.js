@@ -68,7 +68,7 @@ export class ZeaProfileForm {
             },
             "attribute": "welcome-html",
             "reflect": false,
-            "defaultValue": "`Welcome to Zea Construction. We just need <br />a few details and\n  then you're ready to go.`"
+            "defaultValue": "`Welcome to Zea Construction. We just need <br />a few details and\r\n  then you're ready to go.`"
         },
         "submitButtonText": {
             "type": "string",

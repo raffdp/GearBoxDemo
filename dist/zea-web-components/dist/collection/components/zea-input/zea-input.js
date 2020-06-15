@@ -465,7 +465,7 @@ export class ZeaInput {
                 "tags": [],
                 "text": ""
             },
-            "defaultValue": "[\n    '#F34235',\n    '#E81D62',\n    '#292929',\n    '#9B26AF',\n    '#6639B6',\n    '#3E50B4',\n    '#2095F2',\n    '#02A8F3',\n    '#00BBD3',\n    '#009587',\n    '#4BAE4F',\n    '#8AC249',\n    '#CCDB38',\n    '#FEEA3A',\n    '#FEC006',\n    '#FE9700',\n    '#FE5621',\n    '#785447',\n    '#9D9D9D',\n    '#5F7C8A',\n  ]"
+            "defaultValue": "[\r\n    '#F34235',\r\n    '#E81D62',\r\n    '#292929',\r\n    '#9B26AF',\r\n    '#6639B6',\r\n    '#3E50B4',\r\n    '#2095F2',\r\n    '#02A8F3',\r\n    '#00BBD3',\r\n    '#009587',\r\n    '#4BAE4F',\r\n    '#8AC249',\r\n    '#CCDB38',\r\n    '#FEEA3A',\r\n    '#FEC006',\r\n    '#FE9700',\r\n    '#FE5621',\r\n    '#785447',\r\n    '#9D9D9D',\r\n    '#5F7C8A',\r\n  ]"
         },
         "selectedColor": {
             "type": "any",

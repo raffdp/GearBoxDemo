@@ -34,7 +34,7 @@ export class ZeaFabButton {
             "optional": false,
             "docs": {
                 "tags": [],
-                "text": "/**\n   Whether the button should be disabled (true) or not (false)"
+                "text": "/**\r\n   Whether the button should be disabled (true) or not (false)"
             },
             "attribute": "disabled",
             "reflect": false

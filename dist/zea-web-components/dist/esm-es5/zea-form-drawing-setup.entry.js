@@ -1,7 +1,8 @@
 import { r as registerInstance, h } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './events-a71dfb91.js';
-import { Z as ZeaWcDataConnector } from './ZeaWcDataConnector-0e46a9e5.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './events-fc0ece3b.js';
+import { Z as ZeaWcDataConnector } from './ZeaWcDataConnector-485eb62a.js';
 var zeaFormDrawingSetupCss = ".zea-form-drawing-setup{color:var(--color-foreground-1);display:-ms-flexbox;display:flex;-ms-flex-direction:column;flex-direction:column;height:100%;width:100%;overflow:hidden}.discipline-row{display:-ms-flexbox;display:flex;width:100%;-ms-flex-align:center;align-items:center}.discipline-row:hover{background-color:var(--color-grey-2)}.discipline-name{-ms-flex-positive:1;flex-grow:1}.discipline-abbreviation{text-transform:uppercase;padding:8px;width:15px;height:15px;line-height:15px;text-align:center;border-radius:20px;margin:5px 10px 5px 5px;white-space:nowrap;display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center}.input-container{margin-bottom:1em}zea-input-select-item:hover{background-color:var(--color-grey-2)}.scale-row{padding:5px}.inputs{-ms-flex-positive:1;flex-grow:1;padding:1em}.buttons{display:-ms-flexbox;display:flex;padding:1em}.buttons zea-button{margin:5px}.buttons div:nth-child(1){-ms-flex-positive:1;flex-grow:1}";
 var ZeaFormDrawingSetup = /** @class */ (function () {
     function ZeaFormDrawingSetup(hostRef) {

@@ -21,9 +21,12 @@ const ZeaDropdownMenu = class {
      */
     componentDidLoad() {
         // subscribe to the actionAdded signal
-        this.appData.actionRegistry.actionAdded.connect(() => {
-            this.makeMenuTree();
-        });
+        // Note: the action registry is deprecated.
+        if (this.appData && this.appData.actionRegistry) {
+            this.appData.actionRegistry.on('actionAdded', () => {
+                this.makeMenuTree();
+            });
+        }
         this.makeMenuTree();
     }
     /**

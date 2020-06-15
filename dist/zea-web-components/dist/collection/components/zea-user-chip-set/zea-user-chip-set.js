@@ -41,7 +41,7 @@ export class ZeaUserChipSet {
      * Set up the sesion subscriptions
      */
     setupSession() {
-        if ('sub' in this.session) {
+        if (this.session && 'sub' in this.session) {
             // Initialize the data array with any users already in the meeting.
             const userDatas = [];
             for (let u in this.session.users) {

@@ -35,14 +35,16 @@ export class ZeaTreeItemElement {
      * Placeholder comment
      */
     componentDidLoad() {
-        this.updateSelected();
-        this.updateVisibility();
-        this.updateHighlight();
-        if (this.childItems.length)
-            this.rootElement.classList.add('has-children');
-        else
-            this.rootElement.classList.remove('has-children');
-        this.treeItem.titleElement = this.rootElement;
+        if (this.treeItem) {
+            this.updateSelected();
+            this.updateVisibility();
+            this.updateHighlight();
+            if (this.childItems.length)
+                this.rootElement.classList.add('has-children');
+            else
+                this.rootElement.classList.remove('has-children');
+            this.treeItem.titleElement = this.rootElement;
+        }
     }
     /**
      * Placeholder comment
@@ -50,38 +52,42 @@ export class ZeaTreeItemElement {
     initTreeItem() {
         // Name
         this.label = this.treeItem.getName();
-        this.nameChangedId = this.treeItem.nameChanged.connect(() => {
+        this.nameChangedId = this.treeItem.on('nameChanged', () => {
             this.label = this.treeItem.getName();
         });
         // Selection
-        this.updateSelectedId = this.treeItem.selectedChanged.connect(this.updateSelected.bind(this));
+        this.updateSelectedId = this.treeItem.on('selectedChanged', this.updateSelected.bind(this));
         if (typeof this.treeItem.getChildren === 'function') {
             this.isTreeItem = true;
-            this.childItems = this.treeItem.getChildren();
+            this.childItems = [...this.treeItem.getChildren()];
+            this.childAddedId = this.treeItem.on('childAdded', () => {
+                this.childItems = [...this.treeItem.getChildren()];
+            });
+            this.childRemovedId = this.treeItem.on('childRemoved', () => {
+                this.childItems = [...this.treeItem.getChildren()];
+            });
             // Visibility
-            this.updateVisibilityId = this.treeItem.visibilityChanged.connect(this.updateVisibility.bind(this));
+            this.updateVisibilityId = this.treeItem.on('visibilityChanged', this.updateVisibility.bind(this));
         }
         else {
             this.isTreeItem = false;
             this.isVisible = true;
         }
         // Highlights
-        if ('highlightChanged' in this.treeItem) {
-            this.updateHighlightId = this.treeItem.highlightChanged.connect(this.updateHighlight.bind(this));
-        }
+        this.updateHighlightId = this.treeItem.on('highlightChanged', this.updateHighlight.bind(this));
     }
     /**
      * Placeholder comment
      */
     updateSelected() {
-        if ('getSelected' in this.treeItem)
+        if (this.treeItem && 'getSelected' in this.treeItem)
             this.isSelected = this.treeItem.getSelected();
     }
     /**
      * Placeholder comment
      */
     updateVisibility() {
-        if ('getVisible' in this.treeItem) {
+        if (this.treeItem && 'getVisible' in this.treeItem) {
             this.isVisible = this.treeItem.getVisible();
         }
     }
@@ -89,7 +95,7 @@ export class ZeaTreeItemElement {
      * Placeholder comment
      */
     updateHighlight() {
-        if ('isHighlighted' in this.treeItem) {
+        if (this.treeItem && 'isHighlighted' in this.treeItem) {
             this.isHighlighted = this.treeItem.isHighlighted();
             if (this.isHighlighted && 'getHighlight' in this.treeItem) {
                 const highlightColor = this.treeItem.getHighlight();

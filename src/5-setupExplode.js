@@ -75,7 +75,7 @@ const setupExplode = (asset) => {
     index++;
 }
 
-  asset.loaded.connect(()=>{
+  asset.once('loaded', ()=>{
     
     addLabel(new Vec3(0.08, -1.6, 0.3), new Vec3(0.08, -1.6, 0.05), "Front Propeller Housing");
     addLabel(new Vec3(-0.1, -1.05, 0.3), new Vec3(-0.1, -1.05, 0.05), "Motor Housing");
@@ -578,7 +578,7 @@ const setupExplode = (asset) => {
   
   explodedAmount.getParameter('Input').setValue(0);
   labelOpacity.getParameter('Input').setValue(0);
-  // asset.loaded.connect(()=>{
+  // asset.on('loaded', ()=>{
   //   let explodedAmountP = 0;
   //   let animatingValue = false;
   //   let timeoutId;

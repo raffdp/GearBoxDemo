@@ -4,10 +4,10 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 const index = require('./index-81865576.js');
 const global = require('./global-ad93eec5.js');
-require('./index-53734ab7.js');
-require('./events-0d0d5b33.js');
+require('./index-7e350ca9.js');
+const zeaCollab_esm = require('./zea-collab.esm-d47f9ee1.js');
 require('./buffer-es6-40c1bb4d.js');
-const zeaCollab_esm = require('./zea-collab.esm-ffaab6d6.js');
+require('./events-2321c2fc.js');
 
 function isNothing(subject) {
   return (typeof subject === 'undefined') || (subject === null);
@@ -3873,8 +3873,8 @@ const ZeaFileSystemBrowser = class {
         if (this.unsubFileWithProgress) {
             this.unsubFileWithProgress();
         }
-        zeaCollab_esm.o.setSocketURL('https://websocket-staging.zea.live');
-        this.zeaSession = zeaCollab_esm.o.getInstance({ id: 'zea-web-components' }, this.project._id);
+        zeaCollab_esm.r.setSocketURL('https://websocket-staging.zea.live');
+        this.zeaSession = zeaCollab_esm.r.getInstance({ id: 'zea-web-components' }, this.project._id);
     }
     /**
      * Set folder.

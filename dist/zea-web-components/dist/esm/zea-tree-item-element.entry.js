@@ -1,11 +1,10 @@
 import { r as registerInstance, h, d as getElement } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import { y, d as de } from './zea-ux.esm-7961f302.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './buffer-es6-d7e2ddd2.js';
+import { y, N } from './index.esm-f69112c9.js';
 
-const zeaTreeItemElementCss = ":host{display:block;font-size:14px}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.wrap{opacity:0.7;cursor:default;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.wrap.visible{opacity:1}.header{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;margin:4px 0;position:relative;left:-7px}.arrow{display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center;-ms-flex-align:center;align-items:center;cursor:pointer;padding:2px}.label{white-space:nowrap}.toggle{display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center;-ms-flex-align:center;align-items:center;font-size:1.2em;margin:0 1px 0 4px}.children{padding-left:19px;border-left:1px dotted gray}zea-tree-item-element{margin-left:16px}zea-tree-item-element.has-children{margin-left:0}.zea-tree-item-label{padding:3px 5px;border-radius:4px;border:1px solid transparent;margin-left:22px}.is-tree-item .zea-tree-item-label{margin-left:0}.highlighted .zea-tree-item-label{background-color:var(\n    --treeview-highlight-bg-color,\n    var(--color-secondary-3)\n  );border:1px solid var(--treeview-highlight-color, var(--color-secondary-1))}.selected .zea-tree-item-label{background-color:var(--treeview-highlight-color, var(--color-secondary-1));border:1px solid var(--treeview-highlight-color, var(--color-secondary-1))}";
+const zeaTreeItemElementCss = ":host{display:block;font-size:14px}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.wrap{opacity:0.7;cursor:default;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.wrap.visible{opacity:1}.header{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;margin:4px 0;position:relative;left:-7px}.arrow{display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center;-ms-flex-align:center;align-items:center;cursor:pointer;padding:2px}.label{white-space:nowrap}.toggle{display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center;-ms-flex-align:center;align-items:center;font-size:1.2em;margin:0 1px 0 4px}.children{padding-left:19px;border-left:1px dotted gray}zea-tree-item-element{margin-left:16px}zea-tree-item-element.has-children{margin-left:0}.zea-tree-item-label{padding:3px 5px;border-radius:4px;border:1px solid transparent;margin-left:22px}.is-tree-item .zea-tree-item-label{margin-left:0}.highlighted .zea-tree-item-label{background-color:var(\r\n    --treeview-highlight-bg-color,\r\n    var(--color-secondary-3)\r\n  );border:1px solid var(--treeview-highlight-color, var(--color-secondary-1))}.selected .zea-tree-item-label{background-color:var(--treeview-highlight-color, var(--color-secondary-1));border:1px solid var(--treeview-highlight-color, var(--color-secondary-1))}";
 
 const ZeaTreeItemElement = class {
     constructor(hostRef) {
@@ -39,14 +38,16 @@ const ZeaTreeItemElement = class {
      * Placeholder comment
      */
     componentDidLoad() {
-        this.updateSelected();
-        this.updateVisibility();
-        this.updateHighlight();
-        if (this.childItems.length)
-            this.rootElement.classList.add('has-children');
-        else
-            this.rootElement.classList.remove('has-children');
-        this.treeItem.titleElement = this.rootElement;
+        if (this.treeItem) {
+            this.updateSelected();
+            this.updateVisibility();
+            this.updateHighlight();
+            if (this.childItems.length)
+                this.rootElement.classList.add('has-children');
+            else
+                this.rootElement.classList.remove('has-children');
+            this.treeItem.titleElement = this.rootElement;
+        }
     }
     /**
      * Placeholder comment
@@ -54,38 +55,42 @@ const ZeaTreeItemElement = class {
     initTreeItem() {
         // Name
         this.label = this.treeItem.getName();
-        this.nameChangedId = this.treeItem.nameChanged.connect(() => {
+        this.nameChangedId = this.treeItem.on('nameChanged', () => {
             this.label = this.treeItem.getName();
         });
         // Selection
-        this.updateSelectedId = this.treeItem.selectedChanged.connect(this.updateSelected.bind(this));
+        this.updateSelectedId = this.treeItem.on('selectedChanged', this.updateSelected.bind(this));
         if (typeof this.treeItem.getChildren === 'function') {
             this.isTreeItem = true;
-            this.childItems = this.treeItem.getChildren();
+            this.childItems = [...this.treeItem.getChildren()];
+            this.childAddedId = this.treeItem.on('childAdded', () => {
+                this.childItems = [...this.treeItem.getChildren()];
+            });
+            this.childRemovedId = this.treeItem.on('childRemoved', () => {
+                this.childItems = [...this.treeItem.getChildren()];
+            });
             // Visibility
-            this.updateVisibilityId = this.treeItem.visibilityChanged.connect(this.updateVisibility.bind(this));
+            this.updateVisibilityId = this.treeItem.on('visibilityChanged', this.updateVisibility.bind(this));
         }
         else {
             this.isTreeItem = false;
             this.isVisible = true;
         }
         // Highlights
-        if ('highlightChanged' in this.treeItem) {
-            this.updateHighlightId = this.treeItem.highlightChanged.connect(this.updateHighlight.bind(this));
-        }
+        this.updateHighlightId = this.treeItem.on('highlightChanged', this.updateHighlight.bind(this));
     }
     /**
      * Placeholder comment
      */
     updateSelected() {
-        if ('getSelected' in this.treeItem)
+        if (this.treeItem && 'getSelected' in this.treeItem)
             this.isSelected = this.treeItem.getSelected();
     }
     /**
      * Placeholder comment
      */
     updateVisibility() {
-        if ('getVisible' in this.treeItem) {
+        if (this.treeItem && 'getVisible' in this.treeItem) {
             this.isVisible = this.treeItem.getVisible();
         }
     }
@@ -93,7 +98,7 @@ const ZeaTreeItemElement = class {
      * Placeholder comment
      */
     updateHighlight() {
-        if ('isHighlighted' in this.treeItem) {
+        if (this.treeItem && 'isHighlighted' in this.treeItem) {
             this.isHighlighted = this.treeItem.isHighlighted();
             if (this.isHighlighted && 'getHighlight' in this.treeItem) {
                 const highlightColor = this.treeItem.getHighlight();
@@ -116,7 +121,7 @@ const ZeaTreeItemElement = class {
     onVisibilityToggleClick() {
         const visibleParam = this.treeItem.getParameter('Visible');
         if (this.appData && this.appData.undoRedoManager) {
-            const change = new de(visibleParam, !visibleParam.getValue());
+            const change = new N(visibleParam, !visibleParam.getValue());
             this.appData.undoRedoManager.addChange(change);
         }
         else {

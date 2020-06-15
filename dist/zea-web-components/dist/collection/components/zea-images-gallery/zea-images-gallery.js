@@ -165,7 +165,7 @@ export class ZeaImagesGallery {
                 "tags": [],
                 "text": "Folder from which to take the files to display."
             },
-            "defaultValue": "{\n    children: [],\n  }"
+            "defaultValue": "{\r\n    children: [],\r\n  }"
         }
     }; }
     static get states() { return {

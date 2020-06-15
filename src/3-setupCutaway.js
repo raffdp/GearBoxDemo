@@ -4,7 +4,7 @@ const setupCutaway = (asset) => {
   const cutAwayGroup = new Group('cutAwayGroup');
   asset.addChild(cutAwayGroup);
 
-  asset.loaded.connect(()=>{
+  asset.once('loaded', ()=>{
   
     cutAwayGroup.resolveItems([
       [".", "BODY_1_ASSM_ASM", "BODY_1"],
@@ -109,30 +109,27 @@ const setupCutaway = (asset) => {
   })
   
   cutAwayGroup.getParameter('CutAwayEnabled').setValue(true);  
-  asset.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
-  // asset.getParameter('CutPlaneDist').setValue(0)
-  asset.getParameter('CutPlaneDist').setValue(-0.17)
+  cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
+  // cutAwayGroup.getParameter('CutPlaneDist').setValue(0)
+  cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17)
   
   
-  // asset.loaded.connect(()=>{
+  // asset.once('loaded', ()=>{
   //   let cutAmount = -0.17;
   //   let animatingValue = false;
   //   let timeoutId;
-  //   asset.getParameter('CutPlaneDist').setValue(cutAmount)
+  //   cutAwayGroup.getParameter('CutPlaneDist').setValue(cutAmount)
   //   const timerCallback = () => {
   //     console.log(cutAmount)
-  //       // Check to see if the video has progressed to the next frame. 
-  //       // If so, then we emit and update, which will cause a redraw.
-  //       animatingValue = true;
-  //       cutAmount += 0.002;
-  //       // cutAwayGroup.getParameter('CutDist').setValue(cutAmount);
-  //       // cutAwayGroup.getParameter('CutDist').setValue(cutAmount)
-  //       asset.getParameter('CutPlaneDist').setValue(cutAmount)
-  //       // renderer.requestRedraw();
-  //       if (cutAmount < 0.0) {
-  //           timeoutId = setTimeout(timerCallback, 20); // Sample at 50fps.
-  //       }
-  //       animatingValue = false;
+  //     // Check to see if the video has progressed to the next frame. 
+  //     // If so, then we emit and update, which will cause a redraw.
+  //     animatingValue = true;
+  //     cutAmount += 0.002;
+  //     cutAwayGroup.getParameter('CutPlaneDist').setValue(cutAmount)
+  //     if (cutAmount < 0.0) {
+  //         timeoutId = setTimeout(timerCallback, 20); // Sample at 50fps.
+  //     }
+  //     animatingValue = false;
   //   };
   //   timeoutId = setTimeout(timerCallback, 200); // half second delay
   // })

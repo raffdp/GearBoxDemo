@@ -11,7 +11,8 @@ const setupMaterials = (asset) => {
       BaseColor: new Color(0.85,0.55,0.55),
       Metallic: 0.75,
       Roughness: 0.35,
-      Reflectance: 0.8
+      Reflectance: 0.8,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     casingMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(casingMetalGroup);
@@ -25,26 +26,27 @@ const setupMaterials = (asset) => {
       BaseColor: new Color(0.4, 0.4, 0.4),
       Metallic: 0.85,
       Roughness: 0.35,
-      Reflectance: 0.7
+      Reflectance: 0.7,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     blackMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(blackMetalGroup);
   }
   
-  const blackPlasticGroup = new Group('blackPlasticGroup');
-  {
-    const material = new Material('blackPlastic');
-    material.modifyParams({
-      // BaseColor: new Color(0.01, 0.01, .01),
-      BaseColor: new Color(0.2, 0.2, 0.2),
-      Metallic: 0.0,
-      Roughness: 0.45,
-      Reflectance: 0.03
-    }, "GLDrawCADSurfaceShader")
-    blackPlasticGroup.getParameter('Material').setValue(material);  
-    asset.addChild(blackPlasticGroup);
-  }
-
+  // const blackPlasticGroup = new Group('blackPlasticGroup');
+  // {
+  //   const material = new Material('blackPlastic');
+  //   material.modifyParams({
+  //     // BaseColor: new Color(0.01, 0.01, .01),
+  //     BaseColor: new Color(0.2, 0.2, 0.2),
+  //     Metallic: 0.0,
+  //     Roughness: 0.45,
+  //     Reflectance: 0.03,
+  //     EmissiveStrength: 0.9
+  //   }, "GLDrawCADSurfaceShader")
+  //   blackPlasticGroup.getParameter('Material').setValue(material);  
+  //   asset.addChild(blackPlasticGroup);
+  // }
 
   const blackRubberGroup = new Group('blackRubberGroup');
   {
@@ -54,7 +56,8 @@ const setupMaterials = (asset) => {
       BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
-      Reflectance: 0.01
+      Reflectance: 0.01,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     blackRubberGroup.getParameter('Material').setValue(material);  
     asset.addChild(blackRubberGroup);
@@ -69,7 +72,8 @@ const setupMaterials = (asset) => {
       BaseColor: new Color(0.2, 0.2, 0.2),
       Metallic: 0.0,
       Roughness: 0.85,
-      Reflectance: 0.01
+      Reflectance: 0.01,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     orangeRubberGroup.getParameter('Material').setValue(material);  
     asset.addChild(orangeRubberGroup);
@@ -83,7 +87,8 @@ const setupMaterials = (asset) => {
       BaseColor: new Color(0.65, 0.65, .65),
       Metallic: 0.95,
       Roughness: 0.25,
-      Reflectance: 0.95
+      Reflectance: 0.95,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     shinyMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(shinyMetalGroup);
@@ -96,13 +101,14 @@ const setupMaterials = (asset) => {
       BaseColor: new Color("#d4af37"),
       Metallic: 0.99,
       Roughness: 0.15,
-      Reflectance: 0.95
+      Reflectance: 0.95,
+      EmissiveStrength: 0.9
     }, "GLDrawCADSurfaceShader")
     goldMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(goldMetalGroup);
   }
 
-  asset.loaded.connect(()=>{
+  asset.once('loaded', ()=>{
     
     casingMetalGroup.resolveItems([
       [".", "MOTOR_HOUSING"],

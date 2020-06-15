@@ -22,7 +22,9 @@ export class ZeaParamWidgetNumber {
      * Run when component loads
      */
     componentDidLoad() {
-        this.setUpInput();
+        if (this.parameter) {
+            this.setUpInput();
+        }
     }
     /**
      * Set up the input
@@ -31,10 +33,10 @@ export class ZeaParamWidgetNumber {
         this.range = this.parameter.getRange();
         this.step = this.parameter.getStep();
         this.setInputValue();
-        this.parameter.valueChanged.connect((mode) => {
+        this.parameter.on('valueChanged', (event) => {
             console.log('value changed');
             this.setInputValue();
-            if (mode == ValueSetMode.REMOTEUSER_SETVALUE) {
+            if (event.mode == ValueSetMode.REMOTEUSER_SETVALUE) {
                 this.inputField.classList.add('user-edited');
                 if (this.remoteUserEditedHighlightId)
                     clearTimeout(this.remoteUserEditedHighlightId);

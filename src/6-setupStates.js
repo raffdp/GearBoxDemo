@@ -14,7 +14,7 @@ const setupStates = (asset, renderer) => {
   
   asset.addChild(stateMachine);
 
-  asset.loaded.connect(()=>{
+  asset.once('loaded', ()=>{
     
     // const casingGroup = new Group('casingGroup');
     // casingGroup.resolveItems([
@@ -22,7 +22,6 @@ const setupStates = (asset, renderer) => {
     //   [".", "BODY_1_ASSM_ASM", "BODY_1"]
     // ]);
     // asset.addChild(casingGroup);
-    const cutAwayGroup = asset.getChildByName('cutAwayGroup')
     {
       const state = new State("Initial")
       const moveCamera = new SetCameraPositionAndTarget()
@@ -35,7 +34,7 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup')
       if (cutAwayGroup) {
-        const cutDistParam = asset.getParameter('CutPlaneDist')
+        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
         setCut.getOutput("Param").setParam(cutDistParam)
         setCut.getParameter("Value").setValue(-0.17)
@@ -66,7 +65,7 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup')
       if (cutAwayGroup) {
-        const cutDistParam = asset.getParameter('CutPlaneDist')
+        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
         setCut.getOutput("Param").setParam(cutDistParam)
         setCut.getParameter("Value").setValue(0.0)
@@ -108,7 +107,7 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup')
       if (cutAwayGroup) {
-        const cutDistParam = asset.getParameter('CutPlaneDist')
+        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
         setCut.getOutput("Param").setParam(cutDistParam)
         setCut.getParameter("Value").setValue(-0.17)

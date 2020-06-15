@@ -517,16 +517,6 @@ export namespace Components {
          */
         "type": string;
     }
-    interface ZeaProjectsBrowser {
-        /**
-          * Zea projects.
-         */
-        "projects": Project[];
-        /**
-          * Zea projects client.
-         */
-        "projectsClient": any;
-    }
     interface ZeaQrCode {
         /**
           * The content to code into the QR
@@ -1006,12 +996,6 @@ declare global {
         prototype: HTMLZeaProgressBarElement;
         new (): HTMLZeaProgressBarElement;
     };
-    interface HTMLZeaProjectsBrowserElement extends Components.ZeaProjectsBrowser, HTMLStencilElement {
-    }
-    var HTMLZeaProjectsBrowserElement: {
-        prototype: HTMLZeaProjectsBrowserElement;
-        new (): HTMLZeaProjectsBrowserElement;
-    };
     interface HTMLZeaQrCodeElement extends Components.ZeaQrCode, HTMLStencilElement {
     }
     var HTMLZeaQrCodeElement: {
@@ -1149,7 +1133,6 @@ declare global {
         "zea-popup-menu": HTMLZeaPopupMenuElement;
         "zea-popup-menu-item": HTMLZeaPopupMenuItemElement;
         "zea-progress-bar": HTMLZeaProgressBarElement;
-        "zea-projects-browser": HTMLZeaProjectsBrowserElement;
         "zea-qr-code": HTMLZeaQrCodeElement;
         "zea-scroll-pane": HTMLZeaScrollPaneElement;
         "zea-switch": HTMLZeaSwitchElement;
@@ -1689,17 +1672,6 @@ declare namespace LocalJSX {
          */
         "type"?: string;
     }
-    interface ZeaProjectsBrowser {
-        "onDblClickProject"?: (event: CustomEvent<any>) => void;
-        /**
-          * Zea projects.
-         */
-        "projects"?: Project[];
-        /**
-          * Zea projects client.
-         */
-        "projectsClient"?: any;
-    }
     interface ZeaQrCode {
         /**
           * The content to code into the QR
@@ -1928,7 +1900,6 @@ declare namespace LocalJSX {
         "zea-popup-menu": ZeaPopupMenu;
         "zea-popup-menu-item": ZeaPopupMenuItem;
         "zea-progress-bar": ZeaProgressBar;
-        "zea-projects-browser": ZeaProjectsBrowser;
         "zea-qr-code": ZeaQrCode;
         "zea-scroll-pane": ZeaScrollPane;
         "zea-switch": ZeaSwitch;
@@ -2001,7 +1972,6 @@ declare module "@stencil/core" {
             "zea-popup-menu": LocalJSX.ZeaPopupMenu & JSXBase.HTMLAttributes<HTMLZeaPopupMenuElement>;
             "zea-popup-menu-item": LocalJSX.ZeaPopupMenuItem & JSXBase.HTMLAttributes<HTMLZeaPopupMenuItemElement>;
             "zea-progress-bar": LocalJSX.ZeaProgressBar & JSXBase.HTMLAttributes<HTMLZeaProgressBarElement>;
-            "zea-projects-browser": LocalJSX.ZeaProjectsBrowser & JSXBase.HTMLAttributes<HTMLZeaProjectsBrowserElement>;
             "zea-qr-code": LocalJSX.ZeaQrCode & JSXBase.HTMLAttributes<HTMLZeaQrCodeElement>;
             "zea-scroll-pane": LocalJSX.ZeaScrollPane & JSXBase.HTMLAttributes<HTMLZeaScrollPaneElement>;
             "zea-switch": LocalJSX.ZeaSwitch & JSXBase.HTMLAttributes<HTMLZeaSwitchElement>;
