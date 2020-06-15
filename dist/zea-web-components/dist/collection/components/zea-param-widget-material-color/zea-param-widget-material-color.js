@@ -28,10 +28,12 @@ export class ZeaParamWidgetMaterialColor {
      */
     componentDidLoad() {
         this.setUpColorPicker();
-        this.parameter.valueChanged.connect((mode) => {
-            this.onValueChange(mode);
-        });
-        this.onValueChange(ValueSetMode.USER_SETVALUE);
+        if (this.parameter) {
+            this.parameter.on('valueChanged', (event) => {
+                this.onValueChange(event.mode);
+            });
+            this.onValueChange(ValueSetMode.USER_SETVALUE);
+        }
     }
     /**
      * Called when the parameter value changes externally

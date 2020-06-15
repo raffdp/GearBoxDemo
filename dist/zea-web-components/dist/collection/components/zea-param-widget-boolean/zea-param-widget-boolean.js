@@ -20,20 +20,22 @@ export class ZeaParamWidgetBoolean {
      * Run when component loads
      */
     componentDidLoad() {
-        this.checked = this.parameter.getValue();
-        this.parameter.valueChanged.connect((mode) => {
+        if (this.parameter) {
             this.checked = this.parameter.getValue();
-            if (mode == ValueSetMode.REMOTEUSER_SETVALUE) {
-                this.cheboxInput.classList.add('user-edited');
-                if (this.remoteUserEditedHighlightId) {
-                    clearTimeout(this.remoteUserEditedHighlightId);
+            this.parameter.on('valueChanged', (event) => {
+                this.checked = this.parameter.getValue();
+                if (event.mode == ValueSetMode.REMOTEUSER_SETVALUE) {
+                    this.cheboxInput.classList.add('user-edited');
+                    if (this.remoteUserEditedHighlightId) {
+                        clearTimeout(this.remoteUserEditedHighlightId);
+                    }
+                    this.remoteUserEditedHighlightId = setTimeout(() => {
+                        this.cheboxInput.classList.remove('user-edited');
+                        this.remoteUserEditedHighlightId = null;
+                    }, 1500);
                 }
-                this.remoteUserEditedHighlightId = setTimeout(() => {
-                    this.cheboxInput.classList.remove('user-edited');
-                    this.remoteUserEditedHighlightId = null;
-                }, 1500);
-            }
-        });
+            });
+        }
     }
     /**
      * Run when input changes

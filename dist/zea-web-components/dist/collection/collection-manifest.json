@@ -52,7 +52,6 @@
     "./components/zea-popup-menu/zea-popup-menu.js",
     "./components/zea-popup-menu-item/zea-popup-menu-item.js",
     "./components/zea-progress-bar/zea-progress-bar.js",
-    "./components/zea-projects-browser/zea-projects-browser.js",
     "./components/zea-qr-code/zea-qr-code.js",
     "./components/zea-scroll-pane/zea-scroll-pane.js",
     "./components/zea-switch/zea-switch.js",

@@ -142,7 +142,11 @@ var ZeaTreeView = /** @class */ (function () {
      */
     ZeaTreeView.prototype.render = function () {
         var _this = this;
-        return (h(Host, null, h("div", { class: "wrap", onMouseEnter: this.onMouseEnter.bind(this), onMouseLeave: this.onMouseLeave.bind(this) }, h("zea-tree-item-element", { ref: function (el) { return (_this.rootItem.titleElement = el); }, "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
+        return (h(Host, null, h("div", { class: "wrap", onMouseEnter: this.onMouseEnter.bind(this), onMouseLeave: this.onMouseLeave.bind(this) }, h("zea-tree-item-element", { ref: function (el) {
+                if (_this.rootItem) {
+                    _this.rootItem.titleElement = el;
+                }
+            }, "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
     };
     return ZeaTreeView;
 }());

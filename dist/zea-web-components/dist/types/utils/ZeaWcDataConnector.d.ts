@@ -1,14 +1,10 @@
-/// <reference types="pouchdb-find" />
-/// <reference types="pouchdb-core" />
-/// <reference types="pouchdb-mapreduce" />
-/// <reference types="pouchdb-replication" />
 /**
  */
 declare class ZeaWcDataConnector {
     /**
      *
      */
-    getDb(dataType: any): PouchDB.Database<{}>;
+    getDb(dataType: any): any;
     /**
      */
     upsertDoc(data: any): Promise<unknown>;

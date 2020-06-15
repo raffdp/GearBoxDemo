@@ -91,7 +91,7 @@ export class ZeaCheckbox {
             "optional": false,
             "docs": {
                 "tags": [],
-                "text": "/**\n   Text/html to be displayed inside the button"
+                "text": "/**\r\n   Text/html to be displayed inside the button"
             },
             "attribute": "name",
             "reflect": false
@@ -108,7 +108,7 @@ export class ZeaCheckbox {
             "optional": false,
             "docs": {
                 "tags": [],
-                "text": "/**\n   Whether the checkbox is disabled"
+                "text": "/**\r\n   Whether the checkbox is disabled"
             },
             "attribute": "disabled",
             "reflect": false,
@@ -126,7 +126,7 @@ export class ZeaCheckbox {
             "optional": false,
             "docs": {
                 "tags": [],
-                "text": "/**\n   Whether the checkbox is checked"
+                "text": "/**\r\n   Whether the checkbox is checked"
             },
             "attribute": "checked",
             "reflect": false,

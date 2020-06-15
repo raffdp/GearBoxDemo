@@ -1,9 +1,9 @@
 import { r as registerInstance, c as createEvent, h } from './index-12ee0265.js';
-import { d as commonjsRequire } from './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import { o } from './zea-collab.esm-0d34c6b8.js';
+import { d as commonjsRequire } from './global-6e332181.js';
+import './index-27446e12.js';
+import { r } from './zea-collab.esm-2f7d107f.js';
+import './buffer-es6-d7e2ddd2.js';
+import './events-fc0ece3b.js';
 
 function isNothing(subject) {
   return (typeof subject === 'undefined') || (subject === null);
@@ -3869,8 +3869,8 @@ const ZeaFileSystemBrowser = class {
         if (this.unsubFileWithProgress) {
             this.unsubFileWithProgress();
         }
-        o.setSocketURL('https://websocket-staging.zea.live');
-        this.zeaSession = o.getInstance({ id: 'zea-web-components' }, this.project._id);
+        r.setSocketURL('https://websocket-staging.zea.live');
+        this.zeaSession = r.getInstance({ id: 'zea-web-components' }, this.project._id);
     }
     /**
      * Set folder.

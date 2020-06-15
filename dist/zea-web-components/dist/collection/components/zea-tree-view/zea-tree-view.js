@@ -140,7 +140,9 @@ export class ZeaTreeView {
     render() {
         return (h(Host, null,
             h("div", { class: "wrap", onMouseEnter: this.onMouseEnter.bind(this), onMouseLeave: this.onMouseLeave.bind(this) },
-                h("zea-tree-item-element", { ref: (el) => (this.rootItem.titleElement = el), "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
+                h("zea-tree-item-element", { ref: (el) => { if (this.rootItem) {
+                        this.rootItem.titleElement = el;
+                    } }, "is-root": "true", "expand-on-load": "true", treeItem: this.rootItem, appData: this.appData, isExpanded: true }))));
     }
     static get is() { return "zea-tree-view"; }
     static get encapsulation() { return "shadow"; }

@@ -38,7 +38,7 @@ export declare class ZeaParamWidgetVec2 {
     private setUpInputs;
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     private onValueChanged;
     /**

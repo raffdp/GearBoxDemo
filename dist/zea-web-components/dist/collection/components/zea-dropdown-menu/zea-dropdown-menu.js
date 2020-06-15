@@ -16,9 +16,12 @@ export class ZeaDropdownMenu {
      */
     componentDidLoad() {
         // subscribe to the actionAdded signal
-        this.appData.actionRegistry.actionAdded.connect(() => {
-            this.makeMenuTree();
-        });
+        // Note: the action registry is deprecated.
+        if (this.appData && this.appData.actionRegistry) {
+            this.appData.actionRegistry.on('actionAdded', () => {
+                this.makeMenuTree();
+            });
+        }
         this.makeMenuTree();
     }
     /**
@@ -246,7 +249,7 @@ export class ZeaDropdownMenu {
             "optional": false,
             "docs": {
                 "tags": [],
-                "text": "The application data\nTODO: pass actionRegistry only instead of whole appData"
+                "text": "The application data\r\nTODO: pass actionRegistry only instead of whole appData"
             },
             "attribute": "app-data",
             "reflect": false

@@ -84,14 +84,16 @@ const getSurfaceTypeName = id => {
 };
 
 const geomLibraryHeaderSize = 8; // 2 FP16 pixels at the start of the GeomLibrary and CurveLibrary
-const pixelsPerDrawItem = 10; // The number of RGBA pixels per draw item.
+// const pixelsPerDrawItem = 10 // The number of RGBA pixels per draw item.
+const pixelsPerDrawItem = 3; // tr, ori, sc: number of RGBA pixels per draw item.
 const valuesPerCurveTocItem = 8;
 const valuesPerSurfaceTocItem = 9;
 const valuesPerCurveLibraryLayoutItem = 8;
 const valuesPerSurfaceLibraryLayoutItem = 8;
 //const valuesPerSurfaceRef = 11 // A surfaceRef within a BodyDesc// This is now different based on the version.
-const bodyItemCoordsStride = 30;
-const floatsPerSceneBody = 23;
+const drawItemShaderAttribsStride = 8;
+const floatsPerSceneBody = 2;
+const drawShaderAttribsStride = 4; /*drawCoords: body ID, Surface index in Body, Surface Id, TrimSet Id*/// + 2/*drawItemTexAddr*/
 const CURVE_FLAG_COST_IS_DETAIL = 1 << 3;
 
 const SURFACE_FLAG_PERIODIC_U = 1 << 0;
@@ -281,7 +283,7 @@ class CADSurfaceLibrary {
     // const targetQuadCount = this.__triCounts[Math.clamp(0, lod, this.__triCounts.length-1)] * 1000;
     // return targetQuadCount / this.__totalSurfaceCost;
     const mult = Math.pow(2, lod);
-    return mult * this.__cadAsset.getParameter('CurvatureToDetail').getValue()
+    return mult * this.__cadAsset.curvatureToDetail
   }
 
   /**
@@ -1717,14 +1719,17 @@ class CADBodyLibrary {
   }
 }
 
-/** Class representing a CAD body.
+/**
+ * Represents a `BaseGeomItem` with the ability to have Cut Aways.
+ *
  * @extends BaseGeomItem
  */
 class CADBody extends zeaEngine.BaseGeomItem {
   /**
-   * Create a CAD body.
-   * @param {any} name - The name value.
-   * @param {any} cadAsset - The cadAsset value.
+   * Creates an instance of CADBody setting up the initial configuration for Material and Color parameters.
+   *
+   * @param {string} name - The name value.
+   * @param {CADAsset} cadAsset - The cadAsset value.
    */
   constructor(name, cadAsset) {
     super(name);
@@ -1734,33 +1739,35 @@ class CADBody extends zeaEngine.BaseGeomItem {
     this.__cadAsset = cadAsset; // Note: used in testing scenes.
     if (this.__cadAsset) this.__cadAsset.incCADBodyCount();
 
-    this.__materialParam = this.addParameter(
-      new zeaEngine.MaterialParameter('Material')
-    );
+    this.__materialParam = this.addParameter(new zeaEngine.MaterialParameter('Material'));
     this.__colorParam = this.addParameter(
       new zeaEngine.ColorParameter('Color', new zeaEngine.Color(1, 0, 0, 0))
     );
   }
 
   /**
-   * The getCADAsset method.
-   * @return {any} - The return value.
+   * Returns the `CADAsset` object in current `CADBody`
+   *
+   * @return {CADAsset} - The return value.
    */
   getCADAsset() {
     return this.__cadAsset
   }
 
   /**
-   * The destroy method.
+   * The destroy is called by the system to cause explicit resources cleanup.
+   * Users should never need to call this method directly.
    */
   destroy() {
     super.destroy();
   }
 
   /**
-   * The clone method.
-   * @param {any} flags - The flags param.
-   * @return {any} - The return value.
+   * The clone method constructs a new CADBody, copies its values
+   * from this item and returns it.
+   *
+   * @param {number} flags - The flags param.
+   * @return {CADBody} - The return value.
    */
   clone(flags) {
     const cloned = new CADBody();
@@ -1770,8 +1777,8 @@ class CADBody extends zeaEngine.BaseGeomItem {
 
   /**
    * The copyFrom method.
-   * @param {any} src - The src param.
-   * @param {any} flags - The flags param.
+   * @param {CADBody} src - The src param.
+   * @param {number} flags - The flags param.
    * @private
    */
   copyFrom(src, flags) {
@@ -1787,8 +1794,20 @@ class CADBody extends zeaEngine.BaseGeomItem {
   // Geometry
 
   /**
-   * The getBodyDescData method.
+   * The getBodyDataTexelCoords method.
+   * @param {any} bodyDescId - The bodyDescId param.
    * @return {any} - The return value.
+   */
+  getBodyDataTexelCoords() {
+    return this.__cadAsset
+      .getBodyLibrary()
+      .getBodyDataTexelCoords(this.__bodyDescId)
+  }
+
+  /**
+   * Returns an object that contains the bBox and all the SurfaceRefs of current object using the bodyDescId.
+   *
+   * @return {object} - The return value.
    */
   getBodyDescData() {
     const bodyDescData = this.__cadAsset
@@ -1806,8 +1825,11 @@ class CADBody extends zeaEngine.BaseGeomItem {
   }
 
   /**
-   * The getSurfaceRefs method.
-   * @return {any} - The return value.
+   * Returns a list of all SurfaceRefs of current `CADBody`.
+   * <br>
+   * Which contain the surfaceId, xfo object and the color.
+   *
+   * @return {array} - The return value.
    */
   getSurfaceRefs() {
     const bodyData = this.getBodyDescData();
@@ -1815,16 +1837,18 @@ class CADBody extends zeaEngine.BaseGeomItem {
   }
 
   /**
-   * The getBodyDescId method.
-   * @return {any} - The return value.
+   * Returns the bodyDescId of current `CADBody`
+   *
+   * @return {number} - The return value.
    */
   getBodyDescId() {
     return this.__bodyDescId
   }
 
   /**
-   * The setBodyDescId method.
-   * @param {any} bodyId - The bodyId param.
+   * Sets bodyDescId to current `CADBody`, but also calculates a new bBox.
+   *
+   * @param {number} bodyId - The bodyId param.
    */
   setBodyDescId(bodyId) {
     this.__bodyDescId = bodyId;
@@ -1835,17 +1859,22 @@ class CADBody extends zeaEngine.BaseGeomItem {
   }
 
   /**
-   * The getMaterial method.
-   * @return {any} - The return value.
+   * Returns current Material parameter value.
+   *
+   * @return {MaterialParameter} - The return value.
    */
   getMaterial() {
     return this.__materialParam.getValue()
   }
 
   /**
-   * The setMaterial method.
-   * @param {any} material - The material param.
-   * @param {any} mode - The mode param.
+   * Sets Material parameter value.
+   * <br>
+   * For `mode` possible values check `Parameter` Class documentation.
+   * @see [Zea Engine]()
+   *
+   * @param {MaterialParameter} material - The material param.
+   * @param {number} mode - The mode param.
    */
   setMaterial(material, mode) {
     this.__materialParam.setValue(material, mode);
@@ -1866,45 +1895,13 @@ class CADBody extends zeaEngine.BaseGeomItem {
   }
 
   // ///////////////////////////
-  // Lightmaps
-
-  /**
-   * The getLightmapName method.
-   * @return {any} - The return value.
-  getLightmapName() {
-    return this.__lightmapName
-  }
-   */
-
-  /**
-   * The getLightmapCoordsOffset method.
-   * @return {any} - The return value.
-  getLightmapCoordsOffset() {
-    return this.__lightmapCoordsParam.getValue()
-  }
-   */
-
-  /**
-   * The applyAssetLightmapSettings method.
-   * The root asset item pushes its offset to the geom items in the
-   * tree. This offsets the light cooords for each geom.
-   * @param {any} lightmapName - The lightmapName param.
-   * @param {any} offset - The offset param.
-  applyAssetLightmapSettings(lightmapName, offset) {
-    this.__lightmap = lightmapName
-    const coords = this.__lightmapCoordsParam.getValue()
-    coords.addInPlace(offset)
-    this.__lightmapCoordsParam.setValue(coords)
-  }
-   */
-
-  // ///////////////////////////
   // Persistence
 
   /**
-   * The readBinary method.
-   * @param {any} reader - The reader param.
-   * @param {any} context - The context param.
+   * Initializes CADBody's asset, material, version and layers; adding current `CADBody` Geometry Item toall the layers in reader
+   *
+   * @param {BinReader} reader - The reader param.
+   * @param {object} context - The context param.
    */
   readBinary(reader, context) {
     super.readBinary(reader, context);
@@ -2004,9 +2001,10 @@ class CADBody extends zeaEngine.BaseGeomItem {
   // Persistence
 
   /**
-   * The toJSON method.
-   * @param {any} flags - The flags param.
-   * @return {any} - The return value.
+   * The toJSON method encodes this type as a json object for persistences.
+   *
+   * @param {number} flags - The flags param.
+   * @return {object} - The return value.
    */
   toJSON(flags = 0) {
     const j = super.toJSON(flags);
@@ -2014,9 +2012,10 @@ class CADBody extends zeaEngine.BaseGeomItem {
   }
 
   /**
-   * The toJSON method.
-   * @param {any} j - The j param.
-   * @param {any} flags - The flags param.
+   * The fromJSON method decodes a json object for this type.
+   *
+   * @param {object} j - The j param.
+   * @param {number} flags - The flags param.
    */
   fromJSON(j, flags = 0) {
     super.fromJSON(j, flags);
@@ -2025,6 +2024,8 @@ class CADBody extends zeaEngine.BaseGeomItem {
 
 zeaEngine.sgFactory.registerClass('NURBSBody', CADBody);
 zeaEngine.sgFactory.registerClass('CADBody', CADBody);
+
+/* eslint-disable no-unused-vars */
 
 const cadFileExts = new RegExp('\\.(stp|step|jt|3dm|ifc|vlcad|zcad)$', 'i');
 
@@ -2064,7 +2065,7 @@ function getLOD() {
 class CADAsset extends zeaEngine.AssetItem {
   /**
    * Create a CAD asset.
-   * @param {any} name - The name value.
+   * @param {string} name - The name value.
    */
   constructor(name) {
     super(name);
@@ -2074,40 +2075,35 @@ class CADAsset extends zeaEngine.AssetItem {
     this.__bodyLibrary = new CADBodyLibrary();
     this.__atlasSize = new zeaEngine.Vec2();
     this.__numCADBodyItems = 0;
+    this.__loaded = false;
 
     this.__datafileParam = this.addParameter(
       new zeaEngine.FilePathParameter('DataFilePath')
     );
-    this.__datafileParam.valueChanged.connect(() => {
-      this.loaded.setToggled(false);
-      if (!this.getParameter('Lazy Load').getValue()) this.loadDataFile();
+    this.__datafileParam.on('valueChanged', () => {
+      this.loadDataFile();
     });
-
-    // this.__lightmapTexelSize = 2
-
-    const lod = getLOD();
-    this.addParameter(new zeaEngine.BooleanParameter('Lazy Load', false));
-    this.addParameter(new zeaEngine.NumberParameter('LOD', lod));
-    this.addParameter(new zeaEngine.NumberParameter('CurvatureToDetail', 0.5));
-    this.addParameter(new zeaEngine.ColorParameter('CutPlaneColor', new zeaEngine.Color(1, 0, 0)));
-    this.addParameter(new zeaEngine.Vec3Parameter('CutPlaneNormal', new zeaEngine.Vec3(1, 0, 0)));
-    this.addParameter(new zeaEngine.NumberParameter('CutPlaneDist', 0.0));
+    
+    this.lod = getLOD();
+    this.curvatureToDetail = 0.5;
   }
 
   /**
-   * The isLoaded method.
-   * @return {any} - The return value.
+   * Returns the loaded status of the AssetItem.
+   *
+   * @return {boolean} - Returns true if the asset has already loaded its data.
    */
   isLoaded() {
-    return this.loaded.isToggled()
+    return this.__loaded
   }
 
   /**
-   * The getLOD method.
-   * @return {any} - The return value.
+   * Returns `LOD` parameter value.
+   *
+   * @return {number} - The return value.
    */
   getLOD() {
-    return Math.max(0, this.getParameter('LOD').getValue())
+    return Math.max(0, this.lod)
   }
 
   /**
@@ -2119,40 +2115,45 @@ class CADAsset extends zeaEngine.AssetItem {
   }
 
   /**
-   * The getNumBodyItems method.
-   * @return {any} - The return value.
+   * Returns the value of number CADBody items in the asset.
+   *
+   * @return {number} - The return value.
    */
   getNumBodyItems() {
     return this.__numCADBodyItems
   }
 
   /**
-   * The getSurfaceLibrary method.
-   * @return {any} - The return value.
+   * Returns the instantiated `CADSurfaceLibrary` object on current Asset
+   * 
+   * @return {CADSurfaceLibrary} - The return value.
    */
   getSurfaceLibrary() {
     return this.__surfaceLibrary
   }
 
   /**
-   * The getTrimSetLibrary method.
-   * @return {any} - The return value.
+   * Returns the instantiated `CADTrimSetLibrary` object of current Asset
+   *
+   * @return {CADTrimSetLibrary} - The return value.
    */
   getTrimSetLibrary() {
     return this.__trimSetLibrary
   }
 
   /**
-   * The getBodyLibrary method.
-   * @return {any} - The return value.
+   * Returns the instantiated `CADBodyLibrary` object of current Asset
+   * 
+   * @return {CADBodyLibrary} - The return value.
    */
   getBodyLibrary() {
     return this.__bodyLibrary
   }
 
   /**
-   * The getMaterialLibrary method.
-   * @return {any} - The return value.
+   * Returns the instantiated `MaterialLibrary` object of current Asset
+   *
+   * @return {MaterialLibrary} - The return value.
    */
   getMaterialLibrary() {
     return this.__materials
@@ -2163,41 +2164,46 @@ class CADAsset extends zeaEngine.AssetItem {
 
   /**
    * Returns the versioon of the data loaded by thie CADAsset.
-   * @return {any} - The return value.
+   *
+   * @return {string} - The return value.
    */
   getVersion() {
     return this.cadfileversion
   }
 
   /**
-   * The readBinary method.
-   * @param {any} reader - The reader param.
-   * @param {any} context - The context param.
+   * Initializes CADAsset's asset, material, version and layers; adding current `CADAsset` Geometry Item toall the layers in reader
+   * 
+   * @param {BinReader} reader - The reader param.
+   * @param {object} context - The context param.
    */
   readBinary(reader, context = {}) {
     context.assetItem = this;
     this.__numCADBodyItems = 0;
 
     context.versions = {};
-    const v = reader.loadUInt8();
-    reader.seek(0);
-    
+    // const v = reader.loadUInt8()
+    // reader.seek(0)
     // Note: the first char is str-len, so a change to the version string broke this code.
     // TODO: Fix this without this huge assumption below.
     // Note: previous non-semver only reached 7
-    // 
-    // if (v != 10) { 
+    // if (v < 10) {
     //   const version = new Version()
     //   version.patch = reader.loadUInt32()
     //   context.versions['zea-cad'] = version
     //   context.versions['zea-engine'] = version
     //   context.cadSDK = "SpatialIOP";
     // } else {
-      context.versions['zea-cad'] = new zeaEngine.Version(reader.loadStr());
-      context.cadSDK = reader.loadStr();
+    context.versions['zea-cad'] = new zeaEngine.Version(reader.loadStr());
+    context.cadSDK = reader.loadStr();
     // }
     this.cadfileversion = context.versions['zea-cad'];
-    console.log("Loading CAD File version:", this.cadfileversion, " exported using SDK:", context.cadSDK);
+    console.log(
+      'Loading CAD File version:',
+      this.cadfileversion,
+      ' exported using SDK:',
+      context.cadSDK
+    );
 
     const plcbs = []; // Post load callbacks.
     context.resolvePath = (path, onSucceed, onFail) => {
@@ -2232,7 +2238,7 @@ class CADAsset extends zeaEngine.AssetItem {
 
     // Invoke all the post-load callbacks to resolve any
     // remaning references.
-    for (const cb of plcbs) cb();  
+    for (const cb of plcbs) cb();
   }
 
   /**
@@ -2266,7 +2272,12 @@ class CADAsset extends zeaEngine.AssetItem {
             entries.bodies.buffer
           );
         }
+
+        const name = this.getName();
         this.readBinary(treeReader, {});
+
+        // Maintain the name provided by the user before loading.
+        if (name != "") this.setName(name);
 
         const context = {
           versions: {},
@@ -2291,7 +2302,10 @@ class CADAsset extends zeaEngine.AssetItem {
             zeaEngine.SystemDesc.isMobileDevice
           );
 
-          this.__trimSetLibrary.setBinaryBuffer(trimSetReader, this.getVersion());
+          this.__trimSetLibrary.setBinaryBuffer(
+            trimSetReader,
+            this.getVersion()
+          );
         }
 
         if (entries.curves) {
@@ -2308,8 +2322,9 @@ class CADAsset extends zeaEngine.AssetItem {
           // GOTO: loadAssetJSON...
           this.__datafileLoaded();
         } else {
-          this.loaded.emit();
+          this.emit('loaded');
         }
+        this.__loaded = true;
         resolve();
       };
 
@@ -2341,10 +2356,11 @@ class CADAsset extends zeaEngine.AssetItem {
   // Persistence
 
   /**
-   * The toJSON method.
-   * @param {any} context - The context param.
-   * @param {any} flags - The flags param.
-   * @return {any} - The return value.
+   * The toJSON method encodes this type as a json object for persistences.
+   *
+   * @param {object} context - The context param.
+   * @param {number} flags - The flags param.
+   * @return {object} - The return value.
    */
   toJSON(context, flags) {
     const j = super.toJSON(context, flags);
@@ -2352,21 +2368,24 @@ class CADAsset extends zeaEngine.AssetItem {
   }
 
   /**
-   * The toJSON method.
-   * @param {any} j - The j param.
-   * @param {any} context - The context param.
-   * @param {any} onDone - The onDone param.
+   * The fromJSON method decodes a json object for this type.
+   *
+   * @param {object} j - The json object this item must decode.
+   * @param {object} context - The context param.
+   * @param {callback} onDone - The onDone param.
    */
   fromJSON(j, context, onDone) {
     const loadAssetJSON = () => {
-      const flags =
-        zeaEngine.TreeItem.LoadFlags.LOAD_FLAG_LOADING_BIN_TREE_VALUES;
+      const flags = zeaEngine.TreeItem.LoadFlags.LOAD_FLAG_LOADING_BIN_TREE_VALUES;
       super.fromJSON(j, context, flags, onDone);
       context.decAsyncCount();
 
       // If the asset is nested within a bigger asset, then
       // this subtree can noow be flagged as loded(and added to the renderer);
-      if (!this.loaded.isToggled()) this.loaded.emit();
+      if (!this.__loaded) {
+        this.emit('loaded');
+        this.__loaded = true;
+      }
     };
 
     if (j.params && j.params.DataFilePath) {
@@ -2457,22 +2476,27 @@ class CADAsset extends zeaEngine.AssetItem {
 
 zeaEngine.sgFactory.registerClass('CADAsset', CADAsset);
 
-/** Class representing a CAD assembly.
+/**
+ * Represents a Tree Item of an Assembly modeling. Brings together components to define a larger product.
+ *
  * @extends TreeItem
  */
 class CADAssembly extends zeaEngine.TreeItem {
   /**
    * Create a CAD assembly.
-   * @param {any} name - The name value.
+   *
+   * @param {string} name - The name of the tree item.
    */
   constructor(name) {
     super(name);
   }
 
   /**
-   * The clone method.
-   * @param {any} flags - The flags param.
-   * @return {any} - The return value.
+   * The clone method constructs a new CADAssembly item, copies its values
+   * from this item and returns it.
+   *
+   * @param {number} flags - The flags param.
+   * @return {CADAssembly} - The return value.
    */
   clone(flags) {
     const cloned = new CADAssembly();
@@ -2484,10 +2508,11 @@ class CADAssembly extends zeaEngine.TreeItem {
   // Persistence
 
   /**
-   * The toJSON method.
-   * @param {any} context - The context param.
-   * @param {any} flags - The flags param.
-   * @return {any} - The return value.
+   * The toJSON method encodes this type as a json object for persistences.
+   *
+   * @param {object} context - The context param.
+   * @param {number} flags - The flags param.
+   * @return {object} - Returns the json object.
    */
   toJSON(context, flags = 0) {
     const j = super.toJSON(context, flags);
@@ -2495,10 +2520,11 @@ class CADAssembly extends zeaEngine.TreeItem {
   }
 
   /**
-   * The toJSON method.
-   * @param {any} j - The j param.
-   * @param {any} context - The context param.
-   * @param {any} flags - The flags param.
+   * The fromJSON method decodes a json object for this type.
+   *
+   * @param {object} j - The json object this item must decode.
+   * @param {object} context - The context param.
+   * @param {number} flags - The flags param.
    */
   fromJSON(j, context, flags = 0) {
     super.fromJSON(j, context, flags);
@@ -2576,6 +2602,26 @@ class SubSet {
     this.__drawCoordsArray = null;
     this.__drawCoordsBuffer = null;
     this.__drawCount = 0; // The number of visible drawn geoms.
+
+    this.__bindAttr = (
+      location,
+      channels,
+      type,
+      stride,
+      offset,
+      instanced = true
+    ) => {
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(
+        location,
+        channels,
+        type,
+        false,
+        stride,
+        offset
+      );
+      if (instanced) gl.vertexAttribDivisor(location, 1); // This makes it instanced
+    };
   }
 
   /**
@@ -2588,10 +2634,12 @@ class SubSet {
       this.__drawCoordsBuffer = null;
     }
     const gl = this.__gl;
+    this.__drawCoordsArray = itemsArray;
     this.__drawCoordsBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, itemsArray, gl.STATIC_DRAW);
-    this.__drawCount = itemsArray.length / 2;
+    gl.bufferData(gl.ARRAY_BUFFER, this.__drawCoordsArray, gl.STATIC_DRAW);
+    this.__drawCount = this.__drawCoordsArray.length / drawShaderAttribsStride;
+    return this.__drawCount
   }
 
   /**
@@ -2599,7 +2647,6 @@ class SubSet {
    * @param {any} itemsArray - The itemsArray param.
    */
   addDrawItems(itemsArray) {
-    // console.log("addDrawItems:" + itemsArray);
     if (!this.__drawCoordsArray) {
       this.__drawCoordsArray = itemsArray;
     } else {
@@ -2621,7 +2668,8 @@ class SubSet {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.__drawCoordsArray, gl.STATIC_DRAW);
 
-    this.__drawCount += itemsArray.length / 2;
+    this.__drawCount += itemsArray.length / drawShaderAttribsStride;
+    return this.__drawCount
   }
 
   /**
@@ -2646,13 +2694,11 @@ class SubSet {
     }
 
     const gl = this.__gl;
-
-    // The instanced transform ids are bound as an instanced attribute.
-    const location = renderstate.attrs.drawCoords.location;
-    gl.enableVertexAttribArray(location);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
-    gl.vertexAttribPointer(location, 2, gl.FLOAT, false, 2 * 4, 0);
-    gl.vertexAttribDivisor(location, 1); // This makes it instanced
+
+    const attrs = renderstate.attrs;
+    this.__bindAttr(attrs.drawCoords.location, 4, gl.FLOAT, drawShaderAttribsStride * 4, 0);
+    // this.__bindAttr(attrs.drawItemTexAddr.location, 2, gl.FLOAT, drawShaderAttribsStride * 4, 4 * 4)
 
     return this.__drawCount
   }
@@ -2691,6 +2737,8 @@ class GLSurfaceDrawSet {
       this.__glgeom = __cache[key];
       this.__numTris = x - 2;
       this.__glnormalsgeom = new zeaEngine.GLLines(gl, new SurfaceNormals(x, y));
+      
+      this.key = key;
     } else {
       const key = x + 'x' + y;
       if (!__cache[key]) {
@@ -2702,6 +2750,8 @@ class GLSurfaceDrawSet {
       this.__glgeom = __cache[key];
       this.__numTris = (x - 1) * (y - 1) * 2;
       this.__glnormalsgeom = new zeaEngine.GLLines(gl, new SurfaceNormals(x, y));
+
+      this.key = key;
     }
     this.__quadDetail = [x - 1, y - 1];
     this.__freeIndices = [];
@@ -2718,9 +2768,8 @@ class GLSurfaceDrawSet {
     if (!this.__subSets[key]) {
       this.__subSets[key] = new SubSet(this.__gl);
     }
-    this.__subSets[key].setDrawItems(itemsArray);
-
-    return this.__numTris * (itemsArray.length / 2)
+    const drawCount = this.__subSets[key].setDrawItems(itemsArray);
+    return this.__numTris * drawCount
   }
 
   /**
@@ -2733,9 +2782,8 @@ class GLSurfaceDrawSet {
     if (!this.__subSets[key]) {
       this.__subSets[key] = new SubSet(this.__gl);
     }
-    this.__subSets[key].addDrawItems(itemsArray);
-
-    return this.__numTris * (itemsArray.length / 2)
+    const drawCount = this.__subSets[key].addDrawItems(itemsArray);
+    return this.__numTris * drawCount
   }
 
   /**
@@ -2764,7 +2812,10 @@ class GLSurfaceDrawSet {
     const unifs = renderstate.unifs;
 
     if (unifs.quadDetail) {
-      gl.uniform2fv(unifs.quadDetail.location, this.__quadDetail);
+      gl.uniform2i(unifs.quadDetail.location, 
+        this.__quadDetail[0], 
+        this.__quadDetail[1]
+      );
     }
 
     this.__glgeom.bind(renderstate);
@@ -2793,19 +2844,277 @@ class GLSurfaceDrawSet {
   drawNormals(renderstate, key) {
     if(!this.__glnormalsgeom)
       return;
+
     const subSet = this.__subSets[key];
     if (!subSet) return
     const gl = this.__gl;
     const unifs = renderstate.unifs;
 
-    if (unifs.quadDetail)
-      gl.uniform2fv(unifs.quadDetail.location, this.__quadDetail);
+    if (unifs.quadDetail){
+      gl.uniform2i(unifs.quadDetail.location, 
+        this.__quadDetail[0], 
+        this.__quadDetail[1]
+      );
+    }
 
     this.__glnormalsgeom.bind(renderstate);
 
     const drawCount = subSet.bind(renderstate);
 
-    this.__glnormalsgeom.drawInstanced(drawCount);
+    renderstate.bindViewports(renderstate.unifs, () => {
+      this.__glnormalsgeom.drawInstanced(drawCount);
+    });
+  }
+
+  destroy() {
+    // Note:  this.__glgeom is shared between all GLCADAssets using a global cache. See above
+    // this.__glgeom.destroy()
+    
+    if(this.__glnormalsgeom)
+      this.__glnormalsgeom.destroy();
+    
+    for (const key in this.__subSets) {
+      let subSet = this.__subSets[key];
+      subSet.destroy();
+    }
+  }
+}
+
+class Edge extends zeaEngine.Lines {
+  /**
+   * Create a strip.
+   * @param {number} detail - The detail value.
+   */
+  constructor(detail = 1) {
+    super();
+    this.setNumVertices(detail+1);
+    this.setNumSegments(detail);
+    for (let i = 0; i <= detail; i++) {
+      if (i<detail) this.setSegment(i, i, (i + 1));
+      // Note: the 'x,y' values are used as uv coords
+      // to look up the actual vertex values in the texture.
+      // (with a 0.5, 0.5 offset)
+      this.getVertex(i).set(i / detail, 0.0, 0.0);
+    }
+    this.emit('geomDataTopologyChanged');
+  }
+}
+
+/** Class representing a sub set.
+ * @ignore
+ */
+class SubSet$1 {
+  /**
+   * Create a sub set.
+   * @param {any} gl - The gl value.
+   */
+  constructor(gl) {
+    this.__gl = gl;
+    this.__drawCoordsArray = null;
+    this.__drawCoordsBuffer = null;
+    this.__drawCount = 0; // The number of visible drawn geoms.
+    
+    this.__bindAttr = (
+      location,
+      channels,
+      type,
+      stride,
+      offset,
+      instanced = true
+    ) => {
+      gl.enableVertexAttribArray(location);
+      gl.vertexAttribPointer(
+        location,
+        channels,
+        type,
+        false,
+        stride,
+        offset
+      );
+      if (instanced) gl.vertexAttribDivisor(location, 1); // This makes it instanced
+    };
+  }
+
+  /**
+   * The setDrawItems method.
+   * @param {any} itemsArray - The itemsArray param.
+   */
+  setDrawItems(itemsArray) {
+    if (this.__drawCoordsBuffer) {
+      this.__gl.deleteBuffer(this.__drawCoordsBuffer);
+      this.__drawCoordsBuffer = null;
+    }
+    const gl = this.__gl;
+    this.__drawCoordsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, itemsArray, gl.STATIC_DRAW);
+    this.__drawCount = itemsArray.length / drawShaderAttribsStride;
+    return this.__drawCount
+  }
+
+  /**
+   * The addDrawItems method.
+   * @param {any} itemsArray - The itemsArray param.
+   */
+  addDrawItems(itemsArray) {
+    // console.log("addDrawItems:" + itemsArray);
+    if (!this.__drawCoordsArray) {
+      this.__drawCoordsArray = itemsArray;
+    } else {
+      const new_Array = new Float32Array(
+        this.__drawCoordsArray.length + itemsArray.length
+      );
+      new_Array.set(this.__drawCoordsArray);
+      new_Array.set(itemsArray, this.__drawCoordsArray.length);
+      this.__drawCoordsArray = new_Array;
+    }
+
+    if (this.__drawCoordsBuffer) {
+      this.__gl.deleteBuffer(this.__drawCoordsBuffer);
+      this.__drawCoordsBuffer = null;
+    }
+
+    const gl = this.__gl;
+    this.__drawCoordsBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.__drawCoordsArray, gl.STATIC_DRAW);
+
+    this.__drawCount += itemsArray.length / drawShaderAttribsStride;
+    return this.__drawCount
+  }
+
+  /**
+   * The getDrawCount method.
+   * @return {any} - The return value.
+   */
+  getDrawCount() {
+    return this.__drawCount
+  }
+
+  // ////////////////////////////////////
+  // Drawing
+
+  /**
+   * The bind method.
+   * @param {any} renderstate - The renderstate param.
+   * @return {any} - The return value.
+   */
+  bind(renderstate) {
+    if (this.__drawCount == 0) {
+      return 0
+    }
+    const gl = this.__gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.__drawCoordsBuffer);
+
+    const attrs = renderstate.attrs;
+    this.__bindAttr(attrs.drawCoords.location, 4, gl.FLOAT, drawShaderAttribsStride * 4, 0);
+    // this.__bindAttr(attrs.drawItemTexAddr.location, 2, gl.FLOAT, drawShaderAttribsStride * 4, 4 * 4)
+
+    return this.__drawCount
+  }
+
+  destroy() {
+    const gl = this.__gl;
+    gl.deleteBuffer(this.__drawCoordsBuffer);
+    this.__drawCoordsBuffer = null;
+  }
+}
+
+const __cache$1 = {};
+
+/** Class representing a GL surface draw set. 
+ * @ignore
+*/
+class GLCurveDrawSet {
+  /**
+   * Create a GL surface draw set.
+   * @param {any} gl - The gl value.
+   * @param {number} x - The x value.
+   * @param {number} y - The y value.
+   */
+  constructor(gl, detail) {
+    // console.log("GLCurveDrawSet:" + x + "," + y)
+    this.__gl = gl;
+
+    if (detail == 0)
+      console.error('invalid GLCurveDrawSet:' + detail);
+
+    if (!__cache$1[detail]) {
+      __cache$1[detail] = new zeaEngine.GLLines(gl, new Edge(detail));
+    }
+    this.key = detail;
+    this.__glgeom = __cache$1[detail];
+    this.__edgeDetail = detail;
+    this.__freeIndices = [];
+    this.__subSets = {};
+    this.__numDrawItems = 0;
+  }
+
+  /**
+   * The setDrawItems method.
+   * @param {any} itemsArray - The itemsArray param.
+   * @param {any} key - The key param.
+   * @return {any} - The return value.
+   */
+  setDrawItems(itemsArray, key) {
+    if (!this.__subSets[key]) {
+      this.__subSets[key] = new SubSet$1(this.__gl);
+    }
+    this.__subSets[key].setDrawItems(itemsArray);
+
+    this.__numDrawItems += (itemsArray.length / 2);
+    return this.__numDrawItems
+  }
+
+  /**
+   * The addDrawItems method.
+   * @param {any} itemsArray - The itemsArray param.
+   * @param {any} key - The key param.
+   * @return {any} - The return value.
+   */
+  addDrawItems(itemsArray, key) {
+    if (!this.__subSets[key]) {
+      this.__subSets[key] = new SubSet$1(this.__gl);
+    }
+    this.__numDrawItems += this.__subSets[key].addDrawItems(itemsArray);
+    // console.log(this.key, "key:", key, this.__numDrawItems)
+  }
+
+  /**
+   * The getDrawCount method.
+   * @param {any} key - The key param.
+   * @return {number} - The return value.
+   */
+  getDrawCount(key) {
+    if (this.__subSets[key]) return this.__subSets[key].getDrawCount()
+    return 0
+  }
+
+  // ////////////////////////////////////
+  // Drawing
+
+  /**
+   * The draw method.
+   * @param {any} renderstate - The renderstate param.
+   * @param {any} key - The key param.
+   */
+  draw(renderstate, key) {
+    const subSet = this.__subSets[key];
+    if (!subSet) return
+
+    const gl = this.__gl;
+    const unifs = renderstate.unifs;
+
+    if (unifs.edgeDetail) {
+      gl.uniform1i(unifs.edgeDetail.location, this.__edgeDetail);
+    }
+
+    this.__glgeom.bind(renderstate);
+
+    const drawCount = subSet.bind(renderstate);
+    renderstate.bindViewports(renderstate.unifs, () => {
+      this.__glgeom.drawInstanced(drawCount);
+    });
   }
 
   destroy() {
@@ -2893,13 +3202,13 @@ class GLCurveLibrary {
    * The evaluateCurves method.
    * @param {any} curvesAtlasLayout - The curvesAtlasLayout param.
    * @param {any} numCurves - The numCurves param.
-   * @param {any} curveAtlasLayoutTextureSize - The curveAtlasLayoutTextureSize param.
+   * @param {any} curvesAtlasLayoutTextureSize - The curvesAtlasLayoutTextureSize param.
    * @param {any} curvesAtlasTextureDim - The curvesAtlasTextureDim param.
    */
   evaluateCurves(
     curvesAtlasLayout,
     numCurves,
-    curveAtlasLayoutTextureSize,
+    curvesAtlasLayoutTextureSize,
     curvesAtlasTextureDim
   ) {
     // console.log("evaluateCurves:" + assetId + ":" + curvesAtlasTextureDim);
@@ -2912,8 +3221,8 @@ class GLCurveLibrary {
       this.__curveAtlasLayoutTexture = new zeaEngine.GLTexture2D(this.__gl, {
         format: 'RGBA',
         type: 'FLOAT',
-        width: curveAtlasLayoutTextureSize[0],
-        height: curveAtlasLayoutTextureSize[1],
+        width: curvesAtlasLayoutTextureSize[0],
+        height: curvesAtlasLayoutTextureSize[1],
         filter: 'NEAREST',
         wrap: 'CLAMP_TO_EDGE',
         mipMapped: false,
@@ -3026,11 +3335,33 @@ class GLCurveLibrary {
     gl.deleteBuffer(buffer);
     // console.log("----------------------------------");
     // logCurveData(35799)
-    // logCurveData(0);
+    // logCurveData(1)
     // console.log("----------------------------------");
 
     this.__curvesTangentAtlasRenderTarget.unbind();
     gl.finish();
+  }
+
+  /**
+   * The bindCurvesAtlas method.
+   * @param {any} renderstate - The renderstate param.
+   */
+  bindCurvesAtlasLayout(renderstate) {
+    const gl = this.__gl;
+    const unifs = renderstate.unifs;
+    if (this.__curvesAtlasRenderTarget) {
+      if (unifs.curvesAtlasLayoutTexture) {
+        this.__curveAtlasLayoutTexture.bindToUniform(
+          renderstate,
+          unifs.curvesAtlasLayoutTexture
+        );
+        gl.uniform2i(
+          unifs.curvesAtlasLayoutTextureSize.location,
+          this.__curveAtlasLayoutTexture.width,
+          this.__curveAtlasLayoutTexture.height
+        );
+      }
+    }
   }
 
   /**
@@ -3060,13 +3391,13 @@ class GLCurveLibrary {
         );
       }
 
-      if (unifs.curveAtlasLayoutTexture) {
+      if (unifs.curvesAtlasLayoutTexture) {
         this.__curveAtlasLayoutTexture.bindToUniform(
           renderstate,
-          unifs.curveAtlasLayoutTexture
+          unifs.curvesAtlasLayoutTexture
         );
         gl.uniform2i(
-          unifs.curveAtlasLayoutTextureSize.location,
+          unifs.curvesAtlasLayoutTextureSize.location,
           this.__curveAtlasLayoutTexture.width,
           this.__curveAtlasLayoutTexture.height
         );
@@ -3079,9 +3410,11 @@ class GLCurveLibrary {
    */
   destroy() {
     this.__curveDataTexture.destroy();
-    this.__curveAtlasLayoutTexture.destroy();
-    this.__curvesAtlasRenderTarget.destroy();
-    this.__curvesTangentAtlasRenderTarget.destroy();
+    if (this.__curveAtlasLayoutTexture) {
+      this.__curveAtlasLayoutTexture.destroy();
+      this.__curvesAtlasRenderTarget.destroy();
+      this.__curvesTangentAtlasRenderTarget.destroy();
+    }
   }
 }
 
@@ -3508,7 +3841,7 @@ class BinReader {
 /** Class representing a GL surface library.
  * @ignore
  */
-class GLSurfaceLibrary {
+class GLSurfaceLibrary extends zeaEngine.EventEmitter {
   /**
    * Create a GL surface library.
    * @param {any} gl - The gl value.
@@ -3517,6 +3850,7 @@ class GLSurfaceLibrary {
    * @param {any} glCurveLibrary - The glCurveLibrary value.
    */
   constructor(gl, cadpassdata, surfacesLibrary, glCurveLibrary, version) {
+    super();
     this.__gl = gl;
     this.__cadpassdata = cadpassdata;
     this.__surfacesLibrary = surfacesLibrary;
@@ -3844,42 +4178,49 @@ class GLSurfaceLibrary {
       this.__surfaceDataTexture.width,
       this.__surfaceDataTexture.height
     );
-
-    this.__surfaceAtlasLayoutTexture.bindToUniform(
-      renderstate,
-      unifs.surfaceAtlasLayoutTexture
-    );
-    gl.uniform2i(
-      unifs.surfaceAtlasLayoutTextureSize.location,
-      this.__surfaceAtlasLayoutTexture.width,
-      this.__surfaceAtlasLayoutTexture.height
-    );
   }
 
   /**
    * The bindSurfacesAtlas method.
    * @param {any} renderstate - The renderstate param.
+   * @return {boolean} - returns true if the atlass was bound.
    */
   bindSurfacesAtlas(renderstate) {
+    if (!this.__surfacesAtlasTexture) return false;
     const unifs = renderstate.unifs;
     this.__surfacesAtlasTexture.bindToUniform(
       renderstate,
       unifs.surfacesAtlasTexture
     );
+    const gl = this.__gl;
     if (unifs.normalsTexture)
       this.__normalsTexture.bindToUniform(renderstate, unifs.normalsTexture);
     if (unifs.surfacesAtlasTextureSize)
-      this.__gl.uniform2i(
+      gl.uniform2i(
         unifs.surfacesAtlasTextureSize.location,
         this.__surfacesAtlasTexture.width,
         this.__surfacesAtlasTexture.height
       );
 
-    if (unifs.numSurfacesInLibrary)
-      this.__gl.uniform1i(
+    if (unifs.numSurfacesInLibrary) {
+      gl.uniform1i(
         unifs.numSurfacesInLibrary.location,
         this.__surfacesLibrary.getNumSurfaces()
       );
+    }
+    
+    if (unifs.surfaceAtlasLayoutTexture) {
+      this.__surfaceAtlasLayoutTexture.bindToUniform(
+        renderstate,
+        unifs.surfaceAtlasLayoutTexture
+      );
+      gl.uniform2i(
+        unifs.surfaceAtlasLayoutTextureSize.location,
+        this.__surfaceAtlasLayoutTexture.width,
+        this.__surfaceAtlasLayoutTexture.height
+      );
+    }
+    return true
   }
 
   /**
@@ -3973,7 +4314,7 @@ class Strip extends zeaEngine.Plane {
 }
 
 const numValuesPerCurveRef = 14;
-const __cache$1 = {};
+const __cache$2 = {};
 
 /** Class representing a GL trim curve draw set.
  * @ignore
@@ -3989,14 +4330,14 @@ class GLTrimCurveDrawSet {
     this.__gl = gl;
     this.__detail = detail;
 
-    if (!__cache$1[detail]) {
-      __cache$1[detail] = {
+    if (!__cache$2[detail]) {
+      __cache$2[detail] = {
         glfangeom: new zeaEngine.GLMesh(gl, new Fan$1(detail)),
         glstripgeom: new zeaEngine.GLMesh(gl, new Strip(detail)),
       };
     }
-    this.__glfangeom = __cache$1[detail].glfangeom;
-    this.__glstripgeom = __cache$1[detail].glstripgeom;
+    this.__glfangeom = __cache$2[detail].glfangeom;
+    this.__glstripgeom = __cache$2[detail].glstripgeom;
 
     this.__buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.__buffer);
@@ -4626,6 +4967,8 @@ class GLTrimSetLibrary {
   }
 }
 
+/* eslint-disable require-jsdoc */
+
 // import {
 //   GLCADAssetWorker_onmessage
 // } from './GLCADAssetWorker.js';
@@ -4633,232 +4976,186 @@ class GLTrimSetLibrary {
 /** Class representing a GLCADBody. 
  * @ignore
 */
-class GLCADBody {
+class GLCADBody extends zeaEngine.EventEmitter {
   constructor(
     cadBody,
     bodyId,
-    cadpassdata,
-    sceneBodyItemsData,
-    bodyItemDataChanged,
-    highlightedBodies,
-    highlightChangeBatch,
-    pushhighlightChangeBatchToWorker
   ) {
-
+    super();
     this.cadBody = cadBody;
+    this.bodyId = bodyId;
+  }
 
-    const offset = bodyId * floatsPerSceneBody;
+  bind(
+    cadpassdata,
+    sceneBodyItemData,
+    cadBodyTextureData,
+    bodyItemDataChanged,
+    highlightedChanged
+  ) {
+    const cadBodyDescAddr = this.cadBody.getBodyDataTexelCoords();
+
+    // const offset = bodyId * floatsPerSceneBody
     let flags = 0;
-    if (!cadBody.getVisible()) flags |= BODY_FLAG_INVISIBLE;
+    if (!this.cadBody.getVisible()) flags |= BODY_FLAG_INVISIBLE;
     if (
-      (cadBody.isCutawayEnabled && cadBody.isCutawayEnabled()) ||
-      (cadBody.hasParameter('CutawayEnabled') &&
-        cadBody.getParameter('CutawayEnabled').getValue())
+      (this.cadBody.isCutawayEnabled && this.cadBody.isCutawayEnabled()) ||
+      (this.cadBody.hasParameter('CutawayEnabled') &&
+        this.cadBody.getParameter('CutawayEnabled').getValue())
     ) {
       flags |= BODY_FLAG_CUTAWAY;
     }
 
-    const material = cadBody.getMaterial();
+    const material = this.cadBody.getMaterial();
 
     const shaderId = cadpassdata.genShaderID(material.getShaderName());
     // console.log("Shader:" + material.getShaderName() + ":" + shaderId);
     let glmaterialcoords = material.getMetadata('glmaterialcoords');
-    if (!glmaterialcoords)
-      glmaterialcoords = cadpassdata.materialLibrary.addMaterial(
-        material
-      );
-    sceneBodyItemsData[offset + 0] = cadBody.getBodyDescId();
-    sceneBodyItemsData[offset + 1] = flags;
-    sceneBodyItemsData[offset + 2] = shaderId;
-    sceneBodyItemsData[offset + 3] = glmaterialcoords.x;
-    sceneBodyItemsData[offset + 4] = glmaterialcoords.y;
+    if (!glmaterialcoords) {
+      glmaterialcoords = cadpassdata.materialLibrary.addMaterial(material);
+    }
 
-    // Note: visibility can be inherited, so the parameter is
-    // not the final value...
-    // Note: because the visibilityChanged signal is actually
-    // the visbleParam flag, we get signals here when the computed
-    // visiblity didn't actually change. We should use a separate
-    // signal for the computed visiblity changing.
-    this.visibilityChangedId = cadBody.visibilityChanged.connect(() => {
-      const visibile = cadBody.getVisible();
+    sceneBodyItemData[0] = this.cadBody.getBodyDescId();
+    sceneBodyItemData[1] = shaderId;
+
+    cadBodyTextureData[0] = this.cadBody.getBodyDescId();
+    cadBodyTextureData[1] = flags;
+    cadBodyTextureData[2] = cadBodyDescAddr.x;
+    cadBodyTextureData[3] = cadBodyDescAddr.y;
+
+    cadBodyTextureData[4] = glmaterialcoords.x;
+    cadBodyTextureData[5] = glmaterialcoords.y;
+
+
+    this.visibilityChangedId = this.cadBody.on('visibilityChanged', () => {
+      // TODO: Actually modify the draw sets for each visibility chage. 
+      // It should be similar to hilight changes.
+      const visibile = this.cadBody.getVisible();
       if (!visibile) {
         if ((flags & BODY_FLAG_INVISIBLE) == 0) {
           flags |= BODY_FLAG_INVISIBLE;
-          bodyItemDataChanged(bodyId, 'flags', flags);
+          cadBodyTextureData[1] = flags;
+          bodyItemDataChanged(this.bodyId);
         }
       } else {
         if ((flags & BODY_FLAG_INVISIBLE) != 0) {
           flags &= ~BODY_FLAG_INVISIBLE;
-          bodyItemDataChanged(bodyId, 'flags', flags);
+          cadBodyTextureData[1] = flags;
+          bodyItemDataChanged(this.bodyId);
         }
       }
     });
 
-    if (cadBody.cutAwayChanged) {
-      this.cutAwayChangedId = cadBody.cutAwayChanged.connect(() => {
-        if (cadBody.isCutawayEnabled()) flags |= BODY_FLAG_CUTAWAY;
-        else flags &= ~BODY_FLAG_CUTAWAY;
-
-        bodyItemDataChanged(bodyId, 'flags', flags);
-      });
-    } else {
-      const cutParam = cadBody.getParameter('CutawayEnabled');
-      if (cutParam) {
-        this.cutAwayEnabledId = cutParam.valueChanged.connect(() => {
-          if (cutParam.getValue()) flags |= BODY_FLAG_CUTAWAY;
-          else flags &= ~BODY_FLAG_CUTAWAY;
-
-          bodyItemDataChanged(bodyId, 'flags', flags);
-        });
-      }
-    }
-
-    this.materialChangedId = cadBody.getParameter('Material').valueChanged.connect(() => {
-      const material = cadBody.getMaterial();
+    this.materialChangedId = this.cadBody.getParameter('Material').on('valueChanged', () => {
+      const material = this.cadBody.getMaterial();
       let glmaterialcoords = material.getMetadata('glmaterialcoords');
-      if (!glmaterialcoords)
+      if (!glmaterialcoords) {
         glmaterialcoords = cadpassdata.materialLibrary.addMaterial(
           material
         );
-
-      bodyItemDataChanged(bodyId, 'material', glmaterialcoords);
+      }
+      cadBodyTextureData[4] = glmaterialcoords.x;
+      cadBodyTextureData[5] = glmaterialcoords.y;
+      bodyItemDataChanged(this.bodyId);
     });
 
     // /////////////////////////////////
     // Body Xfo
-    const bodyXfo = cadBody.getGlobalXfo();
 
-    // Note: on mobile GPUs, we get only FP16 math in the
-    // fragment shader, causing inaccuracies in modelMatrix
-    // calculation. By offsetting the data to the origin
-    // we calculate a modelMatrix in the asset space, and
-    //  then add it back on during final drawing.
-    // bodyXfo.tr.subtractInPlace(this.__assetCentroid)
-
-    const tr = zeaEngine.Vec3.createFromFloat32Buffer(
-      sceneBodyItemsData.buffer,
-      offset + 5
-    );
-    const ori = zeaEngine.Vec4.createFromFloat32Buffer(
-      sceneBodyItemsData.buffer,
-      offset + 8
-    );
-    const sc = zeaEngine.Vec3.createFromFloat32Buffer(
-      sceneBodyItemsData.buffer,
-      offset + 12
-    );
-    tr.set(bodyXfo.tr.x, bodyXfo.tr.y, bodyXfo.tr.z);
-    ori.set(bodyXfo.ori.x, bodyXfo.ori.y, bodyXfo.ori.z, bodyXfo.ori.w);
-    sc.set(bodyXfo.sc.x, bodyXfo.sc.y, bodyXfo.sc.z);
-
-    const xfoArray = new Float32Array(10);
-    const globalXfoParam = cadBody.getParameter("GlobalXfo");
-    this.globalXfoChangedId = globalXfoParam.valueChanged.connect(() => {
-      const bodyXfo = globalXfoParam.getValue();
-      // const bodyXfo = cadBody.getGlobalXfo().clone()
+    const updateXfo = (bodyXfo)=>{
+      // Note: on mobile GPUs, we get only FP16 math in the
+      // fragment shader, causing inaccuracies in modelMatrix
+      // calculation. By offsetting the data to the origin
+      // we calculate a modelMatrix in the asset space, and
+      //  then add it back on during final drawing.
       // bodyXfo.tr.subtractInPlace(this.__assetCentroid)
-
-      xfoArray.set(bodyXfo.tr.asArray(), 0);
-      xfoArray.set(bodyXfo.ori.asArray(), 3);
-      xfoArray.set(bodyXfo.sc.asArray(), 7);
-      bodyItemDataChanged(bodyId, 'xfo', xfoArray);
+    
+      const off = 8;
+      cadBodyTextureData[off+0] = bodyXfo.tr.x;
+      cadBodyTextureData[off+1] = bodyXfo.tr.y;
+      cadBodyTextureData[off+2] = bodyXfo.tr.z;
+      // cadBodyTextureData[off+3]
+      cadBodyTextureData[off+4] = bodyXfo.ori.x;
+      cadBodyTextureData[off+5] = bodyXfo.ori.y;
+      cadBodyTextureData[off+6] = bodyXfo.ori.z;
+      cadBodyTextureData[off+7] = bodyXfo.ori.w;
+      cadBodyTextureData[off+8] = bodyXfo.sc.x;
+      cadBodyTextureData[off+9] = bodyXfo.sc.y;
+      cadBodyTextureData[off+10] = bodyXfo.sc.z;
+    };
+    updateXfo(this.cadBody.getGlobalXfo());
+    const globalXfoParam = this.cadBody.getParameter("GlobalXfo");
+    this.globalXfoChangedId = globalXfoParam.on('valueChanged', () => {
+      bodyItemDataChanged(this.bodyId);
+      updateXfo(globalXfoParam.getValue());
     });
 
     // /////////////////////////////////
     // Highlight
-
-    this.highlightChangedId = cadBody.highlightChanged.connect(() => {
-      if (!highlightChangeBatch.dirty) {
-        setTimeout(pushhighlightChangeBatchToWorker, 1);
-        highlightChangeBatch.dirty = true;
-      }
-      const highlighted = cadBody.isHighlighted();
-      if (highlighted) {
-        if (highlightedBodies.indexOf(bodyId) == -1) {
-          highlightedBodies.push(bodyId);
-
-          // Note: filter out highlight/unhighlight in a single update.
-          const indexInSelChangeSet = highlightChangeBatch.unhighlightedBodyIds.indexOf(
-            bodyId
-          );
-          if (indexInSelChangeSet != -1) {
-            highlightChangeBatch.unhighlightedBodyIds.splice(
-              indexInSelChangeSet,
-              1
-            );
-          } else {
-            highlightChangeBatch.highlightedBodyIds.push(bodyId);
-          }
-        }
-        bodyItemDataChanged(
-          bodyId,
-          'highlight',
-          cadBody.getHighlight().asArray()
-        );
-      } else {
-        const index = highlightedBodies.indexOf(bodyId);
-        if (index != -1) {
-          highlightedBodies.splice(index, 1);
-
-          // Note: filter out highlight/unhighlight in a single update.
-          const indexInSelChangeSet = highlightChangeBatch.highlightedBodyIds.indexOf(
-            bodyId
-          );
-          if (indexInSelChangeSet != -1) {
-            highlightChangeBatch.highlightedBodyIds.splice(
-              indexInSelChangeSet,
-              1
-            );
-          } else {
-            highlightChangeBatch.unhighlightedBodyIds.push(bodyId);
-          }
-        }
-      }
-    });
-
-    if (cadBody.isHighlighted()) {
-      const highlight = cadBody.getHighlight();
-      sceneBodyItemsData[offset + 15] = highlight.r;
-      sceneBodyItemsData[offset + 16] = highlight.g;
-      sceneBodyItemsData[offset + 17] = highlight.b;
-      sceneBodyItemsData[offset + 18] = highlight.a;
-      // ///////////////////////////////////
-      // TODO: Bug here!!!
-      // If a body is initially hilighted, then
-      // we must generate a drawItemSet for the
-      // hilighted items. See: bodyHighlightChanged
-      // highlightedBodies.push(bodyId);
+    const updateHighlightColor = ()=>{
+      const hoff = 20;
+      const highlight = this.cadBody.getHighlight();
+      cadBodyTextureData[hoff+0] = highlight.r;
+      cadBodyTextureData[hoff+1] = highlight.g;
+      cadBodyTextureData[hoff+2] = highlight.b;
+      cadBodyTextureData[hoff+3] = highlight.a;
+      bodyItemDataChanged(this.bodyId);
+    };
+    if (this.cadBody.isHighlighted()) {
+      updateHighlightColor();
+      highlightedBodies.push(this.bodyId);
     }
+
+    this.highlightChangedId = this.cadBody.on('highlightChanged', () => {
+      const highlighted = this.cadBody.isHighlighted();
+      if (highlighted) {
+        updateHighlightColor();
+      }
+      highlightedChanged(this.bodyId, highlighted);
+    });
 
     // /////////////////////////////////
     // Body Cut Plane
-    const cutPlane = new zeaEngine.Vec3(1, 0, 0);
-    const cutPlaneDist = 0;
-    sceneBodyItemsData[offset + 19] = cutPlane.x;
-    sceneBodyItemsData[offset + 20] = cutPlane.y;
-    sceneBodyItemsData[offset + 21] = cutPlane.z;
-    sceneBodyItemsData[offset + 22] = cutPlaneDist;
+    const cpoff = 24;
+    const updateCutaway = () =>{
+      if (this.cadBody.isCutawayEnabled()) {
+        if (!(flags&BODY_FLAG_CUTAWAY)) {
+          flags |= BODY_FLAG_CUTAWAY;
+          cadBodyTextureData[1] = flags;
+        }
 
-    // const cutParam = cadBody.getParameter('Cut');
-    // cutParam.valueChanged.connect(() => {
-    //   cutChanged(bodyId, cutParam.getValue());
-    // })
-
+        const cutPlane = this.cadBody.getCutVector();
+        const cutPlaneDist = this.cadBody.getCutDist();
+        cadBodyTextureData[cpoff+0] = cutPlane.x;
+        cadBodyTextureData[cpoff+1] = cutPlane.y;
+        cadBodyTextureData[cpoff+2] = cutPlane.z;
+        cadBodyTextureData[cpoff+3] = cutPlaneDist;
+        bodyItemDataChanged(this.bodyId);
+      } else {
+        if (flags&BODY_FLAG_CUTAWAY) {
+          flags &= ~BODY_FLAG_CUTAWAY;
+          cadBodyTextureData[1] = flags;
+          bodyItemDataChanged(this.bodyId);
+        }
+      }
+    };
+    updateCutaway();
+    this.cutAwayChangedId = this.cadBody.on('cutAwayChanged', updateCutaway);
   }
 
-  destroy(){
-    this.cadBody.visibilityChanged.disconnectId(this.visibilityChangedId);
+  destroy() {
+    this.cadBody.off('visibilityChanged', this.visibilityChangedId);
     if (this.cadBody.cutAwayChanged) {
-      this.cadBody.cutAwayChanged.disconnectId(this.cutAwayChangedId);
+      this.cadBody.off('cutAwayChanged', this.cutAwayChangedId);
     } else {
-      const cutParam = cadBody.getParameter('CutawayEnabled');
+      const cutParam = this.cadBody.getParameter('CutawayEnabled');
       if (cutParam) {
-        cutParam.valueChanged.disconnectId(this.cutAwayEnabledId);
+        cutParam.off('valueChanged', this.cutAwayEnabledId);
       }
     }
-    this.cadBody.getParameter('Material').valueChanged.disconnectId(this.materialChangedId);
-    this.cadBody.getParameter("GlobalXfo").valueChanged.disconnectId(this.globalXfoChangedId);
-    this.cadBody.highlightChanged.disconnectId(this.highlightChangedId);
+    this.cadBody.getParameter('Material').off('valueChanged', this.materialChangedId);
+    this.cadBody.getParameter("GlobalXfo").off('valueChanged', this.globalXfoChangedId);
+    this.cadBody.off('highlightChanged', this.highlightChangedId);
   }
 }
 
@@ -4903,9 +5200,11 @@ function createBase64WorkerFactory(base64, sourcemap = null, enableUnicode = fal
 }
 
 /* eslint-disable */
-const WorkerFactory = createBase64WorkerFactory('Lyogcm9sbHVwLXBsdWdpbi13ZWItd29ya2VyLWxvYWRlciAqLwovLyBUYWtlbiBmcm9tIGhlcmU6IGh0dHBzOi8vZ2l0aHViLmNvbS9qYWtlc2dvcmRvbi9iaW4tcGFja2luZy9ibG9iL21hc3Rlci9qcy9wYWNrZXIuZ3Jvd2luZy5qcw0KDQovLyBpbXBvcnQgew0KLy8gICBTaWduYWwNCi8vIH0gZnJvbSAnLi9TaWduYWwnDQoNCi8qKiAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqDQoNClRoaXMgaXMgYSBiaW5hcnkgdHJlZSBiYXNlZCBiaW4gcGFja2luZyBhbGdvcml0aG0gdGhhdCBpcyBtb3JlIGNvbXBsZXggdGhhbg0KdGhlIHNpbXBsZSBQYWNrZXIgKHBhY2tlci5qcykuIEluc3RlYWQgb2Ygc3RhcnRpbmcgb2ZmIHdpdGggYSBmaXhlZCB3aWR0aCBhbmQNCmhlaWdodCwgaXQgc3RhcnRzIHdpdGggdGhlIHdpZHRoIGFuZCBoZWlnaHQgb2YgdGhlIGZpcnN0IGJsb2NrIHBhc3NlZCBhbmQgdGhlbg0KZ3Jvd3MgYXMgbmVjZXNzYXJ5IHRvIGFjY29tb2RhdGUgZWFjaCBzdWJzZXF1ZW50IGJsb2NrLiBBcyBpdCBncm93cyBpdCBhdHRlbXB0cw0KdG8gbWFpbnRhaW4gYSByb3VnaGx5IHNxdWFyZSByYXRpbyBieSBtYWtpbmcgJ3NtYXJ0JyBjaG9pY2VzIGFib3V0IHdoZXRoZXIgdG8NCmdyb3cgcmlnaHQgb3IgZG93bi4NCg0KV2hlbiBncm93aW5nLCB0aGUgYWxnb3JpdGhtIGNhbiBvbmx5IGdyb3cgdG8gdGhlIHJpZ2h0IE9SIGRvd24uIFRoZXJlZm9yZSwgaWYNCnRoZSBuZXcgYmxvY2sgaXMgQk9USCB3aWRlciBhbmQgdGFsbGVyIHRoYW4gdGhlIGN1cnJlbnQgdGFyZ2V0IHRoZW4gaXQgd2lsbCBiZQ0KcmVqZWN0ZWQuIFRoaXMgbWFrZXMgaXQgdmVyeSBpbXBvcnRhbnQgdG8gaW5pdGlhbGl6ZSB3aXRoIGEgc2Vuc2libGUgc3RhcnRpbmcNCndpZHRoIGFuZCBoZWlnaHQuIElmIHlvdSBhcmUgcHJvdmlkaW5nIHNvcnRlZCBpbnB1dCAobGFyZ2VzdCBmaXJzdCkgdGhlbiB0aGlzDQp3aWxsIG5vdCBiZSBhbiBpc3N1ZS4NCg0KQSBwb3RlbnRpYWwgd2F5IHRvIHNvbHZlIHRoaXMgbGltaXRhdGlvbiB3b3VsZCBiZSB0byBhbGxvdyBncm93dGggaW4gQk9USA0KZGlyZWN0aW9ucyBhdCBvbmNlLCBidXQgdGhpcyByZXF1aXJlcyBtYWludGFpbmluZyBhIG1vcmUgY29tcGxleCB0cmVlDQp3aXRoIDMgY2hpbGRyZW4gKGRvd24sIHJpZ2h0IGFuZCBjZW50ZXIpIGFuZCB0aGF0IGNvbXBsZXhpdHkgY2FuIGJlIGF2b2lkZWQNCmJ5IHNpbXBseSBjaG9zaW5nIGEgc2Vuc2libGUgc3RhcnRpbmcgYmxvY2suDQoNCkJlc3QgcmVzdWx0cyBvY2N1ciB3aGVuIHRoZSBpbnB1dCBibG9ja3MgYXJlIHNvcnRlZCBieSBoZWlnaHQsIG9yIGV2ZW4gYmV0dGVyDQp3aGVuIHNvcnRlZCBieSBtYXgod2lkdGgsaGVpZ2h0KS4NCg0KSW5wdXRzOg0KLS0tLS0tDQoNCiAgYmxvY2tzOiBhcnJheSBvZiBhbnkgb2JqZWN0cyB0aGF0IGhhdmUgLncgYW5kIC5oIGF0dHJpYnV0ZXMNCg0KT3V0cHV0czoNCi0tLS0tLS0NCg0KICBtYXJrcyBlYWNoIGJsb2NrIHRoYXQgZml0cyB3aXRoIGEgLmZpdCBhdHRyaWJ1dGUgcG9pbnRpbmcgdG8gYQ0KICBub2RlIHdpdGggLnggYW5kIC55IGNvb3JkaW5hdGVzDQoNCkV4YW1wbGU6DQotLS0tLS0tDQoNCiAgdmFyIGJsb2NrcyA9IFsNCiAgICB7IHc6IDEwMCwgaDogMTAwIH0sDQogICAgeyB3OiAxMDAsIGg6IDEwMCB9LA0KICAgIHsgdzogIDgwLCBoOiAgODAgfSwNCiAgICB7IHc6ICA4MCwgaDogIDgwIH0sDQogICAgZXRjDQogICAgZXRjDQogIF07DQoNCiAgdmFyIHBhY2tlciA9IG5ldyBHcm93aW5nUGFja2VyKCk7DQogIHBhY2tlci5maXQoYmxvY2tzKTsNCg0KICBmb3IodmFyIG4gPSAwIDsgbiA8IGJsb2Nrcy5sZW5ndGggOyBuKyspIHsNCiAgICB2YXIgYmxvY2sgPSBibG9ja3Nbbl07DQogICAgaWYgKGJsb2NrLmZpdCkgew0KICAgICAgRHJhdyhibG9jay5maXQueCwgYmxvY2suZml0LnksIGJsb2NrLncsIGJsb2NrLmgpOw0KICAgIH0NCiAgfQ0KDQoNCioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKi8NCg0KLyoqIENsYXNzIHJlcHJlc2VudGluZyBhIGdyb3dpbmcgcGFja2VyLiANCiAqIEBpZ25vcmUNCiovDQpjbGFzcyBHcm93aW5nUGFja2VyIHsNCiAgLyoqDQogICAqIENyZWF0ZSBhIGdyb3dpbmcgcGFja2VyLg0KICAgKiBAcGFyYW0ge251bWJlcn0gdyAtIFRoZSB3IHZhbHVlLg0KICAgKiBAcGFyYW0ge251bWJlcn0gaCAtIFRoZSBoIHZhbHVlLg0KICAgKi8NCiAgY29uc3RydWN0b3IodyA9IDAsIGggPSAwKSB7DQogICAgdGhpcy5yb290ID0gew0KICAgICAgeDogMCwNCiAgICAgIHk6IDAsDQogICAgICB3OiB3LA0KICAgICAgaDogaCwNCiAgICB9Ow0KDQogICAgLy8gdGhpcy5yZXNpemVkID0gbmV3IFNpZ25hbCgpOw0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBmaXQgbWV0aG9kLg0KICAgKiBAcGFyYW0ge2FueX0gYmxvY2tzIC0gVGhlIGJsb2NrcyBwYXJhbS4NCiAgICovDQogIGZpdChibG9ja3MpIHsNCiAgICBjb25zdCBsZW4gPSBibG9ja3MubGVuZ3RoOw0KICAgIGlmIChsZW4gPT0gMCkgcmV0dXJuDQogICAgaWYgKHRoaXMucm9vdC53IDwgYmxvY2tzWzBdLncpIHsNCiAgICAgIHRoaXMucm9vdC53ID0gYmxvY2tzWzBdLnc7DQogICAgfQ0KICAgIGlmICh0aGlzLnJvb3QuaCA8IGJsb2Nrc1swXS5oKSB7DQogICAgICB0aGlzLnJvb3QuaCA9IGJsb2Nrc1swXS5oOw0KICAgIH0NCiAgICBjb25zdCBlYWNoQmxvY2sgPSBibG9jayA9PiB7DQogICAgICBibG9jay5maXQgPSB0aGlzLl9fYWRkQmxvY2soYmxvY2spOw0KICAgIH07DQogICAgYmxvY2tzLmZvckVhY2goZWFjaEJsb2NrKTsNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgX19hZGRCbG9jayBtZXRob2QuDQogICAqIEBwYXJhbSB7YW55fSBibG9jayAtIFRoZSBibG9ja3MgcGFyYW0uDQogICAqIEByZXR1cm4ge2FueX0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKiBAcHJpdmF0ZQ0KICAgKi8NCiAgX19hZGRCbG9jayhibG9jaykgew0KICAgIGNvbnN0IG5vZGUgPSB0aGlzLmZpbmROb2RlKHRoaXMucm9vdCwgYmxvY2sudywgYmxvY2suaCk7DQogICAgaWYgKG5vZGUpIHJldHVybiB0aGlzLnNwbGl0Tm9kZShub2RlLCBibG9jay53LCBibG9jay5oKQ0KICAgIGVsc2UgcmV0dXJuIHRoaXMuZ3Jvd05vZGUoYmxvY2sudywgYmxvY2suaCkNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgYWRkQmxvY2sgbWV0aG9kLg0KICAgKiBAcGFyYW0ge2FueX0gYmxvY2sgLSBUaGUgYmxvY2tzIHBhcmFtLg0KICAgKiBAcmV0dXJuIHthbnl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGFkZEJsb2NrKGJsb2NrKSB7DQogICAgLy8gSW5pdGlhbGlzZSB0aGUgdHJlZSBpZiBhZGRpbmcgZmlyc3QgYmxvY2suDQogICAgaWYgKCF0aGlzLnJvb3QudXNlZCkgew0KICAgICAgaWYgKHRoaXMucm9vdC53IDwgYmxvY2sudykgdGhpcy5yb290LncgPSBibG9jay53Ow0KICAgICAgaWYgKHRoaXMucm9vdC5oIDwgYmxvY2suaCkgdGhpcy5yb290LmggPSBibG9jay5oOw0KICAgIH0NCiAgICBjb25zdCBub2RlID0gdGhpcy5maW5kTm9kZSh0aGlzLnJvb3QsIGJsb2NrLncsIGJsb2NrLmgpOw0KICAgIGlmIChub2RlKSByZXR1cm4gdGhpcy5zcGxpdE5vZGUobm9kZSwgYmxvY2sudywgYmxvY2suaCkNCiAgICBlbHNlIHJldHVybiB0aGlzLmdyb3dOb2RlKGJsb2NrLncsIGJsb2NrLmgpDQogIH0NCg0KICAvKioNCiAgICogVGhlIGZpbmROb2RlIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHJvb3QgLSBUaGUgcm9vdCBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBmaW5kTm9kZShyb290LCB3LCBoKSB7DQogICAgaWYgKHJvb3QudXNlZCkNCiAgICAgIHJldHVybiB0aGlzLmZpbmROb2RlKHJvb3QucmlnaHQsIHcsIGgpIHx8IHRoaXMuZmluZE5vZGUocm9vdC5kb3duLCB3LCBoKQ0KICAgIGVsc2UgaWYgKHcgPD0gcm9vdC53ICYmIGggPD0gcm9vdC5oKSByZXR1cm4gcm9vdA0KICAgIGVsc2UgcmV0dXJuIG51bGwNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgc3BsaXROb2RlIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IG5vZGUgLSBUaGUgbm9kZSBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBzcGxpdE5vZGUobm9kZSwgdywgaCkgew0KICAgIG5vZGUudXNlZCA9IHRydWU7DQogICAgbm9kZS5kb3duID0gew0KICAgICAgeDogbm9kZS54LA0KICAgICAgeTogbm9kZS55ICsgaCwNCiAgICAgIHc6IG5vZGUudywNCiAgICAgIGg6IG5vZGUuaCAtIGgsDQogICAgfTsNCiAgICBub2RlLnJpZ2h0ID0gew0KICAgICAgeDogbm9kZS54ICsgdywNCiAgICAgIHk6IG5vZGUueSwNCiAgICAgIHc6IG5vZGUudyAtIHcsDQogICAgICBoOiBoLA0KICAgIH07DQogICAgcmV0dXJuIG5vZGUNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgZ3Jvd05vZGUgbWV0aG9kLg0KICAgKiBAcGFyYW0ge251bWJlcn0gdyAtIFRoZSB3IHBhcmFtLg0KICAgKiBAcGFyYW0ge251bWJlcn0gaCAtIFRoZSBoIHBhcmFtLg0KICAgKiBAcmV0dXJuIHthbnl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGdyb3dOb2RlKHcsIGgpIHsNCiAgICBjb25zdCBjYW5Hcm93RG93biA9IHcgPD0gdGhpcy5yb290Lnc7DQogICAgY29uc3QgY2FuR3Jvd1JpZ2h0ID0gaCA8PSB0aGlzLnJvb3QuaDsNCg0KICAgIGNvbnN0IHNob3VsZEdyb3dSaWdodCA9IGNhbkdyb3dSaWdodCAmJiB0aGlzLnJvb3QuaCA+PSB0aGlzLnJvb3QudyArIHc7IC8vIGF0dGVtcHQgdG8ga2VlcCBzcXVhcmUtaXNoIGJ5IGdyb3dpbmcgcmlnaHQgd2hlbiBoZWlnaHQgaXMgbXVjaCBncmVhdGVyIHRoYW4gd2lkdGgNCiAgICBjb25zdCBzaG91bGRHcm93RG93biA9IGNhbkdyb3dEb3duICYmIHRoaXMucm9vdC53ID49IHRoaXMucm9vdC5oICsgaDsgLy8gYXR0ZW1wdCB0byBrZWVwIHNxdWFyZS1pc2ggYnkgZ3Jvd2luZyBkb3duICB3aGVuIHdpZHRoICBpcyBtdWNoIGdyZWF0ZXIgdGhhbiBoZWlnaHQNCg0KICAgIGlmIChzaG91bGRHcm93UmlnaHQpIHJldHVybiB0aGlzLmdyb3dSaWdodCh3LCBoKQ0KICAgIGVsc2UgaWYgKHNob3VsZEdyb3dEb3duKSByZXR1cm4gdGhpcy5ncm93RG93bih3LCBoKQ0KICAgIGVsc2UgaWYgKGNhbkdyb3dSaWdodCkgcmV0dXJuIHRoaXMuZ3Jvd1JpZ2h0KHcsIGgpDQogICAgZWxzZSBpZiAoY2FuR3Jvd0Rvd24pIHJldHVybiB0aGlzLmdyb3dEb3duKHcsIGgpDQogICAgZWxzZSByZXR1cm4gbnVsbCAvLyBuZWVkIHRvIGVuc3VyZSBzZW5zaWJsZSByb290IHN0YXJ0aW5nIHNpemUgdG8gYXZvaWQgdGhpcyBoYXBwZW5pbmcNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgZ3Jvd1JpZ2h0IG1ldGhvZC4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBncm93UmlnaHQodywgaCkgew0KICAgIHRoaXMucm9vdCA9IHsNCiAgICAgIHVzZWQ6IHRydWUsDQogICAgICB4OiAwLA0KICAgICAgeTogMCwNCiAgICAgIHc6IHRoaXMucm9vdC53ICsgdywNCiAgICAgIGg6IHRoaXMucm9vdC5oLA0KICAgICAgZG93bjogdGhpcy5yb290LA0KICAgICAgcmlnaHQ6IHsNCiAgICAgICAgeDogdGhpcy5yb290LncsDQogICAgICAgIHk6IDAsDQogICAgICAgIHc6IHcsDQogICAgICAgIGg6IHRoaXMucm9vdC5oLA0KICAgICAgfSwNCiAgICB9Ow0KICAgIGNvbnN0IG5vZGUgPSB0aGlzLmZpbmROb2RlKHRoaXMucm9vdCwgdywgaCk7DQogICAgbGV0IHJlczsNCiAgICBpZiAobm9kZSkgcmVzID0gdGhpcy5zcGxpdE5vZGUobm9kZSwgdywgaCk7DQogICAgLy8gdGhpcy5yZXNpemVkLmVtaXQodGhpcy5yb290LncsIHRoaXMucm9vdC5oKTsNCiAgICByZXR1cm4gcmVzDQogIH0NCg0KICAvKioNCiAgICogVGhlIGdyb3dEb3duIG1ldGhvZC4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBncm93RG93bih3LCBoKSB7DQogICAgdGhpcy5yb290ID0gew0KICAgICAgdXNlZDogdHJ1ZSwNCiAgICAgIHg6IDAsDQogICAgICB5OiAwLA0KICAgICAgdzogdGhpcy5yb290LncsDQogICAgICBoOiB0aGlzLnJvb3QuaCArIGgsDQogICAgICBkb3duOiB7DQogICAgICAgIHg6IDAsDQogICAgICAgIHk6IHRoaXMucm9vdC5oLA0KICAgICAgICB3OiB0aGlzLnJvb3QudywNCiAgICAgICAgaDogaCwNCiAgICAgIH0sDQogICAgICByaWdodDogdGhpcy5yb290LA0KICAgIH07DQogICAgY29uc3Qgbm9kZSA9IHRoaXMuZmluZE5vZGUodGhpcy5yb290LCB3LCBoKTsNCiAgICBsZXQgcmVzOw0KICAgIGlmIChub2RlKSByZXMgPSB0aGlzLnNwbGl0Tm9kZShub2RlLCB3LCBoKTsNCiAgICAvLyB0aGlzLnJlc2l6ZWQuZW1pdCh0aGlzLnJvb3QudywgdGhpcy5yb290LmgpOw0KICAgIHJldHVybiByZXMNCiAgfQ0KfQoKLy8gaW1wb3J0IHsNCi8vICAgICBWZWMyLA0KLy8gICAgIFZlYzMsDQovLyAgICAgUXVhdCwNCi8vICAgICBDb2xvciwNCi8vICAgICBCb3gyLA0KLy8gICAgIEJveDMNCi8vIH0gZnJvbSAnLi4vTWF0aCc7DQoNCmNvbnN0IGRlY29kZTE2Qml0RmxvYXQgPSBoID0+IHsNCiAgY29uc3QgcyA9IChoICYgMHg4MDAwKSA+PiAxNTsNCiAgY29uc3QgZSA9IChoICYgMHg3YzAwKSA+PiAxMDsNCiAgY29uc3QgZiA9IGggJiAweDAzZmY7DQoNCiAgaWYgKGUgPT0gMCkgew0KICAgIHJldHVybiAocyA/IC0xIDogMSkgKiBNYXRoLnBvdygyLCAtMTQpICogKGYgLyBNYXRoLnBvdygyLCAxMCkpDQogIH0gZWxzZSBpZiAoZSA9PSAweDFmKSB7DQogICAgcmV0dXJuIGYgPyBOYU4gOiAocyA/IC0xIDogMSkgKiBJbmZpbml0eQ0KICB9DQoNCiAgcmV0dXJuIChzID8gLTEgOiAxKSAqIE1hdGgucG93KDIsIGUgLSAxNSkgKiAoMSArIGYgLyBNYXRoLnBvdygyLCAxMCkpDQp9Ow0KDQovKiogQ2xhc3MgcmVwcmVzZW50aW5nIGEgYmluIHJlYWRlci4gDQogKiBAaWdub3JlDQoqLw0KY2xhc3MgQmluUmVhZGVyIHsNCiAgLyoqDQogICAqIENyZWF0ZSBhIGJpbiByZWFkZXIuDQogICAqIEBwYXJhbSB7QnVmZmVyfSBkYXRhIC0gVGhlIGRhdGEgYnVmZmVyLg0KICAgKiBAcGFyYW0ge251bWJlcn0gYnl0ZU9mZnNldCAtIFRoZSBieXRlIG9mZnNldCB2YWx1ZSB0byBzdGFydCByZWFkaW5nIHRoZSBidWZmZXIuDQogICAqIEBwYXJhbSB7Ym9vbGVhbn0gaXNNb2JpbGVEZXZpY2UgLSBUaGUgaXNNb2JpbGVEZXZpY2UgdmFsdWUuDQogICAqLw0KICBjb25zdHJ1Y3RvcihkYXRhLCBieXRlT2Zmc2V0ID0gMCwgaXNNb2JpbGVEZXZpY2UgPSB0cnVlKSB7DQogICAgdGhpcy5fX2RhdGEgPSBkYXRhOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ID0gYnl0ZU9mZnNldDsNCiAgICB0aGlzLl9fZGF0YVZpZXcgPSBuZXcgRGF0YVZpZXcodGhpcy5fX2RhdGEpOw0KICAgIHRoaXMuX19pc01vYmlsZURldmljZSA9IGlzTW9iaWxlRGV2aWNlOw0KICAgIHRoaXMudXRmOGRlY29kZXIgPSBuZXcgVGV4dERlY29kZXIoKTsNCiAgfQ0KDQogIC8qKg0KICAgKiBHZXR0ZXIgZm9yIGlzTW9iaWxlRGV2aWNlLg0KICAgKiBAcmV0dXJuIHtCb29sZWFufSAtIFJldHVybnMgdHJ1ZSBpcyBhIG1vYmlsZSBkZXZpY2UgaXMgZGV0ZWN0ZWQuDQogICAqLw0KICBnZXQgaXNNb2JpbGVEZXZpY2UoKSB7DQogICAgcmV0dXJuIHRoaXMuX19pc01vYmlsZURldmljZQ0KICB9DQoNCiAgLyoqDQogICAqIEdldHRlciBmb3IgZGF0YS4NCiAgICogQHJldHVybiB7QnVmZmVyfSAtIFRoZSBkYXRhIGJ1ZmZlciB3ZSBhcmUgcmVhZGluZyBmcm9tLA0KICAgKi8NCiAgZ2V0IGRhdGEoKSB7DQogICAgcmV0dXJuIHRoaXMuX19kYXRhDQogIH0NCg0KICAvKioNCiAgICogR2V0dGVyIGZvciBieXRlTGVuZ3RoLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHRvdGFsIGxlbmd0aCBvZiB0aGUgYnVmZmVyDQogICAqLw0KICBnZXQgYnl0ZUxlbmd0aCgpIHsNCiAgICByZXR1cm4gdGhpcy5fX2RhdGFWaWV3LmJ5dGVMZW5ndGgNCiAgfQ0KDQogIC8qKg0KICAgKiBHZXR0ZXIgZm9yIHJlbWFpbmluZ0J5dGVMZW5ndGguDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmVlbWFpbmluZyBsZW5ndGggb2YgdGhlIGJ1ZmZlciB0byByZWFkLg0KICAgKi8NCiAgZ2V0IHJlbWFpbmluZ0J5dGVMZW5ndGgoKSB7DQogICAgcmV0dXJuIHRoaXMuX19kYXRhVmlldy5ieXRlTGVuZ3RoIC0gdGhpcy5fX2J5dGVPZmZzZXQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgcG9zIG1ldGhvZC4NCiAgICogQHJldHVybiB7bnVtYmVyfSAtIFRoZSBjdXJyZW50IG9mZnNldCBpbiB0aGUgYmluYXJ5IGJ1ZmZlcg0KICAgKi8NCiAgcG9zKCkgew0KICAgIHJldHVybiB0aGlzLl9fYnl0ZU9mZnNldA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBzZWVrIG1ldGhvZC4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGJ5dGVPZmZzZXQgLSBUaGUgYnl0ZU9mZnNldCBwYXJhbS4NCiAgICovDQogIHNlZWsoYnl0ZU9mZnNldCkgew0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ID0gYnl0ZU9mZnNldDsNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgYWR2YW5jZSBtZXRob2QuDQogICAqIEBwYXJhbSB7bnVtYmVyfSBieXRlT2Zmc2V0IC0gVGhlIGJ5dGUgT2Zmc2V0IGFtb3VudC4NCiAgICovDQogIGFkdmFuY2UoYnl0ZU9mZnNldCkgew0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IGJ5dGVPZmZzZXQ7DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRVSW50OCBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVJbnQ4KCkgew0KICAgIGNvbnN0IHJlc3VsdCA9IHRoaXMuX19kYXRhVmlldy5nZXRVaW50OCh0aGlzLl9fYnl0ZU9mZnNldCk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMTsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRVSW50MTYgbWV0aG9kLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRVSW50MTYoKSB7DQogICAgY29uc3QgcmVzdWx0ID0gdGhpcy5fX2RhdGFWaWV3LmdldFVpbnQxNih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMjsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQzMiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVJbnQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDMyKHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSA0Ow0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFNJbnQzMiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFNJbnQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0SW50MzIodGhpcy5fX2J5dGVPZmZzZXQsIHRydWUpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDQ7DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkRmxvYXQxNiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZEZsb2F0MTYoKSB7DQogICAgY29uc3QgdWludDE2ID0gdGhpcy5sb2FkVUludDE2KCk7DQogICAgcmV0dXJuIGRlY29kZTE2Qml0RmxvYXQodWludDE2KQ0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkVUZsb2F0MTYgcmV0dXJucyBhIGZsb2F0IHdoZXJlIHRoZSBzaWduIGJpZyBpbmRpY2F0ZXMgaXQgaXMgPiAyMDEuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVGbG9hdDE2KCkgew0KICAgIGNvbnN0IHJlc3VsdCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgICBpZiAocmVzdWx0IDwgMC4wKSB7DQogICAgICByZXR1cm4gMjA0OC4wIC0gcmVzdWx0IC8vIE5vdGU6IHN1YnRyYWN0IGEgbmVnYXRpdmUgbnVtYmVyIHRvIGFkZCBpdC4NCiAgICB9IGVsc2Ugew0KICAgICAgcmV0dXJuIHJlc3VsdA0KICAgIH0NCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZEZsb2F0MTZGcm9tMnhVSW50OCBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZEZsb2F0MTZGcm9tMnhVSW50OCgpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQxNih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgLy8gY29uc3QgdWludDhzID0gdGhpcy5sb2FkVUludDhBcnJheSgyKTsNCiAgICAvLyByZXR1cm4gZGVjb2RlMTZCaXRGbG9hdCh1aW50OHMpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDI7DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkVUludDMyRnJvbTJ4VUZsb2F0MTYgbG9hZHMgYSBzaW5nbGUgU2lnbmVkIGludGVnZXIgdmFsdWUgZnJvbSAyIFVuc2lnbmVkIEZsb2F0MTYgdmFsdWVzLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRVSW50MzJGcm9tMnhVRmxvYXQxNigpIHsNCiAgICBjb25zdCBwYXJ0QSA9IHRoaXMubG9hZFVGbG9hdDE2KCk7DQogICAgY29uc3QgcGFydEIgPSB0aGlzLmxvYWRVRmxvYXQxNigpOw0KICAgIHJldHVybiBwYXJ0QSArIHBhcnRCICogNDA5Ng0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkU0ludDMyRnJvbTJ4RmxvYXQxNiBsb2FkcyBhIHNpbmdsZSBTaWduZWQgaW50ZWdlciB2YWx1ZSBmcm9tIDIgc2lnbmVkIEZsb2F0MTYgdmFsdWVzLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRTSW50MzJGcm9tMnhGbG9hdDE2KCkgew0KICAgIGNvbnN0IHBhcnRBID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAgIGNvbnN0IHBhcnRCID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAgIHJldHVybiBwYXJ0QSArIHBhcnRCICogMjA0OA0KICB9DQoNCg0KICAvKioNCiAgICogVGhlIGxvYWRGbG9hdDMyIG1ldGhvZC4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkRmxvYXQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQzMih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gNDsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRGbG9hdDMyIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDhBcnJheShzaXplID0gdW5kZWZpbmVkLCBjbG9uZSA9IGZhbHNlKSB7DQogICAgaWYgKHNpemUgPT0gdW5kZWZpbmVkKSBzaXplID0gdGhpcy5sb2FkVUludDMyKCk7DQogICAgY29uc3QgcmVzdWx0ID0gbmV3IFVpbnQ4QXJyYXkodGhpcy5fX2RhdGEsIHRoaXMuX19ieXRlT2Zmc2V0LCBzaXplKTsNCiAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplOw0KICAgIGNvbnN0IHBhZGQgPSB0aGlzLl9fYnl0ZU9mZnNldCAlIDQ7DQogICAgLy8gdGhpcy5yZWFkUGFkZCgpOw0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQxNkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDE2QXJyYXkoc2l6ZSA9IHVuZGVmaW5lZCwgY2xvbmUgPSBmYWxzZSkgew0KICAgIGlmIChzaXplID09IHVuZGVmaW5lZCkgc2l6ZSA9IHRoaXMubG9hZFVJbnQzMigpOw0KICAgIGlmIChzaXplID09IDApIHJldHVybiBuZXcgVWludDE2QXJyYXkoKQ0KICAgIHRoaXMucmVhZFBhZGQoMik7DQogICAgbGV0IHJlc3VsdDsNCiAgICBpZiAodGhpcy5fX2lzTW9iaWxlRGV2aWNlKSB7DQogICAgICByZXN1bHQgPSBuZXcgVWludDE2QXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDE2KHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICAgICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMjsNCiAgICAgIH0NCiAgICB9IGVsc2Ugew0KICAgICAgcmVzdWx0ID0gbmV3IFVpbnQxNkFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgc2l6ZSk7DQogICAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplICogMjsNCiAgICB9DQogICAgLy8gdGhpcy5yZWFkUGFkZCgpOw0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQzMkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDMyQXJyYXkoc2l6ZSA9IHVuZGVmaW5lZCwgY2xvbmUgPSBmYWxzZSkgew0KICAgIGlmIChzaXplID09IHVuZGVmaW5lZCkgc2l6ZSA9IHRoaXMubG9hZFVJbnQzMigpOw0KICAgIGlmIChzaXplID09IDApIHJldHVybiBuZXcgVWludDMyQXJyYXkoKQ0KICAgIHRoaXMucmVhZFBhZGQoNCk7DQogICAgbGV0IHJlc3VsdDsNCiAgICBpZiAodGhpcy5fX2lzTW9iaWxlRGV2aWNlKSB7DQogICAgICByZXN1bHQgPSBuZXcgVWludDMyQXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDMyKHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICAgICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gNDsNCiAgICAgIH0NCiAgICB9IGVsc2Ugew0KICAgICAgcmVzdWx0ID0gbmV3IFVpbnQzMkFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgc2l6ZSk7DQogICAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplICogNDsNCiAgICB9DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkRmxvYXQzMkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkRmxvYXQzMkFycmF5KHNpemUgPSB1bmRlZmluZWQsIGNsb25lID0gZmFsc2UpIHsNCiAgICBpZiAoc2l6ZSA9PSB1bmRlZmluZWQpIHNpemUgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBpZiAoc2l6ZSA9PSAwKSByZXR1cm4gbmV3IEZsb2F0MzJBcnJheSgpDQogICAgdGhpcy5yZWFkUGFkZCg0KTsNCiAgICBsZXQgcmVzdWx0Ow0KICAgIGlmICh0aGlzLl9faXNNb2JpbGVEZXZpY2UpIHsNCiAgICAgIHJlc3VsdCA9IG5ldyBGbG9hdDMyQXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQzMih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDQ7DQogICAgICB9DQogICAgfSBlbHNlIHsNCiAgICAgIHJlc3VsdCA9IG5ldyBGbG9hdDMyQXJyYXkodGhpcy5fX2RhdGEsIHRoaXMuX19ieXRlT2Zmc2V0LCBzaXplKTsNCiAgICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IHNpemUgKiA0Ow0KICAgIH0NCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRTdHIgbWV0aG9kLg0KICAgKiBAcmV0dXJuIHtzdHJpbmd9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRTdHIoKSB7DQogICAgY29uc3QgbnVtQ2hhcnMgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCBjaGFycyA9IG5ldyBVaW50OEFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgbnVtQ2hhcnMpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IG51bUNoYXJzOw0KICAgIGxldCByZXN1bHQgPSAnJzsNCiAgICBmb3IgKGxldCBpID0gMDsgaSA8IG51bUNoYXJzOyBpKyspDQogICAgICByZXN1bHQgPSByZXN1bHQgKyBTdHJpbmcuZnJvbUNoYXJDb2RlKGNoYXJzW2ldKTsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICAqIFRoZSBsb2FkU3RyQXJyYXkgbWV0aG9kLg0KICAgICogQHJldHVybiB7YXJyYXl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICAqLw0KICAgbG9hZFN0ckFycmF5KCkgew0KICAgIGNvbnN0IHNpemUgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCByZXN1bHQgPSBbXTsNCiAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgcmVzdWx0W2ldID0gdGhpcy5sb2FkU3RyKCk7DQogICAgfQ0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8vIGxvYWRTSW50MzJWZWMyKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZFNJbnQzMigpOw0KICAvLyAgICAgY29uc3QgeSA9IHRoaXMubG9hZFNJbnQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMyKHgsIHkpOw0KICAvLyB9DQoNCiAgLy8gbG9hZFVJbnQzMlZlYzIoKSB7DQogIC8vICAgICBjb25zdCB4ID0gdGhpcy5sb2FkVUludDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkVUludDMyKCk7DQogIC8vICAgICByZXR1cm4gbmV3IFZlYzIoeCwgeSk7DQogIC8vIH0NCg0KICAvLyBsb2FkRmxvYXQxNlZlYzIoKSB7DQogIC8vICAgICBjb25zdCB4ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgY29uc3QgeSA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgVmVjMih4LCB5KTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRGbG9hdDMyVmVjMigpIHsNCiAgLy8gICAgIGNvbnN0IHggPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMyKHgsIHkpOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MTZWZWMzKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDE2KCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMzKHgsIHksIHopOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MzJWZWMzKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMzKHgsIHksIHopOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MTZRdWF0KCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDE2KCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgY29uc3QgdyA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgUXVhdCh4LCB5LCB6LCB3KTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRGbG9hdDMyUXVhdCgpIHsNCiAgLy8gICAgIGNvbnN0IHggPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgY29uc3QgeiA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IHcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICByZXR1cm4gbmV3IFF1YXQoeCwgeSwgeiwgdyk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCRmxvYXQzMkNvbG9yKCkgew0KICAvLyAgICAgY29uc3QgciA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBDb2xvcihyLCBnLCBiKTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRSR0JBRmxvYXQzMkNvbG9yKCkgew0KICAvLyAgICAgY29uc3QgciA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgY29uc3QgYSA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociwgZywgYiwgYSk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCVUludDhDb2xvcigpIHsNCiAgLy8gICAgIGNvbnN0IHIgPSB0aGlzLmxvYWRVSW50OCgpOw0KICAvLyAgICAgY29uc3QgZyA9IHRoaXMubG9hZFVJbnQ4KCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociAvIDI1NSwgZyAvIDI1NSwgYiAvIDI1NSk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCQVVJbnQ4Q29sb3IoKSB7DQogIC8vICAgICBjb25zdCByID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRVSW50OCgpOw0KICAvLyAgICAgY29uc3QgYiA9IHRoaXMubG9hZFVJbnQ4KCk7DQogIC8vICAgICBjb25zdCBhID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociAvIDI1NSwgZyAvIDI1NSwgYiAvIDI1NSwgYSAvIDI1NSk7DQogIC8vIH0NCg0KICAvLyBsb2FkQm94MigpIHsNCiAgLy8gICAgIHJldHVybiBuZXcgQm94Mih0aGlzLmxvYWRGbG9hdDMyVmVjMigpLCB0aGlzLmxvYWRGbG9hdDMyVmVjMigpKTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRCb3gzKCkgew0KICAvLyAgICAgcmV0dXJuIG5ldyBCb3gzKHRoaXMubG9hZEZsb2F0MzJWZWMzKCksIHRoaXMubG9hZEZsb2F0MzJWZWMzKCkpOw0KICAvLyB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkU3RyIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHN0cmlkZSAtIFRoZSBzdHJpZGUgcGFyYW0uDQogICAqLw0KICByZWFkUGFkZChzdHJpZGUpIHsNCiAgICBjb25zdCBwYWRkID0gdGhpcy5fX2J5dGVPZmZzZXQgJSBzdHJpZGU7DQogICAgaWYgKHBhZGQgIT0gMCkgdGhpcy5fX2J5dGVPZmZzZXQgKz0gc3RyaWRlIC0gcGFkZDsNCiAgfQ0KfQoKY29uc3QgQ0FEU3VyZmFjZVR5cGVzID0gew0KICBTVVJGQUNFX1RZUEVfUExBTkU6IDAsDQogIFNVUkZBQ0VfVFlQRV9DT05FOiAxLA0KICBTVVJGQUNFX1RZUEVfQ1lMSU5ERVI6IDIsDQogIFNVUkZBQ0VfVFlQRV9TUEhFUkU6IDMsDQogIFNVUkZBQ0VfVFlQRV9UT1JVUzogNCwNCiAgU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT046IDUsDQogIFNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OOiA2LA0KICAvLyAgU1VSRkFDRV9UWVBFX0JFWklFUl9TVVJGQUNFOiA3LA0KICBTVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRTogOCwNCiAgU1VSRkFDRV9UWVBFX09GRlNFVF9TVVJGQUNFOiA5LA0KICBTVVJGQUNFX1RZUEVfVFJJTU1FRF9SRUNUX1NVUkZBQ0U6IDEwLA0KICBTVVJGQUNFX1RZUEVfUE9MWV9QTEFORTogMTQsDQogIFNVUkZBQ0VfVFlQRV9GQU46IDE1LA0KICBTVVJGQUNFX1RZUEVfUkVWT0xVVElPTl9GTElQUEVEX0RPTUFJTjogMTYsDQp9Ow0KDQpjb25zdCBnZXRTdXJmYWNlVHlwZU5hbWUgPSBpZCA9PiB7DQogIHN3aXRjaCAoaWQpIHsNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUExBTkU6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9QTEFORScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfQ09ORToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0NPTkUnDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0NZTElOREVSOg0KICAgICAgcmV0dXJuICdTVVJGQUNFX1RZUEVfQ1lMSU5ERVInDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1NQSEVSRToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1NQSEVSRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfVE9SVVM6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9UT1JVUycNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfTElORUFSX0VYVFJVU0lPTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT04nDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1JFVk9MVVRJT046DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OJw0KICAgIC8vICAgIGNhc2UgQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9CRVpJRVJfU1VSRkFDRTogcmV0dXJuICdTVVJGQUNFX1RZUEVfQkVaSUVSX1NVUkZBQ0UnOw0KICAgIGNhc2UgQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9OVVJCU19TVVJGQUNFOg0KICAgICAgcmV0dXJuICdTVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfT0ZGU0VUX1NVUkZBQ0U6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9PRkZTRVRfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfVFJJTU1FRF9SRUNUX1NVUkZBQ0U6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9UUklNTUVEX1JFQ1RfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUE9MWV9QTEFORToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1BPTFlfUExBTkUnDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0ZBTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0ZBTicNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUkVWT0xVVElPTl9GTElQUEVEX0RPTUFJTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1JFVk9MVVRJT05fRkxJUFBFRF9ET01BSU4nDQogIH0NCn07DQoNCmNvbnN0IGdlb21MaWJyYXJ5SGVhZGVyU2l6ZSA9IDg7IC8vIDIgRlAxNiBwaXhlbHMgYXQgdGhlIHN0YXJ0IG9mIHRoZSBHZW9tTGlicmFyeSBhbmQgQ3VydmVMaWJyYXJ5DQpjb25zdCBwaXhlbHNQZXJEcmF3SXRlbSA9IDEwOyAvLyBUaGUgbnVtYmVyIG9mIFJHQkEgcGl4ZWxzIHBlciBkcmF3IGl0ZW0uDQpjb25zdCB2YWx1ZXNQZXJDdXJ2ZVRvY0l0ZW0gPSA4Ow0KY29uc3QgdmFsdWVzUGVyU3VyZmFjZVRvY0l0ZW0gPSA5Ow0KY29uc3QgdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSA9IDg7DQpjb25zdCB2YWx1ZXNQZXJTdXJmYWNlTGlicmFyeUxheW91dEl0ZW0gPSA4Ow0KLy9jb25zdCB2YWx1ZXNQZXJTdXJmYWNlUmVmID0gMTEgLy8gQSBzdXJmYWNlUmVmIHdpdGhpbiBhIEJvZHlEZXNjLy8gVGhpcyBpcyBub3cgZGlmZmVyZW50IGJhc2VkIG9uIHRoZSB2ZXJzaW9uLg0KY29uc3QgYm9keUl0ZW1Db29yZHNTdHJpZGUgPSAzMDsNCmNvbnN0IGZsb2F0c1BlclNjZW5lQm9keSA9IDIzOw0KY29uc3QgQ1VSVkVfRkxBR19DT1NUX0lTX0RFVEFJTCA9IDEgPDwgMzsNCmNvbnN0IFNVUkZBQ0VfRkxBR19GTElQUEVEX1VWID0gMSA8PCA1Ow0KY29uc3QgU1VSRkFDRV9GTEFHX0NPU1RfSVNfREVUQUlMX1UgPSAxIDw8IDY7DQpjb25zdCBTVVJGQUNFX0ZMQUdfQ09TVF9JU19ERVRBSUxfViA9IDEgPDwgNzsKCmNvbnN0IF9fY3VydmVzUGFja2VyID0gbmV3IEdyb3dpbmdQYWNrZXIoKTsNCmNvbnN0IF9fc3VyZmFjZVBhY2tlciA9IG5ldyBHcm93aW5nUGFja2VyKCk7DQpjb25zdCBfX3RyaW1TZXRQYWNrZXIgPSBuZXcgR3Jvd2luZ1BhY2tlcigpOw0KY29uc3QgX19ib2R5QXRsYXNQYWNrZXIgPSBuZXcgR3Jvd2luZ1BhY2tlcigpOw0KY29uc3QgX19saWdodG1hcFBhY2tlciA9IG5ldyBHcm93aW5nUGFja2VyKCk7DQoNCmNvbnN0IHdvcmtlclN0YXRlID0ge307DQoNCmNvbnN0IG5lYXJlc3RQb3cyID0gdmFsdWUgPT4gew0KICByZXR1cm4gTWF0aC5wb3coMiwgTWF0aC5yb3VuZChNYXRoLmxvZyh2YWx1ZSkgLyBNYXRoLmxvZygyKSkpDQp9Ow0KDQpmdW5jdGlvbiBjYWxjQ29udGFpbmVyU2l6ZShudW1JdGVtcywgaXRlbVdpZHRoID0gMSwgaXRlbUhlaWdodCA9IDEpIHsNCiAgY29uc3Qgc2lkZUxlbmd0aCA9IE1hdGguc3FydChudW1JdGVtcyAqIGl0ZW1XaWR0aCAqIGl0ZW1IZWlnaHQpOw0KICBsZXQgdzsNCiAgbGV0IGg7DQogIGlmIChpdGVtV2lkdGggPj0gaXRlbUhlaWdodCkgew0KICAgIHcgPSBzaWRlTGVuZ3RoIC8gaXRlbVdpZHRoOw0KICAgIGNvbnN0IGZyYWN0VyA9IHcgLSBNYXRoLmZsb29yKHcpOw0KICAgIGlmIChmcmFjdFcgPiAwLjUgJiYgZnJhY3RXIDwgMS4wKSB3ICs9IDEuMCAtIGZyYWN0VzsNCiAgICBlbHNlIHcgPSBNYXRoLm1heCgxLCBNYXRoLmZsb29yKHcpKTsNCiAgICBoID0gbnVtSXRlbXMgLyB3Ow0KICAgIGNvbnN0IGZyYWN0SCA9IGggLSBNYXRoLmZsb29yKGgpOw0KICAgIGlmIChmcmFjdEggPiAwLjAgJiYgZnJhY3RIIDwgMS4wKSB7DQogICAgICBoICs9IDEuMCAtIGZyYWN0SDsNCiAgICB9DQogIH0gZWxzZSB7DQogICAgaCA9IHNpZGVMZW5ndGggLyBpdGVtSGVpZ2h0Ow0KICAgIGNvbnN0IGZyYWN0SCA9IGggLSBNYXRoLmZsb29yKGgpOw0KICAgIGlmIChmcmFjdEggPiAwLjUgJiYgZnJhY3RIIDwgMS4wKSBoICs9IDEuMCAtIGZyYWN0SDsNCiAgICBlbHNlIGggPSBNYXRoLm1heCgxLCBNYXRoLmZsb29yKGgpKTsNCiAgICB3ID0gbnVtSXRlbXMgLyBoOw0KICAgIGNvbnN0IGZyYWN0VyA9IHcgLSBNYXRoLmZsb29yKHcpOw0KICAgIGlmIChmcmFjdFcgPiAwLjAgJiYgZnJhY3RXIDwgMS4wKSB7DQogICAgICB3ICs9IDEuMCAtIGZyYWN0VzsNCiAgICB9DQogIH0NCiAgaWYgKHcgKiBoIDwgbnVtSXRlbXMpIHRocm93IG5ldyBFcnJvcignSW52YWxpZCBjb250YWluZXIgc2l6ZScpDQogIHJldHVybiBbdywgaF0NCn0NCg0KZnVuY3Rpb24gYWRkVG9CaW4odmFsdWUsIGl0ZW1XaWR0aCwgaXRlbUhlaWdodCwgYmlucywgYmluc0RpY3QpIHsNCiAgY29uc3Qga2V5ID0gaXRlbVdpZHRoICsgJ3gnICsgaXRlbUhlaWdodDsNCiAgY29uc3QgYmluSWQgPSBiaW5zRGljdFtrZXldOw0KICBpZiAoYmluSWQgIT0gdW5kZWZpbmVkKSB7DQogICAgYmluc1tiaW5JZF0uaWRzLnB1c2godmFsdWUpOw0KICB9IGVsc2Ugew0KICAgIGJpbnNEaWN0W2tleV0gPSBiaW5zLmxlbmd0aDsNCiAgICBiaW5zLnB1c2goew0KICAgICAgaXRlbVdpZHRoLA0KICAgICAgaXRlbUhlaWdodCwNCiAgICAgIGlkczogW3ZhbHVlXSwNCiAgICB9KTsNCiAgfQ0KfQ0KDQpmdW5jdGlvbiBzb3J0QmlucyhiaW5zKSB7DQogIGNvbnN0IGluZGV4QXJyYXkgPSBuZXcgVWludDE2QXJyYXkoYmlucy5sZW5ndGgpOw0KICBmb3IgKGxldCBpID0gMDsgaSA8IGJpbnMubGVuZ3RoOyBpKyspIHsNCiAgICBpbmRleEFycmF5W2ldID0gaTsNCiAgICBjb25zdCBiaW4gPSBiaW5zW2ldOw0KICAgIGNvbnN0IGl0ZW1Db3VudFVWID0gY2FsY0NvbnRhaW5lclNpemUoDQogICAgICBiaW4uaWRzLmxlbmd0aCwNCiAgICAgIGJpbi5pdGVtV2lkdGgsDQogICAgICBiaW4uaXRlbUhlaWdodA0KICAgICk7DQogICAgYmluLml0ZW1Db3VudFVWID0gaXRlbUNvdW50VVY7DQogICAgYmluLncgPSBpdGVtQ291bnRVVlswXSAqIGJpbi5pdGVtV2lkdGg7DQogICAgYmluLmggPSBpdGVtQ291bnRVVlsxXSAqIGJpbi5pdGVtSGVpZ2h0Ow0KICAgIGJpbi5sID0gTWF0aC5tYXgoYmluLncsIGJpbi5oKTsNCiAgfQ0KDQogIGluZGV4QXJyYXkuc29ydCgoYSwgYikgPT4NCiAgICBiaW5zW2FdLmwgPiBiaW5zW2JdLmwgPyAtMSA6IGJpbnNbYV0ubCA8IGJpbnNbYl0ubCA/IDEgOiAwDQogICk7DQogIHJldHVybiBpbmRleEFycmF5DQp9DQoNCmZ1bmN0aW9uIGxheW91dEJpbnMoYmlucywgcGFja2VyLCBpdGVtQ2IsIGJpbkNiKSB7DQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gU29ydCB0aGUgYmlucyBpbnRvIGJpZ2dlc3QgdG8gc21hbGxlc3Qgc28gd2UgcGFjayB0aGUgYmlnZ2VyIG9uZXMgZmlyc3QuDQogIGNvbnN0IGluZGV4QXJyYXkgPSBzb3J0QmlucyhiaW5zKTsNCg0KICBmb3IgKGNvbnN0IGJpbklkIG9mIGluZGV4QXJyYXkpIHsNCiAgICBjb25zdCBiaW4gPSBiaW5zW2JpbklkXTsNCiAgICAvLyBjb25zb2xlLmxvZygiYmluOiIgKyAgYmluLml0ZW1XaWR0aCsgIiB4ICIgK2Jpbi5pdGVtSGVpZ2h0KQ0KICAgIGNvbnN0IGJsb2NrID0gcGFja2VyLmFkZEJsb2NrKHsNCiAgICAgIHc6IGJpbi53LA0KICAgICAgaDogYmluLmgsDQogICAgfSk7DQogICAgaWYgKCFibG9jaykgdGhyb3cgbmV3IEVycm9yKCdVbmFibGUgdG8gbGF5b3V0IGJpbjonICsgYmluLncgKyAnIHggJyArIGJpbi5oKQ0KDQogICAgaWYgKGJpbkNiKSBiaW5DYihiaW4sIGJsb2NrKTsNCg0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgYmluLmlkcy5sZW5ndGg7IGkrKykgew0KICAgICAgY29uc3QgdSA9IGJsb2NrLnggKyAoaSAlIGJpbi5pdGVtQ291bnRVVlswXSkgKiBiaW4uaXRlbVdpZHRoOw0KICAgICAgY29uc3QgdiA9IGJsb2NrLnkgKyBNYXRoLmZsb29yKGkgLyBiaW4uaXRlbUNvdW50VVZbMF0pICogYmluLml0ZW1IZWlnaHQ7DQogICAgICBpdGVtQ2IoYmluLCBpLCB1LCB2KTsNCiAgICB9DQogIH0NCn0NCg0KY29uc3QgbGF5b3V0Q3VydmVzID0gKGN1cnZlc0RhdGFSZWFkZXIsIGVycm9yVG9sZXJhbmNlLCBtYXhUZXhTaXplKSA9PiB7DQogIC8vIGNvbnN0IG51bUN1cnZlcyA9IGN1cnZlc0RhdGFSZWFkZXIubGVuZ3RoIC8gODsNCiAgY29uc3QgbnVtQ3VydmVzID0gY3VydmVzRGF0YVJlYWRlci5sb2FkVUludDMyKCk7DQogIGlmIChudW1DdXJ2ZXMgPT0gMCkgcmV0dXJuDQoNCiAgY29uc3QgY3VydmVMaWJyYXJ5U2l6ZSA9IE1hdGguc3FydChjdXJ2ZXNEYXRhUmVhZGVyLmRhdGEuYnl0ZUxlbmd0aCAvIDgpOyAvLyBSR0JBMTYgcGl4ZWxzDQoNCiAgY29uc3QgYmluc0xpc3QgPSBbXTsNCiAgY29uc3QgYmluc0RpY3QgPSB7fTsNCiAgZm9yIChsZXQgY3VydmVJZCA9IDA7IGN1cnZlSWQgPCBudW1DdXJ2ZXM7IGN1cnZlSWQrKykgew0KICAgIHRyeSB7DQogICAgICBjdXJ2ZXNEYXRhUmVhZGVyLnNlZWsoDQogICAgICAgIGdlb21MaWJyYXJ5SGVhZGVyU2l6ZSArDQogICAgICAgIGN1cnZlSWQgKiAodmFsdWVzUGVyQ3VydmVUb2NJdGVtICogMikgLyogYnBjKi8gKw0KICAgICAgICAgIDIgKiAyIC8qIGJwYyovDQogICAgICApOw0KDQogICAgICBsZXQgcGFyYW0gPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICBsZXQgbGVuZ3RoID0gY3VydmVzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KICAgICAgY29uc3QgZmxhZ3MgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICANCiAgICAgIC8vIGlmIChjdXJ2ZUlkID09NzM1NCkgew0KICAgICAgLy8gICBjb25zdCBjdXJ2ZVR5cGUgPSBnZXRDdXJ2ZVR5cGUoY3VydmVJZCk7DQogICAgICAvLyAgIGNvbnNvbGUubG9nKCJDdXJ2ZSA6IiwgY3VydmVJZCwgZ2V0Q3VydmVUeXBlTmFtZShjdXJ2ZVR5cGUpLCAiIGZsYWdzOiIsIGZsYWdzLCAiIHBhcmFtOiIsIHBhcmFtKTsNCiAgICAgIC8vIH0NCg0KICAgICAgaWYgKCFOdW1iZXIuaXNGaW5pdGUocGFyYW0pKQ0KICAgICAgICBwYXJhbSA9IDY1NTM2Ow0KICAgICAgaWYgKCFOdW1iZXIuaXNGaW5pdGUobGVuZ3RoKSkNCiAgICAgICAgbGVuZ3RoID0gNjU1MzY7DQogICAgICAgIA0KICAgICAgbGV0IGRldGFpbDsNCiAgICAgIGlmIChmbGFncyAmIENVUlZFX0ZMQUdfQ09TVF9JU19ERVRBSUwpIHsNCiAgICAgICAgZGV0YWlsID0gcGFyYW07DQogICAgICB9IGVsc2Ugew0KICAgICAgICBpZiAocGFyYW0gPT0gMC4wKSB7DQogICAgICAgICAgZGV0YWlsID0gMTsNCiAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICBjb25zdCBjdXJ2YXR1cmUgPSBwYXJhbSAvIGxlbmd0aDsNCiAgICAgICAgICBjb25zdCByYWRpdXMgPSAxIC8gY3VydmF0dXJlOw0KICAgICAgICAgIGlmIChyYWRpdXMgPCBlcnJvclRvbGVyYW5jZSkgew0KICAgICAgICAgICAgZGV0YWlsID0gNjsNCiAgICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgICAgY29uc3QgYSA9IHJhZGl1cyAtIGVycm9yVG9sZXJhbmNlOw0KICAgICAgICAgICAgY29uc3QgYXJjQW5nbGUgPSBNYXRoLmFjb3MoYSAvIHJhZGl1cykgKiAyOw0KICAgICAgICAgICAgZGV0YWlsID0gcGFyYW0gLyBhcmNBbmdsZTsNCiAgICAgICAgICAgIGRldGFpbCA9IE1hdGgubWF4KDEsIE1hdGgucm91bmQobmVhcmVzdFBvdzIoZGV0YWlsKSkpOw0KICAgICAgICAgICAgaWYgKGRldGFpbCA+IDEwMjUpew0KICAgICAgICAgICAgICBjb25zb2xlLndhcm4oJ0N1cnZlIGRldGFpbDonICsgZGV0YWlsKTsNCiAgICAgICAgICAgICAgZGV0YWlsID0gTWF0aC5taW4oZGV0YWlsLCAxMDI1KTsNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIGlmIChpc05hTihkZXRhaWwpKSB7DQogICAgICAgICAgICAgIGNvbnNvbGUud2FybignVW5hYmxlIHRvIGxheW91dCBDdXJ2ZTonICsgZGV0YWlsKTsNCiAgICAgICAgICAgICAgY29udGludWUNCiAgICAgICAgICAgIH0NCiAgICAgICAgICB9DQogICAgICAgIH0NCiAgICAgIH0NCg0KICAgICAgLy8gY29uc29sZS5sb2coIkN1cnZlIDoiLCBjdXJ2ZUlkLCBnZXRDdXJ2ZVR5cGVOYW1lKGN1cnZlVHlwZSksICIgZmxhZ3M6IiwgZmxhZ3MsICIgcGFyYW06IiwgcGFyYW0sICIgZGV0YWlsOiIsIGRldGFpbCk7DQoNCiAgICAgIC8vIE5vdGU6IHRoZSBkZXRhaWwgdmFsdWUgaXMgYWx3YXlzIGEgcG93ZXIgb2YgMiwgYW5kIHRoZSBudW0gdmVydGljZXMgYXJlIGFsd2F5cyBvZGQuDQogICAgICAvLyBlLmcuIGRldGFpbCA9IDQsIG51bVZlcnRzID0gNS4NCiAgICAgIGFkZFRvQmluKGN1cnZlSWQsIGRldGFpbCArIDEsIDEsIGJpbnNMaXN0LCBiaW5zRGljdCk7DQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIENBREN1cnZlIGRhdGEgaW4gd2ViIHdvcmtlcjogIiwgY3VydmVJZCwgZSk7DQogICAgfQ0KICB9DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KICAvLyBOb3cgbGF5b3V0IHRoZSBjdXJ2ZXMgaW4gYmF0Y2hlcy4gQmlnZ2VzdCB0byBzbWFsbGVzdA0KICAvLyBjb25zdCBjdXJ2ZXNBdGxhc0xheW91dCA9IG5ldyBGbG9hdDMyQXJyYXkobnVtQ3VydmVzICogdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSk7DQoNCiAgLy8gVGhlIGNvb3JkaW5hdGVzIGZvciB0aGUgcGF0Y2hlcyBpbiB0aGUgZ2VvbSB0ZXh0dXJlIG5lZWQgdG8gYmUNCiAgLy8gaW4gYSB0ZXh0dXJlIHRoYXQgd2UgYmluZCB0byB0aGUgR0xFdmFsdWF0ZURyYXdJdGVtc1NoYWRlciwgd2hlcmUNCiAgLy8gaXQgY2FuIHNjYXR0ZXIgdGhlIHZhbHVlcyBpbnRvIHRoZSBkcmF3IGluc3RhbmNlcy4NCiAgY29uc3QgY3VydmVzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSA9IGNhbGNDb250YWluZXJTaXplKG51bUN1cnZlcyAqIDIpOyAvLyAsIDIvKiBwaXhlbHMgcGVyIGl0ZW0gKi8sIDEpOw0KICBjb25zdCBjdXJ2ZXNBdGxhc0xheW91dCA9IG5ldyBGbG9hdDMyQXJyYXkoDQogICAgY3VydmVzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZVswXSAqIGN1cnZlc0F0bGFzTGF5b3V0VGV4dHVyZVNpemVbMV0gKiA0DQogICk7DQoNCiAgbGF5b3V0QmlucyhiaW5zTGlzdCwgX19jdXJ2ZXNQYWNrZXIsIChiaW4sIGksIHUsIHYpID0+IHsNCiAgICBjb25zdCBjdXJ2ZUlkID0gYmluLmlkc1tpXTsNCg0KICAgIGN1cnZlc0F0bGFzTGF5b3V0W2N1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtICsgMF0gPSB1Ow0KICAgIGN1cnZlc0F0bGFzTGF5b3V0W2N1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtICsgMV0gPSB2Ow0KICAgIGN1cnZlc0F0bGFzTGF5b3V0W2N1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtICsgMl0gPQ0KICAgICAgYmluLml0ZW1XaWR0aDsNCiAgICBjdXJ2ZXNBdGxhc0xheW91dFtjdXJ2ZUlkICogdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSArIDNdID0NCiAgICAgIGJpbi5pdGVtSGVpZ2h0Ow0KDQogICAgLy8gY29uc3QgbGF5b3V0ID0gWw0KICAgIC8vICAgY3VydmVzQXRsYXNMYXlvdXRbKGN1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtKSArIDBdLA0KICAgIC8vICAgY3VydmVzQXRsYXNMYXlvdXRbKGN1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtKSArIDFdLA0KICAgIC8vICAgY3VydmVzQXRsYXNMYXlvdXRbKGN1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtKSArIDJdLA0KICAgIC8vICAgY3VydmVzQXRsYXNMYXlvdXRbKGN1cnZlSWQgKiB2YWx1ZXNQZXJDdXJ2ZUxpYnJhcnlMYXlvdXRJdGVtKSArIDNdXTsNCiAgICAvLyBjb25zb2xlLmxvZygiUmVuZGVyIEN1cnZlIElkICIgKyBjdXJ2ZUlkICsgIjpbIiArIGxheW91dCArICJdIikNCg0KICAgIC8vIFRPRE86IGp1c3Qgd3JpdGUgdGhlIGN1cnZlSUQgaGVyZSBpbnN0ZWFkIGFuZCB3ZSBjYW4gbG9va3VwIHRoZSBjb29yZHMgaW4gdGhlIHNoYWRlcg0KICAgIGN1cnZlc0RhdGFSZWFkZXIuc2VlaygNCiAgICAgIGdlb21MaWJyYXJ5SGVhZGVyU2l6ZSArIGN1cnZlSWQgKiAodmFsdWVzUGVyQ3VydmVUb2NJdGVtICogMikgLyogYnBjKi8NCiAgICApOw0KICAgIGNvbnN0IGNvb3Jkc1ggPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRVRmxvYXQxNigpOw0KICAgIGNvbnN0IGNvb3Jkc1kgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRVRmxvYXQxNigpOw0KICAgIC8vIGNvbnNvbGUubG9nKCJDdXJ2ZSBJZCAiLCBjdXJ2ZUlkLCAiOlsiLCBjb29yZHNYLCAiLCAiLCBjb29yZHNZLCAiXSIpDQogICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyA0XSA9IGNvb3Jkc1g7DQogICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyA1XSA9IGNvb3Jkc1k7DQogIH0pOw0KDQogIHJldHVybiB7DQogICAgbnVtQ3VydmVzLA0KICAgIGN1cnZlc0F0bGFzTGF5b3V0LA0KICAgIGN1cnZlc0F0bGFzTGF5b3V0VGV4dHVyZVNpemUsDQogIH0NCn07DQoNCmNvbnN0IGxheW91dFN1cmZhY2VzID0gKHN1cmZhY2VzRGF0YVJlYWRlciwgZXJyb3JUb2xlcmFuY2UsIG1heFRleFNpemUsIHN1cmZhY2VBcmVhVGhyZXNob2xkLCBjYWREYXRhVmVyc2lvbikgPT4gew0KICBjb25zdCBzdXJmYWNlTGlicmFyeVNpemUgPSBNYXRoLnNxcnQoc3VyZmFjZXNEYXRhUmVhZGVyLmRhdGEuYnl0ZUxlbmd0aCAvIDgpOyAvLyBSR0JBMTYgcGl4ZWxzDQogIGNvbnN0IG51bVN1cmZhY2VzID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRVSW50MzIoKTsNCg0KICBjb25zdCB0b3RhbFN1cmZhY2VBcmVhID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogIGNvbnN0IHRvdGFsU3VyZmFjZUNvc3QgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgY29uc3Qgc3VyZmFjZURldGFpbHMgPSBuZXcgVWludDMyQXJyYXkobnVtU3VyZmFjZXMgKiA2KTsgLy8gZmxhZ3MsIGFkZHJYLCBhZGRyWSwgc3VyZmFjZVR5cGUsIGRldGFpbFgsIGRldGFpbFk7DQogIGNvbnN0IHNlZWtTdXJmYWNlRGF0YSA9IGFkZHIgPT4gew0KICAgIC8vIFgsIFkgaW4gcGl4ZWxzLg0KICAgIGNvbnN0IGJ5dGVzUGVyUGl4ZWwgPSA4OyAvLyBSR0JBMTYgcGl4ZWwNCiAgICBjb25zdCBieXRlT2Zmc2V0ID0NCiAgICAgIGFkZHIueCAqIGJ5dGVzUGVyUGl4ZWwgKyBhZGRyLnkgKiBieXRlc1BlclBpeGVsICogc3VyZmFjZUxpYnJhcnlTaXplOw0KICAgIC8vIGNvbnNvbGUubG9nKCJfX3NlZWtTdXJmYWNlRGF0YToiICsgc3VyZmFjZUlkICsgIiBieXRlT2Zmc2V0OiIgKyAoYnl0ZU9mZnNldCArb2Zmc2V0KSArICIgcGl4ZWw6IiArICgoYnl0ZU9mZnNldCArb2Zmc2V0KS84KSArICIgeDoiICsgYWRkci54ICsgIiB5OiIgKyBhZGRyLnkpOw0KICAgIHN1cmZhY2VzRGF0YVJlYWRlci5zZWVrKGJ5dGVPZmZzZXQpOw0KICB9Ow0KDQogIGNvbnN0IGJpbnNMaXN0ID0gW107DQogIGNvbnN0IGJpbnNEaWN0ID0ge307DQogIGNvbnN0IGNvdW50cyA9IHt9Ow0KICBsZXQgdG90YWxEZXRhaWwgPSAwOw0KICBmb3IgKGxldCBzdXJmYWNlSWQgPSAwOyBzdXJmYWNlSWQgPCBudW1TdXJmYWNlczsgc3VyZmFjZUlkKyspIHsNCiAgICB0cnkgew0KICAgICAgLy8gaWYoc3VyZmFjZUlkICE9IDk2MjgpIHsNCiAgICAgIC8vICAgY29udGludWU7DQogICAgICAvLyB9DQoNCiAgICAgIHN1cmZhY2VzRGF0YVJlYWRlci5zZWVrKA0KICAgICAgICBnZW9tTGlicmFyeUhlYWRlclNpemUgKyBzdXJmYWNlSWQgKiAodmFsdWVzUGVyU3VyZmFjZVRvY0l0ZW0gKiAyKSAvKiBicGMqLw0KICAgICAgKTsNCg0KICAgICAgY29uc3QgYWRkclggPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZFVGbG9hdDE2KCk7DQogICAgICBjb25zdCBhZGRyWSA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkVUZsb2F0MTYoKTsNCiAgICAgIGxldCBwYXJhbVUgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgIGxldCBwYXJhbVYgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgIGxldCBzaXplVSA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KICAgICAgbGV0IHNpemVWID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICBjb25zdCBmbGFncyA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KDQoNCiAgICAgIGlmICghTnVtYmVyLmlzRmluaXRlKHNpemVVKSkNCiAgICAgICAgc2l6ZVUgPSA2NTUzNjsNCiAgICAgIGlmICghTnVtYmVyLmlzRmluaXRlKHNpemVWKSkNCiAgICAgICAgc2l6ZVYgPSA2NTUzNjsNCg0KDQogICAgICAvLyBkZWJ1ZyB0cmltIHNldCBJZA0KICAgICAgbGV0IHRyaW1TZXRJZDsNCiAgICAgIHsNCiAgICAgICAgaWYgKGNhZERhdGFWZXJzaW9uLnBhdGNoIDwgMjcgJiYgY2FkRGF0YVZlcnNpb24ubWlub3IgPT0gMCAmJiBjYWREYXRhVmVyc2lvbi5tYWpvciA9PSAwKSB7DQogICAgICAgICAgY29uc3QgcGFydEEgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgICAgICBjb25zdCBwYXJ0QiA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KICAgICAgICAgIHRyaW1TZXRJZCA9IHBhcnRBICsgKHBhcnRCIDw8IDgpOw0KICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgIHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkU0ludDMyRnJvbTJ4RmxvYXQxNigpOw0KICAgICAgICB9DQogICAgICAgIC8vIGlmKHRyaW1TZXRJZCA+PSAwKSB7DQogICAgICAgIC8vICAgY29uc29sZS5sb2coc3VyZmFjZUlkICsiIHRyaW1TZXRJZDoiICsgdHJpbVNldElkKTsNCiAgICAgICAgLy8gfQ0KICAgICAgICAvLyBlbHNlIHsNCiAgICAgICAgLy8gICBjb250aW51ZTsgDQogICAgICAgIC8vIH0NCiAgICAgIH0NCg0KICAgICAgc2Vla1N1cmZhY2VEYXRhKHsgeDogYWRkclgsIHk6IGFkZHJZIH0pOw0KICAgICAgbGV0IHN1cmZhY2VUeXBlOw0KICAgICAgdHJ5IHsNCiAgICAgICAgc3VyZmFjZVR5cGUgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgIH0gY2F0Y2ggKGUpIHsNCiAgICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFN1cmZhY2UgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBzdXJmYWNlSWQsIGUpOw0KICAgICAgICBjb250aW51ZTsNCiAgICAgIH0NCg0KICAgICAgLy8gaWYodHJpbVNldElkID09IDkyKSB7DQogICAgICAvLyAgIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgdHJpbVNldElkOiIsIHRyaW1TZXRJZCwgIiBzaXplOiIsc2l6ZVUsICJ4Iiwgc2l6ZVYpOw0KICAgICAgLy8gfQ0KICAgICAgICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIHRyaW1TZXRJZDoiLCB0cmltU2V0SWQsICIgc2l6ZToiLHNpemVVLCAieCIsIHNpemVWKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgYWRkclg6IiwgYWRkclgsICIsIiwgYWRkclkpOw0KDQogICAgICAvLyBpZiAoc3VyZmFjZVR5cGUgIT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9MSU5FQVJfRVhUUlVTSU9OKSB7DQogICAgICAvLyAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgYWRkclg6IiwgYWRkclgsICIsIiwgYWRkclkpDQogICAgICAvLyAgIGNvbnRpbnVlOw0KICAgICAgLy8gfQ0KICAgICAgLy8gaWYgKHN1cmZhY2VUeXBlICE9IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRSkgew0KICAgICAgLy8gICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIGFkZHJYOiIsIGFkZHJYLCAiLCIsIGFkZHJZKQ0KICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgIC8vIH0NCiAgICAgIC8vIGlmKHN1cmZhY2VUeXBlICE9IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUkVWT0xVVElPTiAmJiBzdXJmYWNlVHlwZSAhPSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1JFVk9MVVRJT05fRkxJUFBFRF9ET01BSU4gKSB7DQogICAgICAvLyAgIGNvbnRpbnVlOw0KICAgICAgLy8gfQ0KICAgICAgICAvLyBpZihzaXplViA8IDAuNykgew0KICAgICAgICAvLyAvLyAgIC8vIGxldCBicmVha2hlcmUgPSAzOzsNCiAgICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgICAgLy8gfQ0KDQogICAgICBsZXQgZGV0YWlsVTsNCiAgICAgIGxldCBkZXRhaWxWOw0KICAgICAgbGV0IGV2YWxmbGFncyA9IDA7DQogICAgICBpZiAoc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9GQU4pIHsNCiAgICAgICAgZGV0YWlsVSA9IHBhcmFtVTsNCiAgICAgICAgZGV0YWlsViA9IHBhcmFtVjsNCiAgICAgIH0gZWxzZSB7DQogICAgICAgIC8vIElmIHRoZSBhcmVhIGZhbGxzIGJlbG93ICBhdGhyZWFzaG9sZCwgd2Ugc2tpcCB0aGUgc3VyZmFjZS4NCiAgICAgICAgY29uc3QgYXJlYSA9IHNpemVVICogc2l6ZVY7DQogICAgICAgIGlmIChhcmVhIDwgc3VyZmFjZUFyZWFUaHJlc2hvbGQpIHsNCiAgICAgICAgICBjb25zb2xlLmxvZygnU2tpcHBpbmcgOicsIGdldFN1cmZhY2VUeXBlTmFtZShzdXJmYWNlVHlwZSksICIgc2l6ZToiLHNpemVVLCAieCIsIHNpemVWLCAiIGFyZWE6IiwgYXJlYSk7DQogICAgICAgICAgY29udGludWU7DQogICAgICAgIH0NCg0KICAgICAgICBpZiAoIU51bWJlci5pc0Zpbml0ZShwYXJhbVUpKQ0KICAgICAgICAgIHBhcmFtVSA9IDY1NTM2Ow0KICAgICAgICBpZiAoIU51bWJlci5pc0Zpbml0ZShwYXJhbVYpKQ0KICAgICAgICAgIHBhcmFtViA9IDY1NTM2Ow0KICAgICAgICAvLyBwYXJhbSB2YWx1ZXMgZW5jb2RlIGN1cnZhdHVyZSBpbnRlZ3JhdGVkIG92ZXIgdGhlIGxlbmd0aA0KICAgICAgICAvLyBnaXZpbmcgdGhlIHRvdGFsIGN1cnZlLiBXZSBub3cgbmVlZCB0byBpbnRlZ3JhdGUgYWdhaW4NCiAgICAgICAgLy8gdG8gZ2V0IGNvc3QuDQogICAgICAgIGlmIChmbGFncyAmIFNVUkZBQ0VfRkxBR19DT1NUX0lTX0RFVEFJTF9VKSB7DQogICAgICAgICAgZGV0YWlsVSA9IHBhcmFtVTsNCiAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICBpZiAocGFyYW1VID09IDApIHsNCiAgICAgICAgICAgIGRldGFpbFUgPSAxOw0KICAgICAgICAgIH0gZWxzZSB7DQogICAgICAgICAgICBjb25zdCBjdXJ2YXR1cmUgPSBwYXJhbVUgLyBzaXplVTsNCiAgICAgICAgICAgIGNvbnN0IHJhZGl1cyA9IDEgLyBjdXJ2YXR1cmU7DQogICAgICAgICAgICBpZiAocmFkaXVzIDwgZXJyb3JUb2xlcmFuY2UpIHsNCiAgICAgICAgICAgICAgZGV0YWlsVSA9IDY7DQogICAgICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgICAgICBjb25zdCBhID0gcmFkaXVzIC0gZXJyb3JUb2xlcmFuY2U7DQogICAgICAgICAgICAgIGNvbnN0IGFyY0FuZ2xlID0gTWF0aC5hY29zKGEgLyByYWRpdXMpICogMjsNCiAgICAgICAgICAgICAgZGV0YWlsVSA9IHBhcmFtVSAvIGFyY0FuZ2xlOw0KICAgICAgICAgICAgICBkZXRhaWxVID0gTWF0aC5tYXgoMSwgTWF0aC5yb3VuZChuZWFyZXN0UG93MihkZXRhaWxVKSkpOw0KICAgICAgICAgICAgICBpZiAoZGV0YWlsVSA+IDEwMjUpew0KICAgICAgICAgICAgICAgIGNvbnNvbGUud2FybignR2VvbSBkZXRhaWxVOicgKyBkZXRhaWxVKTsNCiAgICAgICAgICAgICAgICBkZXRhaWxVID0gMTAyNTsNCiAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgfQ0KICAgICAgICAgIH0NCiAgICAgICAgfQ0KICAgICAgICBpZiAoZmxhZ3MgJiBTVVJGQUNFX0ZMQUdfQ09TVF9JU19ERVRBSUxfVikgew0KICAgICAgICAgIGRldGFpbFYgPSBwYXJhbVY7DQogICAgICAgIH0gZWxzZSB7DQogICAgICAgICAgaWYgKHBhcmFtViA9PSAwKSB7DQogICAgICAgICAgICBkZXRhaWxWID0gMTsNCiAgICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgICAgY29uc3QgY3VydmF0dXJlID0gcGFyYW1WIC8gc2l6ZVY7DQogICAgICAgICAgICBjb25zdCByYWRpdXMgPSAxIC8gY3VydmF0dXJlOw0KICAgICAgICAgICAgaWYgKHJhZGl1cyA8IGVycm9yVG9sZXJhbmNlKSB7DQogICAgICAgICAgICAgIGRldGFpbFYgPSA2Ow0KICAgICAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICAgICAgY29uc3QgYSA9IHJhZGl1cyAtIGVycm9yVG9sZXJhbmNlOw0KICAgICAgICAgICAgICBjb25zdCBhcmNBbmdsZSA9IE1hdGguYWNvcyhhIC8gcmFkaXVzKSAqIDI7DQogICAgICAgICAgICAgIGRldGFpbFYgPSBwYXJhbVYgLyBhcmNBbmdsZTsNCiAgICAgICAgICAgICAgZGV0YWlsViA9IE1hdGgubWF4KDEsIE1hdGgucm91bmQobmVhcmVzdFBvdzIoZGV0YWlsVikpKTsNCiAgICAgICAgICAgICAgaWYgKGRldGFpbFYgPiAxMDI1KXsNCiAgICAgICAgICAgICAgICBjb25zb2xlLndhcm4oJ0dlb20gZGV0YWlsVjonICsgZGV0YWlsVik7DQogICAgICAgICAgICAgICAgZGV0YWlsViA9IDEwMjU7DQogICAgICAgICAgICAgIH0NCiAgICAgICAgICAgIH0NCiAgICAgICAgICB9DQogICAgICAgIH0NCg0KICAgICAgICAvLyBSb3RhdGUgc3VyZmFjZXMgdG8gZml0IGV4aXN0aW5nIGRyYXcgc2V0cy4NCiAgICAgICAgLy8gTm90ZTogVGhpcyBtaW5pbWlzZXMgdGhlIG51bWJlciBvZiBkcmF3IHNldHMgYW5kIHJlZHVjZXMgdGhlIHRpbWUgcGFja2luZw0KICAgICAgICAvLyBieSBmbGlwcGluZyBzb21lIHN1cmZhY2VzIGRpYWdvbmFsbHkuDQogICAgICAgIGlmIChkZXRhaWxVIDwgZGV0YWlsVikgew0KICAgICAgICAgIGNvbnN0IHRtcCA9IGRldGFpbFU7DQogICAgICAgICAgZGV0YWlsVSA9IGRldGFpbFY7DQogICAgICAgICAgZGV0YWlsViA9IHRtcDsNCiAgICAgICAgICBldmFsZmxhZ3MgPSBTVVJGQUNFX0ZMQUdfRkxJUFBFRF9VVjsNCiAgICAgICAgfQ0KICAgICAgICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIGRldGFpbDoiLGRldGFpbFUsICJ4IiwgZGV0YWlsViwgIiBjb3N0OiIscGFyYW1VLCAieCIsIHBhcmFtViwgIiBzaXplOiIsc2l6ZVUsICJ4Iiwgc2l6ZVYpOw0KICAgICAgfQ0KDQogICAgICBpZiAoaXNOYU4oZGV0YWlsVSkgfHwgaXNOYU4oZGV0YWlsVikgfHwgIU51bWJlci5pc0Zpbml0ZShkZXRhaWxVKSB8fCAhTnVtYmVyLmlzRmluaXRlKGRldGFpbFYpKSB7DQogICAgICAgIGNvbnNvbGUud2FybigNCiAgICAgICAgICAnVW5hYmxlIHRvIGxheW91dCBpdGVtICcsDQogICAgICAgICAgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwNCiAgICAgICAgICAnIDonICsgZGV0YWlsVSArICcgeCAnICsgZGV0YWlsVg0KICAgICAgICApOw0KICAgICAgICBjb250aW51ZQ0KICAgICAgfQ0KDQogICAgICAvLyBpZiAoIShkZXRhaWxVID49IDIwNDggfHwgZGV0YWlsViA+PSAyMDQ4KSkgew0KICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgIC8vIH0NCg0KICAgICAgLy8gVGhlIHF1YWQgc2l6ZSBkZWZpbmVkIHRoZSBudW1iZXIgb2YgdmVydGljZXMuIFNvIGEgc2ltcGxlIHBsYW5lIHF1YWQgd2lsbCBjb3ZlciA0IHZlcnRzLg0KICAgICAgLy8gTm90ZTogdGhlIGRldGFpbCB2YWx1ZSBpcyBhbHdheXMgYSBwb3dlciBvZiAyLCBhbmQgdGhlIG51bSB2ZXJ0aWNlcyBhcmUgYWx3YXlzIG9kZC4NCiAgICAgIC8vIGUuZy4gZGV0YWlsID0gNCwgbnVtVmVydHMgPSA1Lg0KICAgICAgZGV0YWlsVSsrOw0KICAgICAgZGV0YWlsVisrOw0KDQogICAgICBsZXQgY2F0ZWdvcnkgPSAwOw0KICAgICAgaWYgKA0KICAgICAgICBzdXJmYWNlVHlwZSA9PSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT04gfHwNCiAgICAgICAgc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OIHx8DQogICAgICAgIHN1cmZhY2VUeXBlID09IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfT0ZGU0VUX1NVUkZBQ0UgfHwNCiAgICAgICAgc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OX0ZMSVBQRURfRE9NQUlODQogICAgICApIHsNCiAgICAgICAgY2F0ZWdvcnkgPSAxOw0KICAgICAgfSBlbHNlIGlmIChzdXJmYWNlVHlwZSA9PSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX05VUkJTX1NVUkZBQ0UpIHsNCiAgICAgICAgY2F0ZWdvcnkgPSAyOw0KICAgICAgfQ0KDQogICAgICBpZiAoIWNvdW50c1tjYXRlZ29yeV0pIHsNCiAgICAgICAgY291bnRzW2NhdGVnb3J5XSA9IDE7DQogICAgICB9IGVsc2Ugew0KICAgICAgICBjb3VudHNbY2F0ZWdvcnldKys7DQogICAgICB9DQogICAgICBhZGRUb0JpbihzdXJmYWNlSWQsIGRldGFpbFUsIGRldGFpbFYsIGJpbnNMaXN0LCBiaW5zRGljdCk7DQoNCiAgICAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgZGV0YWlsOiIsZGV0YWlsVSwgIngiLCBkZXRhaWxWKTsNCg0KICAgICAgc3VyZmFjZURldGFpbHNbc3VyZmFjZUlkICogNiArIDBdID0gZXZhbGZsYWdzOw0KICAgICAgc3VyZmFjZURldGFpbHNbc3VyZmFjZUlkICogNiArIDFdID0gYWRkclg7DQogICAgICBzdXJmYWNlRGV0YWlsc1tzdXJmYWNlSWQgKiA2ICsgMl0gPSBhZGRyWTsNCiAgICAgIHN1cmZhY2VEZXRhaWxzW3N1cmZhY2VJZCAqIDYgKyAzXSA9IGNhdGVnb3J5Ow0KICAgICAgc3VyZmFjZURldGFpbHNbc3VyZmFjZUlkICogNiArIDRdID0gZGV0YWlsVTsNCiAgICAgIHN1cmZhY2VEZXRhaWxzW3N1cmZhY2VJZCAqIDYgKyA1XSA9IGRldGFpbFY7DQoNCiAgICAgIHRvdGFsRGV0YWlsICs9IGRldGFpbFUgKiBkZXRhaWxWOw0KICAgICAgLy8gY29uc29sZS5sb2coJ3N1cmZhY2VUeXBlOicsIGdldFN1cmZhY2VUeXBlTmFtZShzdXJmYWNlVHlwZSksICIgc3VyZmFjZUlkOiIsIHN1cmZhY2VJZCwgIiBkZXRhaWw6IixkZXRhaWxVLCAieCIsIGRldGFpbFYpOw0KDQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFN1cmZhY2UgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBzdXJmYWNlSWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIC8vIGNvbnNvbGUubG9nKCdudW1TdXJmYWNlczonLCBudW1TdXJmYWNlcywgJyB0b3RhbERldGFpbDonLCB0b3RhbERldGFpbCkNCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIE5vdyBsYXlvdXQgdGhlIHN1cmZhY2VzIGluIGJhdGNoZXMuIEJpZ2dlc3QgdG8gc21hbGxlc3QNCiAgLy8gVGhlIGNvb3JkaW5hdGVzIGZvciB0aGUgcGF0Y2hlcyBpbiB0aGUgZ2VvbSB0ZXh0dXJlIG5lZWQgdG8gYmUNCiAgLy8gaW4gYSB0ZXh0dXJlIHRoYXQgd2UgYmluZCB0byB0aGUgR0xFdmFsdWF0ZURyYXdJdGVtc1NoYWRlciwgd2hlcmUNCiAgLy8gaXQgY2FuIHNjYXR0ZXIgdGhlIHZhbHVlcyBpbnRvIHRoZSBkcmF3IGluc3RhbmNlcy4NCiAgY29uc3QgaXRlbUNvdW50VVYgPSBjYWxjQ29udGFpbmVyU2l6ZShudW1TdXJmYWNlcywgMiAvKiBwaXhlbHMgcGVyIGl0ZW0gKi8sIDEpOw0KICBjb25zdCBzdXJmYWNlc0F0bGFzTGF5b3V0VGV4dHVyZVNpemUgPSBbaXRlbUNvdW50VVZbMF0gKiAyLCBpdGVtQ291bnRVVlsxXV07DQogIGNvbnN0IHN1cmZhY2VzQXRsYXNMYXlvdXQgPSBuZXcgRmxvYXQzMkFycmF5KA0KICAgIGl0ZW1Db3VudFVWWzBdICoNCiAgICAyIC8qIHBpeGVscyBwZXIgaXRlbSAqLyAqDQogICAgICBpdGVtQ291bnRVVlsxXSAqDQogICAgICA0IC8qIGNoYW5uZWxzIHBlciBwaXhlbCovDQogICk7DQoNCiAgY29uc3Qgc3VyZmFjZXNFdmFsQXR0cnMgPSBbXTsNCiAgZm9yIChjb25zdCBjYXRlZ29yeSBpbiBjb3VudHMpIHsNCiAgICBjb25zdCBjb3VudCA9IGNvdW50c1tjYXRlZ29yeV07DQogICAgc3VyZmFjZXNFdmFsQXR0cnNbcGFyc2VJbnQoY2F0ZWdvcnkpXSA9IG5ldyBGbG9hdDMyQXJyYXkoDQogICAgICBjb3VudCAvKiBmbG9hdHMgcGVyIGl0ZW0gKi8NCiAgICApOw0KICAgIC8vIHJlc2V0IHNvIHdlIGNhbiByZS1jb3VudA0KICAgIGNvdW50c1tjYXRlZ29yeV0gPSBudWxsOw0KICB9DQogIGxheW91dEJpbnMoDQogICAgYmluc0xpc3QsDQogICAgX19zdXJmYWNlUGFja2VyLA0KICAgIChiaW4sIGksIHUsIHYpID0+IHsNCiAgICAgIGNvbnN0IHN1cmZhY2VJZCA9IGJpbi5pZHNbaV07DQogICAgICAvLyBjb25zb2xlLmxvZygic3VyZmFjZUlkOiIgKyBzdXJmYWNlSWQgKyAiIHU6IiArdSArICIgdjoiICsgdiArICIgdzoiICsgYmluLml0ZW1XaWR0aCArICIgaDoiICsgYmluLml0ZW1IZWlnaHQpOw0KICAgICAgY29uc3QgZmxhZ3MgPSBzdXJmYWNlRGV0YWlsc1tzdXJmYWNlSWQgKiA2ICsgMF07DQogICAgICBjb25zdCBhZGRyWCA9IHN1cmZhY2VEZXRhaWxzW3N1cmZhY2VJZCAqIDYgKyAxXTsNCiAgICAgIGNvbnN0IGFkZHJZID0gc3VyZmFjZURldGFpbHNbc3VyZmFjZUlkICogNiArIDJdOw0KICAgICAgY29uc3QgY2F0ZWdvcnkgPSBzdXJmYWNlRGV0YWlsc1tzdXJmYWNlSWQgKiA2ICsgM107DQogICAgICAvLyBjb25zb2xlLmxvZygic3VyZmFjZUlkOiIgKyBzdXJmYWNlSWQgKyAiIGFkZHJYOiIgK2FkZHJYICsgIiBhZGRyWToiICsgYWRkclkgKyAiIGNhdGVnb3J5OiIgKyBjYXRlZ29yeSk7DQoNCiAgICAgIHN1cmZhY2VzQXRsYXNMYXlvdXRbc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtICsgMF0gPSB1Ow0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFtzdXJmYWNlSWQgKiB2YWx1ZXNQZXJTdXJmYWNlTGlicmFyeUxheW91dEl0ZW0gKyAxXSA9IHY7DQogICAgICBzdXJmYWNlc0F0bGFzTGF5b3V0W3N1cmZhY2VJZCAqIHZhbHVlc1BlclN1cmZhY2VMaWJyYXJ5TGF5b3V0SXRlbSArIDJdID0NCiAgICAgICAgYmluLml0ZW1XaWR0aDsNCiAgICAgIHN1cmZhY2VzQXRsYXNMYXlvdXRbc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtICsgM10gPQ0KICAgICAgICBiaW4uaXRlbUhlaWdodDsNCg0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFsNCiAgICAgICAgc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtICsgNA0KICAgICAgXSA9IGFkZHJYOw0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFsNCiAgICAgICAgc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtICsgNQ0KICAgICAgXSA9IGFkZHJZOw0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFsNCiAgICAgICAgc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtICsgNg0KICAgICAgXSA9IGZsYWdzOw0KICAgICAgaWYgKGNvdW50c1tjYXRlZ29yeV0gPT09IG51bGwpIHsNCiAgICAgICAgY291bnRzW2NhdGVnb3J5XSA9IDA7DQogICAgICB9IGVsc2Ugew0KICAgICAgICBjb3VudHNbY2F0ZWdvcnldKys7DQogICAgICB9DQogICAgICBzdXJmYWNlc0V2YWxBdHRyc1tjYXRlZ29yeV1bY291bnRzW2NhdGVnb3J5XV0gPSBzdXJmYWNlSWQ7DQogICAgfQ0KICAgIC8qICwgKGJpbiwgYmxvY2spPT57DQogICAgICAgIGNvbnNvbGUubG9nKFtfX3N1cmZhY2VQYWNrZXIucm9vdC53LCBfX3N1cmZhY2VQYWNrZXIucm9vdC5oXSArICI6IiArIFtiaW4uaXRlbVdpZHRoLCBiaW4uaXRlbUhlaWdodF0gKyAiOiIgKyBiaW4uaXRlbUNvdW50VVYgKyAiOiIgKyBbYmluLncsIGJpbi5oXSkNCiAgICAgIH0qLw0KICApOw0KDQogIHdvcmtlclN0YXRlLnN1cmZhY2VEZXRhaWxzID0gc3VyZmFjZURldGFpbHM7DQoNCiAgcmV0dXJuIHsNCiAgICBudW1TdXJmYWNlcywNCiAgICBzdXJmYWNlc0F0bGFzTGF5b3V0LA0KICAgIHN1cmZhY2VzRXZhbEF0dHJzLA0KICAgIHN1cmZhY2VzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSwNCiAgfQ0KfTsNCg0KY29uc3QgbGF5b3V0VHJpbVNldHMgPSAoDQogIHRyaW1TZXRzUmVhZGVyLA0KICBjYWREYXRhVmVyc2lvbiwNCiAgY3VydmVzQXRsYXNMYXlvdXQsDQogIGxvZCwNCiAgdHJpbVRleGVsU2l6ZQ0KKSA9PiB7DQogIGNvbnN0IG51bVRyaW1TZXRzID0gdHJpbVNldHNSZWFkZXIubG9hZFVJbnQzMigpOw0KICBsZXQgdHJpbVNldHNCdWZmZXJIZWFkZXIgPSA0Ow0KICBpZiAoY2FkRGF0YVZlcnNpb24ucGF0Y2ggPiAwIHx8IGNhZERhdGFWZXJzaW9uLm1pbm9yID4gMCB8fCBjYWREYXRhVmVyc2lvbi5tYWpvciA+IDApIHsNCiAgICB0cmltU2V0c0J1ZmZlckhlYWRlciA9IDg7DQogIH0NCg0KICAvLyBUaGUgY29vcmRpbmF0ZXMgZm9yIHRoZSBwYXRjaGVzIGluIHRoZSB0cmltIHRleHR1cmUgbmVlZCB0byBiZQ0KICAvLyBpbiBhIHRleHR1cmUgdGhhdCB3ZSBiaW5kIHRvIHRoZSBHTEV2YWx1YXRlRHJhd0l0ZW1zU2hhZGVyLCB3aGVyZQ0KICAvLyBpdCBjYW4gc2NhdHRlciB0aGUgdmFsdWVzIGludG8gdGhlIGRyYXcgaW5zdGFuY2VzLg0KICBjb25zdCB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemUgPSBjYWxjQ29udGFpbmVyU2l6ZShudW1UcmltU2V0cywgMSwgMSk7DQogIGNvbnN0IHRyaW1TZXRzQXRsYXNMYXlvdXREYXRhID0gbmV3IEZsb2F0MzJBcnJheSgNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemVbMF0gKiB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemVbMV0gKiA0DQogICk7DQoNCiAgY29uc3QgbG9hZEN1cnZlUmVmID0gKGxvb3BTdGFydFBvcywgY3VydmVJbmRleFdpdGhpbkxvb3ApID0+IHsNCiAgICBjb25zdCBjdXJ2ZUlkID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCB0cl94ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCB0cl95ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCByb3cwX3ggPSB0cmltU2V0c1JlYWRlci5sb2FkRmxvYXQzMigpOw0KICAgIGNvbnN0IHJvdzBfeSA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgY29uc3Qgcm93MV94ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCByb3cxX3kgPSB0cmltU2V0c1JlYWRlci5sb2FkRmxvYXQzMigpOw0KICAgIGNvbnN0IGZsYWdzID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCg0KICAgIC8vIGNvbnNvbGUubG9nKCJDdXJ2ZVJlZiA6IiwgY3VydmVJZCwgIiBmbGFnczoiLCBmbGFncyk7DQogICAgLy8gTm90ZTogdGhlIGN1cnZlIGxheW91dCBzdG9yZXMgdGhlIG51bWJlciBvZiB2ZXJ0aWNlcywgbm90IHRoZSAnZGV0YWlsJyB2YWx1ZSwgd2hpY2gNCiAgICAvLyBpcyB3aGF0IHdlIGV4cGVjdCBoZXJlLg0KICAgIGNvbnN0IGRldGFpbCA9DQogICAgICBjdXJ2ZXNBdGxhc0xheW91dFtjdXJ2ZUlkICogdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSArIDJdIC0gMTsNCiAgICBjb25zdCByZXN1bHQgPSB7DQogICAgICAvKiBsb29wU3RhcnRQb3MsDQogICAgICBjdXJ2ZUluZGV4V2l0aGluTG9vcCwqLw0KICAgICAgY3VydmVJZCwNCiAgICAgIGFkZHI6IFsNCiAgICAgICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyAwXSwNCiAgICAgICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyAxXSwNCiAgICAgIF0sDQogICAgICBkZXRhaWwsDQogICAgICB0cjogW3RyX3gsIHRyX3ldLA0KICAgICAgcm93MDogW3JvdzBfeCwgcm93MF95XSwNCiAgICAgIHJvdzE6IFtyb3cxX3gsIHJvdzFfeV0sDQogICAgICBmbGFncywNCiAgICB9Ow0KICAgIHJldHVybiByZXN1bHQNCiAgfTsNCg0KICBjb25zdCBnZXRUcmltU2V0Q3VydmVSZWZzID0gdHJpbVNldElkID0+IHsNCiAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzQnVmZmVySGVhZGVyICsgdHJpbVNldElkICogNCk7DQogICAgdHJpbVNldHNSZWFkZXIuc2Vlayh0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCkgKyA4KTsNCg0KICAgIGNvbnN0IG51bUhvbGVzID0gdHJpbVNldHNSZWFkZXIubG9hZFVJbnQzMigpOw0KICAgIGNvbnN0IHBlcmltZXRlclN0YXJ0ID0gdHJpbVNldHNSZWFkZXIucG9zKCk7DQogICAgY29uc3QgbnVtUGVybWl0ZXJDdXJ2ZXMgPSB0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IFtdOw0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbnVtUGVybWl0ZXJDdXJ2ZXM7IGkrKykgew0KICAgICAgdHJpbVNldEN1cnZlUmVmcy5wdXNoKGxvYWRDdXJ2ZVJlZigpKTsNCiAgICB9DQogICAgZm9yIChsZXQgaSA9IDA7IGkgPCBudW1Ib2xlczsgaSsrKSB7DQogICAgICBjb25zdCBob2xlU3RhcnQgPSB0cmltU2V0c1JlYWRlci5wb3MoKTsNCiAgICAgIGNvbnN0IG51bUhvbGVDdXJ2ZXMgPSB0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgICBmb3IgKGxldCBqID0gMDsgaiA8IG51bUhvbGVDdXJ2ZXM7IGorKykgew0KICAgICAgICBjb25zdCBjdXJ2ZVJlZiA9IGxvYWRDdXJ2ZVJlZigpOw0KICAgICAgICB0cmltU2V0Q3VydmVSZWZzLnB1c2goY3VydmVSZWYpOw0KICAgICAgfQ0KICAgIH0NCiAgICAvLyBpZih0cmltU2V0SWQ9PTApew0KICAgIC8vICAgLy8gY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IGdldFRyaW1TZXRDdXJ2ZVJlZnModHJpbVNldElkKTsNCiAgICAvLyAgIGNvbnNvbGUubG9nKHRyaW1TZXRDdXJ2ZVJlZnMpDQogICAgLy8gICB0cmltU2V0Q3VydmVSZWZzLnNwbGljZSgwLCAxKQ0KICAgIC8vIH0NCiAgICByZXR1cm4gdHJpbVNldEN1cnZlUmVmcw0KICB9Ow0KDQogIGNvbnN0IGJpbnNMaXN0ID0gW107DQogIGNvbnN0IGJpbnNEaWN0ID0ge307DQogIGNvbnN0IHRyaW1TZXRCb3JkZXIgPSAxOw0KDQogIGZvciAobGV0IHRyaW1TZXRJZCA9IDA7IHRyaW1TZXRJZCA8IG51bVRyaW1TZXRzOyB0cmltU2V0SWQrKykgew0KICAgIHRyeSB7DQogICAgICAvLyBpZih0cmltU2V0SWQgIT0gMjApIHsNCiAgICAgIC8vICAgY29udGludWU7DQogICAgICAvLyB9DQogICAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzQnVmZmVySGVhZGVyICsgdHJpbVNldElkICogNCk7DQogICAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzUmVhZGVyLmxvYWRVSW50MzIoKSk7DQogICAgICBjb25zdCBzaXplVSA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgICBjb25zdCBzaXplViA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQoNCiAgICAgIC8vIGlmIChzaXplVSA+IDIwMCB8fCBzaXplViA+IDIwMCkNCiAgICAgICAgLy8gY29uc29sZS5sb2coIiB0cmltU2V0SWQ6IiwgdHJpbVNldElkLCAiIHNpemU6IixzaXplVSwgIngiLCBzaXplVik7DQoNCiAgICAgIGlmIChpc05hTihzaXplVSkgfHwgaXNOYU4oc2l6ZVYpKSB7DQogICAgICAgIGNvbnNvbGUud2FybignVW5hYmxlIHRvIGxheW91dCBpdGVtOicgKyBzaXplVSArICcgeCAnICsgc2l6ZVYpOw0KICAgICAgICBjb250aW51ZQ0KICAgICAgfQ0KICAgICAgLy8gTm90ZTogU3VidHJhY3Qgb2ZmIHRoZSBib3JkZXIgd2lkdGguDQogICAgICBjb25zdCBudW1QaXhlbHNVID0gTWF0aC5tYXgoDQogICAgICAgIDEsDQogICAgICAgIG5lYXJlc3RQb3cyKE1hdGguY2VpbChzaXplVSAvIHRyaW1UZXhlbFNpemUpKS10cmltU2V0Qm9yZGVyDQogICAgICApOw0KICAgICAgY29uc3QgbnVtUGl4ZWxzViA9IE1hdGgubWF4KA0KICAgICAgICAxLA0KICAgICAgICBuZWFyZXN0UG93MihNYXRoLmNlaWwoc2l6ZVYgLyB0cmltVGV4ZWxTaXplKSktdHJpbVNldEJvcmRlcg0KICAgICAgKTsNCiAgICAgIC8vIGlmKG51bVBpeGVsc1UgPiAxIHx8IG51bVBpeGVsc1YgPiAxKQ0KICAgICAgLy8gICBjb25zb2xlLmxvZygiVHJpbVNldDoiICsgaSArICIgc2l6ZToiICsgc2l6ZVUgKyAiOiIgKyBzaXplViArICIgIiArIG51bVBpeGVsc1UgKyAiLCIgKyBudW1QaXhlbHNWKQ0KICAgICAgaWYgKGlzTmFOKG51bVBpeGVsc1UpIHx8IGlzTmFOKG51bVBpeGVsc1YpKSB7DQogICAgICAgIGNvbnNvbGUud2FybignVW5hYmxlIHRvIGxheW91dCBpdGVtOicgKyBudW1QaXhlbHNVICsgJyB4ICcgKyBudW1QaXhlbHNWKTsNCiAgICAgICAgY29udGludWUNCiAgICAgIH0NCiAgICAgIGFkZFRvQmluKA0KICAgICAgICB0cmltU2V0SWQsDQogICAgICAgIG51bVBpeGVsc1UgKyB0cmltU2V0Qm9yZGVyICogMiwNCiAgICAgICAgbnVtUGl4ZWxzViArIHRyaW1TZXRCb3JkZXIgKiAyLA0KICAgICAgICBiaW5zTGlzdCwNCiAgICAgICAgYmluc0RpY3QNCiAgICAgICk7DQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFRyaW1TZXQgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCB0cmltU2V0SWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gU29ydCB0aGUgYmlucyBpbnRvIGJpZ2dlc3QgdG8gc21hbGxlc3Qgc28gd2UgcGFjayB0aGUgYmlnZ2VyIG9uZXMgZmlyc3QuDQoNCiAgY29uc3QgdHJpbUN1cnZlRHJhd1NldHNfdG1wID0ge307DQoNCiAgbGF5b3V0QmlucygNCiAgICBiaW5zTGlzdCwNCiAgICBfX3RyaW1TZXRQYWNrZXIsDQogICAgKGJpbiwgaSwgdSwgdikgPT4gew0KICAgICAgY29uc3QgdHJpbVNldElkID0gYmluLmlkc1tpXTsNCg0KICAgICAgY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IGdldFRyaW1TZXRDdXJ2ZVJlZnModHJpbVNldElkKTsNCiAgICAgIC8vIGlmKHRyaW1TZXRJZD09MCkgew0KICAgICAgLy8gICBjb25zb2xlLmxvZygiVHJpbVNldDoiLCBbdSt0cmltU2V0Qm9yZGVyLCB2K3RyaW1TZXRCb3JkZXIsIGJpbi5pdGVtV2lkdGgtKHRyaW1TZXRCb3JkZXIqMiksIGJpbi5pdGVtSGVpZ2h0LSh0cmltU2V0Qm9yZGVyKjIpXSkNCiAgICAgIC8vIH0NCg0KICAgICAgLy8gY29uc29sZS5sb2coIlRyaW1TZXQ6IiwgW3UrdHJpbVNldEJvcmRlciwgdit0cmltU2V0Qm9yZGVyLCBiaW4uaXRlbVdpZHRoLSh0cmltU2V0Qm9yZGVyKjIpLCBiaW4uaXRlbUhlaWdodC0odHJpbVNldEJvcmRlcioyKV0pDQoNCiAgICAgIC8vIEdlbmVyYXRpbmcgdGhlIHRleHR1cmUgdG8gYmUgcmVhZCBmcm9tIGR1cmluZyBpbnN0YW5jZSByYXN0ZXJpemF0aW9uLihHTEV2YWx1YXRlRHJhd0l0ZW1zU2hhZGVyKQ0KICAgICAgdHJpbVNldHNBdGxhc0xheW91dERhdGFbdHJpbVNldElkICogNCArIDBdID0gdSArIHRyaW1TZXRCb3JkZXI7DQogICAgICB0cmltU2V0c0F0bGFzTGF5b3V0RGF0YVt0cmltU2V0SWQgKiA0ICsgMV0gPSB2ICsgdHJpbVNldEJvcmRlcjsNCiAgICAgIHRyaW1TZXRzQXRsYXNMYXlvdXREYXRhW3RyaW1TZXRJZCAqIDQgKyAyXSA9DQogICAgICAgIGJpbi5pdGVtV2lkdGggLSB0cmltU2V0Qm9yZGVyICogMjsNCiAgICAgIHRyaW1TZXRzQXRsYXNMYXlvdXREYXRhW3RyaW1TZXRJZCAqIDQgKyAzXSA9DQogICAgICAgIGJpbi5pdGVtSGVpZ2h0IC0gdHJpbVNldEJvcmRlciAqIDI7DQoNCiAgICAgIGZvciAoY29uc3QgdHJpbUN1cnZlIG9mIHRyaW1TZXRDdXJ2ZVJlZnMpIHsNCiAgICAgICAgbGV0IGRyYXdTZXQgPSB0cmltQ3VydmVEcmF3U2V0c190bXBbdHJpbUN1cnZlLmRldGFpbF07DQogICAgICAgIGlmICghZHJhd1NldCkgew0KICAgICAgICAgIGRyYXdTZXQgPSBbXTsNCiAgICAgICAgICB0cmltQ3VydmVEcmF3U2V0c190bXBbdHJpbUN1cnZlLmRldGFpbF0gPSBkcmF3U2V0Ow0KICAgICAgICB9DQoNCiAgICAgICAgLy8gcGF0Y2hDb29yZHMNCiAgICAgICAgZHJhd1NldC5wdXNoKHUgKyB0cmltU2V0Qm9yZGVyKTsNCiAgICAgICAgZHJhd1NldC5wdXNoKHYgKyB0cmltU2V0Qm9yZGVyKTsNCiAgICAgICAgZHJhd1NldC5wdXNoKGJpbi5pdGVtV2lkdGggLSB0cmltU2V0Qm9yZGVyICogMik7DQogICAgICAgIGRyYXdTZXQucHVzaChiaW4uaXRlbUhlaWdodCAtIHRyaW1TZXRCb3JkZXIgKiAyKTsNCg0KICAgICAgICAvLyBkYXRhMCAodmVjNCkNCiAgICAgICAgZHJhd1NldC5wdXNoKHRyaW1DdXJ2ZS50clswXSk7DQogICAgICAgIGRyYXdTZXQucHVzaCh0cmltQ3VydmUudHJbMV0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzBbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzBbMV0pOw0KDQogICAgICAgIC8vIGRhdGExICh2ZWM0KQ0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzFbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzFbMV0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmFkZHJbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmFkZHJbMV0pOw0KDQogICAgICAgIGRyYXdTZXQucHVzaCh0cmltQ3VydmUuZmxhZ3MpOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmN1cnZlSWQpOw0KDQogICAgICAgIC8vIGRyYXdTZXQucHVzaChsb29wU3RhcnRQb3MpOw0KICAgICAgICAvLyBkcmF3U2V0LnB1c2goY3VydmVJbmRleFdpdGhpbkxvb3ApOw0KICAgICAgfQ0KICAgIH0NCiAgICAvKiAsIChiaW4sIGJsb2NrKT0+ew0KICAgICAgICAgIGNvbnNvbGUubG9nKCJMYXlvdXQgVHJpbVNldCBiaW46IiArIGJpbi5pdGVtQ291bnRVViArICIgPiAiICsgYmxvY2sueCArICIsIiArIGJsb2NrLnkgKyAiICIgKyBiaW4udyArICIsIiArIGJpbi5oKTsNCiAgICAgIH0qLw0KICApOw0KDQogIC8vIE5vdyBjb252ZXJ0IGFsbCB0aGUgZHJhdyBzZXRzIHRvIHR5cGVkIGFycmF5cw0KICBjb25zdCB0cmltQ3VydmVEcmF3U2V0cyA9IHt9Ow0KICBmb3IgKGNvbnN0IGtleSBpbiB0cmltQ3VydmVEcmF3U2V0c190bXApIHsNCiAgICB0cmltQ3VydmVEcmF3U2V0c1trZXldID0gRmxvYXQzMkFycmF5LmZyb20odHJpbUN1cnZlRHJhd1NldHNfdG1wW2tleV0pOw0KICB9DQoNCiAgcmV0dXJuIHsNCiAgICB0cmltQ3VydmVEcmF3U2V0cywNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0RGF0YSwNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemUsDQogIH0NCn07DQoNCmxldCBnZXRCb2R5RGVzY0RhdGE7DQoNCmNvbnN0IGxheW91dEJvZHlJdGVtcyA9ICgNCiAgc2NlbmVCb2R5SXRlbXNEYXRhLA0KICBib2R5RGVzY1RvY1JlYWRlciwNCiAgYm9keURlc2NSZWFkZXIsDQogIGNhZERhdGFWZXJzaW9uDQopID0+IHsNCiAgY29uc3QgbnVtQm9kaWVzID0gc2NlbmVCb2R5SXRlbXNEYXRhLmxlbmd0aCAvIGZsb2F0c1BlclNjZW5lQm9keTsNCg0KICAvLyBjb25zdCBib2R5SXRlbXNMYXlvdXQgPSBuZXcgRmxvYXQzMkFycmF5KG51bUJvZGllcyAqIDQpOw0KICBjb25zdCBib2R5SXRlbXNDb29yZHMgPSBuZXcgRmxvYXQzMkFycmF5KG51bUJvZGllcyAqIGJvZHlJdGVtQ29vcmRzU3RyaWRlKTsNCiAgY29uc3QgYm9keUl0ZW1MYXlvdXRDb29yZHMgPSBuZXcgRmxvYXQzMkFycmF5KG51bUJvZGllcyAqIDUpOw0KDQogIGNvbnN0IGJ5dGVzUGVyVmFsdWUgPSA0OyAvLyAzMiBiaXQgZmxvYXRzDQogIGNvbnN0IGJ5dGVzUGVyUGl4ZWwgPSBieXRlc1BlclZhbHVlICogNDsgLy8gUkdCQSBwaXhlbHMNCiAgY29uc3QgYm9keUxpYnJhcnlCdWZmZXJUZXh0dXJlU2l6ZSA9IE1hdGguc3FydCgNCiAgICBib2R5RGVzY1JlYWRlci5ieXRlTGVuZ3RoIC8gYnl0ZXNQZXJQaXhlbA0KICApOyAvLyBSR0JBMTYgcGl4ZWxzDQoNCiAgLy8gY29uc29sZS5sb2coImJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemU6IiArIGJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemUpOw0KDQogIGNvbnN0IGdldEJvZHlOdW1TdXJmYWNlcyA9IGJvZHlJZCA9PiB7DQogICAgYm9keURlc2NUb2NSZWFkZXIuc2VlayhieXRlc1BlclZhbHVlICsgYm9keUlkICogKDMgKiBieXRlc1BlclZhbHVlKSk7DQogICAgY29uc3QgeCA9IGJvZHlEZXNjVG9jUmVhZGVyLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCB5ID0gYm9keURlc2NUb2NSZWFkZXIubG9hZFVJbnQzMigpOw0KICAgIC8vIGNvbnNvbGUubG9nKCJCb2R5IERlc2MgQ29vcmRzOiIgKyB4ICsgIiAsIiArIHkpOw0KDQogICAgY29uc3Qgb2Zmc2V0SW5CeXRlcyA9IDYgLyogYmJveCovICogYnl0ZXNQZXJWYWx1ZTsgLy8gc2tpcCB0aGUgYmJveA0KDQogICAgLy8gWCwgWSBpbiBwaXhlbHMuDQogICAgY29uc3QgYnl0ZU9mZnNldCA9DQogICAgICB4ICogYnl0ZXNQZXJQaXhlbCArIHkgKiBieXRlc1BlclBpeGVsICogYm9keUxpYnJhcnlCdWZmZXJUZXh0dXJlU2l6ZTsNCiAgICAvLyBjb25zb2xlLmxvZygiX19zZWVrU3VyZmFjZURhdGE6IiArIGJvZHlJZCArICIgYnl0ZU9mZnNldDoiICsgKGJ5dGVPZmZzZXQgK29mZnNldCkgKyAiIHBpeGVsOiIgKyAoKGJ5dGVPZmZzZXQgK29mZnNldCkvOCkgKyAiIHg6IiArIHggKyAiIHk6IiArIHkpOw0KICAgIGJvZHlEZXNjUmVhZGVyLnNlZWsoYnl0ZU9mZnNldCArIG9mZnNldEluQnl0ZXMpOw0KICAgIHJldHVybiBib2R5RGVzY1JlYWRlci5sb2FkRmxvYXQzMigpDQogIH07DQoNCiAgDQogIGxldCB2YWx1ZXNQZXJTdXJmYWNlUmVmOw0KICBpZiAoY2FkRGF0YVZlcnNpb24ucGF0Y2ggPCAyOSAmJiBjYWREYXRhVmVyc2lvbi5taW5vciA9PSAwICYmIGNhZERhdGFWZXJzaW9uLm1ham9yID09IDApIHsNCiAgICB2YWx1ZXNQZXJTdXJmYWNlUmVmID0gMTE7DQogIH0gZWxzZSB7DQogICAgdmFsdWVzUGVyU3VyZmFjZVJlZiA9IDE1OyAvLyBOb3cgd2UgaW5jbHVkZSBhIDQgZmxvYXQgY29sb3IgdmFsdWUgcGVyIHN1cmZhY2UgcmVmLg0KICB9DQoNCiAgZ2V0Qm9keURlc2NEYXRhID0gYm9keURlc2NJZCA9PiB7DQogICAgYm9keURlc2NUb2NSZWFkZXIuc2VlayhieXRlc1BlclZhbHVlICsgYm9keURlc2NJZCAqICgzICogYnl0ZXNQZXJWYWx1ZSkpOw0KICAgIGNvbnN0IHggPSBib2R5RGVzY1RvY1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgY29uc3QgeSA9IGJvZHlEZXNjVG9jUmVhZGVyLmxvYWRVSW50MzIoKTsNCiAgICAvLyBjb25zb2xlLmxvZygiQm9keSBEZXNjIENvb3JkczoiICsgeCArICIgLCIgKyB5KTsNCg0KICAgIGNvbnN0IG9mZnNldEluQnl0ZXMgPSA2IC8qIGJib3gqLyAqIGJ5dGVzUGVyVmFsdWU7IC8vIHNraXAgdGhlIGJib3gNCg0KICAgIC8vIFgsIFkgaW4gcGl4ZWxzLg0KICAgIGNvbnN0IGJ5dGVPZmZzZXQgPQ0KICAgICAgeCAqIGJ5dGVzUGVyUGl4ZWwgKyB5ICogYnl0ZXNQZXJQaXhlbCAqIGJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemU7DQogICAgLy8gY29uc29sZS5sb2coIl9fc2Vla1N1cmZhY2VEYXRhOiIgKyBib2R5SWQgKyAiIGJ5dGVPZmZzZXQ6IiArIChieXRlT2Zmc2V0ICtvZmZzZXQpICsgIiBwaXhlbDoiICsgKChieXRlT2Zmc2V0ICtvZmZzZXQpLzgpICsgIiB4OiIgKyB4ICsgIiB5OiIgKyB5KTsNCiAgICBib2R5RGVzY1JlYWRlci5zZWVrKGJ5dGVPZmZzZXQgKyBvZmZzZXRJbkJ5dGVzKTsNCg0KICAgIGNvbnN0IG51bUJvZHlTdXJmYWNlcyA9IGJvZHlEZXNjUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgY29uc3Qgc3VyZmFjZUlkcyA9IFtdOw0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbnVtQm9keVN1cmZhY2VzOyBpKyspIHsNCiAgICAgIGNvbnN0IGlkID0gYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKGksICJpZDoiLCBpZCkNCiAgICAgIHN1cmZhY2VJZHMucHVzaChpZCk7DQogICAgICBib2R5RGVzY1JlYWRlci5hZHZhbmNlKCh2YWx1ZXNQZXJTdXJmYWNlUmVmIC0gMSkgKiBieXRlc1BlclZhbHVlKTsNCiAgICB9DQoNCiAgICByZXR1cm4gew0KICAgICAgeCwNCiAgICAgIHksDQogICAgICBzdXJmYWNlSWRzLA0KICAgIH0NCiAgfTsNCg0KICBjb25zdCBzdXJmYWNlRHJhd1NldHNfdG1wID0ge307DQogIGxldCBudW1TdXJmYWNlSW5zdGFuY2VzID0gMDsNCg0KICBjb25zdCBib2RpZXNfYmluc0xpc3QgPSBbXTsNCiAgY29uc3QgYm9kaWVzX2JpbnNEaWN0ID0ge307DQogIC8vIGNvbnN0IGxpZ2h0bWFwX2JpbnNMaXN0ID0gW10NCiAgLy8gY29uc3QgbGlnaHRtYXBfYmluc0RpY3QgPSB7fQ0KICBjb25zdCBudW1Cb2R5SW5zdGFuY2VTdXJmYWNlcyA9IG5ldyBVaW50MTZBcnJheShudW1Cb2RpZXMpOw0KDQogIGZvciAobGV0IGJvZHlJZCA9IDA7IGJvZHlJZCA8IG51bUJvZGllczsgYm9keUlkKyspIHsNCiAgICB0cnkgew0KICAgICAgY29uc3Qgc3Jjb2Zmc2V0ID0gYm9keUlkICogZmxvYXRzUGVyU2NlbmVCb2R5Ow0KICAgICAgY29uc3QgYm9keURlc2NJZCA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAwXTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJib2R5SWQ6IiwgYm9keUlkLCAiIGJvZHlEZXNjSWQ6IiwgYm9keURlc2NJZCkNCiAgICAgIC8vIGlmKGJvZHlJZCAhPSAyKQ0KICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgIGlmIChib2R5RGVzY0lkID09IC0xKSBjb250aW51ZQ0KICAgICAgY29uc3QgbnVtU3VyZmFjZXMgPSBnZXRCb2R5TnVtU3VyZmFjZXMoYm9keURlc2NJZCk7DQogICAgICBudW1Cb2R5SW5zdGFuY2VTdXJmYWNlc1tib2R5SWRdID0gbnVtU3VyZmFjZXM7DQogICAgICBudW1TdXJmYWNlSW5zdGFuY2VzICs9IG51bVN1cmZhY2VzOw0KDQogICAgICAvLyBmb3IgZWFjaCBib2R5IHdlIHdhbnQgdG8gYWxsb2NhdGUgYSByb3VnaGx5IHNxdWFyZSBxdWFkIHRoYXQgcGFja3MgYWxsIHRoZSBkcmF3IGRhdGEgZm9yIGVhY2ggc3VyZmFjZS4NCiAgICAgIGNvbnN0IGJpblNpemUgPSBjYWxjQ29udGFpbmVyU2l6ZShudW1TdXJmYWNlcywgcGl4ZWxzUGVyRHJhd0l0ZW0sIDEpOw0KICAgICAgYWRkVG9CaW4oDQogICAgICAgIGJvZHlJZCwNCiAgICAgICAgYmluU2l6ZVswXSAqIHBpeGVsc1BlckRyYXdJdGVtLA0KICAgICAgICBiaW5TaXplWzFdLA0KICAgICAgICBib2RpZXNfYmluc0xpc3QsDQogICAgICAgIGJvZGllc19iaW5zRGljdA0KICAgICAgKTsNCiAgICB9IGNhdGNoIChlKSB7DQogICAgICBjb25zb2xlLndhcm4oIkVycm9yIHdoaWxlIHJlYWRpbmcgQ0FEQm9keURlc2MgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBib2R5SWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIGxheW91dEJpbnMoYm9kaWVzX2JpbnNMaXN0LCBfX2JvZHlBdGxhc1BhY2tlciwgKGJpbiwgaSwgdSwgdikgPT4gew0KICAgIGNvbnN0IGJvZHlJZCA9IGJpbi5pZHNbaV07DQogICAgY29uc3Qgc3Jjb2Zmc2V0ID0gYm9keUlkICogZmxvYXRzUGVyU2NlbmVCb2R5Ow0KDQogICAgY29uc3QgYm9keURlc2NJZCA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAwXTsNCiAgICBjb25zdCBzaGFkZXJJZCA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAyXTsNCiAgICBjb25zdCBib2R5RGVzYyA9IGdldEJvZHlEZXNjRGF0YShib2R5RGVzY0lkKTsNCiAgICBjb25zdCBib2R5Q291bnRVViA9IFtiaW4uaXRlbVdpZHRoIC8gcGl4ZWxzUGVyRHJhd0l0ZW0sIGJpbi5pdGVtSGVpZ2h0XTsNCg0KICAgIC8vIGNvbnNvbGUubG9nKCJCb2R5OiIsIGJvZHlJZCwgIiBib2R5RGVzYzoiLCBib2R5RGVzYyk7DQogICAgLy8gY29uc29sZS5sb2coIkJvZHk6IiwgYm9keUlkLCAiIGZsYWdzOiIsIHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAxXSk7DQogICAgLy8gY29uc29sZS5sb2coIkJvZHk6IiArIGJvZHlJZCArICIgbnVtU3VyZmFjZXM6IiArIG51bVN1cmZhY2VzICsgIiBiaW5TaXplOiIgKyBiaW5TaXplKTsNCiAgICANCg0KICAgIGJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyAwXSA9IGJvZHlEZXNjSWQ7DQogICAgYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDFdID0gdTsNCiAgICBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMl0gPSB2Ow0KICAgIGJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyAzXSA9IGJvZHlDb3VudFVWWzBdOw0KICAgIGJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyA0XSA9IGJvZHlDb3VudFVWWzFdOw0KDQogICAgbGV0IHRndG9mZnNldCA9IGJvZHlJZCAqIGJvZHlJdGVtQ29vcmRzU3RyaWRlOw0KICAgIC8vIE5vdGU6IHdlIGFyZSBub3QgeWV0IHNlbmRpbmcgdGhlIGJvZHkgSWQgb3Igb3RoZXIgbWV0YSBkYXRhIHlldC4NCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMF0gPSAwOyAvLyBhc3NldElkOyAvLyBhc3NldElkDQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDFdID0gYm9keUlkOyAvLyBib2R5SWQNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMl0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgMV07IC8vIGZsYWdzLg0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAzXSA9IDA7IC8vIGF2YWlsYWJsZS4NCg0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyA0XSA9IGJvZHlEZXNjLng7IC8vIHNyYyBib2R5RGF0YSBjb29yZC54DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDVdID0gYm9keURlc2MueTsgLy8gc3JjIGJvZHlEYXRhIGNvb3JkLnkNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgNl0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgM107IC8vIHNyYyBnbG1hdGVyaWFsY29vcmRzLngNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgN10gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgNF07IC8vIHNyYyBnbG1hdGVyaWFsY29vcmRzLnkNCg0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyA4XSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyA1XTsgLy8gdHIueA0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyA5XSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyA2XTsgLy8gdHIueQ0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAxMF0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgN107IC8vIHRyLnoNCg0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAxMV0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgOF07IC8vIG9yaS54DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDEyXSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyA5XTsgLy8gb3JpLnkNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMTNdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDEwXTsgLy8gb3JpLnoNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMTRdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDExXTsgLy8gb3JpLncNCg0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAxNV0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgMTJdOyAvLyBzYy54DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDE2XSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAxM107IC8vIHNjLnkNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMTddID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDE0XTsgLy8gc2Mueg0KICAgIC8vIGNvbnNvbGUubG9nKGJvZHlJdGVtc0Nvb3Jkc1tzcmNvZmZzZXQgKyAxNV0sIGJvZHlJdGVtc0Nvb3Jkc1tzcmNvZmZzZXQgKyAxNl0sIGJvZHlJdGVtc0Nvb3Jkc1tzcmNvZmZzZXQgKyAxN10pDQoNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMThdID0gdTsgLy8gdGd0IGNvb3Jkcy54DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDE5XSA9IHY7IC8vIHRndCBjb29yZHMueQ0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAyMF0gPSBiaW4uaXRlbVdpZHRoOyAvLyB0Z3Qgc2l6ZS54DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDIxXSA9IGJpbi5pdGVtSGVpZ2h0OyAvLyB0Z3Qgc2l6ZS55DQoNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMjJdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDE1XTsgLy8gaGlnaGxpZ2h0LnINCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMjNdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDE2XTsgLy8gaGlnaGxpZ2h0LmcNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMjRdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDE3XTsgLy8gaGlnaGxpZ2h0LmINCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMjVdID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDE4XTsgLy8gZmlsbA0KDQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDI2XSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAxOV07IC8vIGN1dFBsYW5lLngNCiAgICBib2R5SXRlbXNDb29yZHNbdGd0b2Zmc2V0ICsgMjddID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDIwXTsgLy8gY3V0UGxhbmUueQ0KICAgIGJvZHlJdGVtc0Nvb3Jkc1t0Z3RvZmZzZXQgKyAyOF0gPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgMjFdOyAvLyBjdXRQbGFuZS56DQogICAgYm9keUl0ZW1zQ29vcmRzW3RndG9mZnNldCArIDI5XSA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAyMl07IC8vIGN1dERpc3QNCg0KICAgIGNvbnN0IHN1cmZhY2VJZHMgPSBib2R5RGVzYy5zdXJmYWNlSWRzOw0KICAgIGZvciAobGV0IGogPSAwOyBqIDwgc3VyZmFjZUlkcy5sZW5ndGg7IGorKykgew0KICAgICAgY29uc3Qgc3VyZmFjZUlkID0gc3VyZmFjZUlkc1tqXTsNCg0KICAgICAgY29uc3Qgc3VyZmFjZURldGFpbFggPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tzdXJmYWNlSWQgKiA2ICsgNF07DQogICAgICBjb25zdCBzdXJmYWNlRGV0YWlsWSA9IHdvcmtlclN0YXRlLnN1cmZhY2VEZXRhaWxzW3N1cmZhY2VJZCAqIDYgKyA1XTsNCg0KICAgICAgLy8gSWYgSXRlbXMgd2VyZSBza2lwcGVkIGluIGxheWluZyBvdXQgdGhlIHN1cmZhY2VzLCB3ZSB3aWxsIHNlZSB6ZXJvIGRldGFpbCB2YWx1ZXMgaGVyZS4NCiAgICAgIGlmIChzdXJmYWNlRGV0YWlsWCA9PSAwIHx8IHN1cmZhY2VEZXRhaWxZID09IDApIGNvbnRpbnVlDQoNCiAgICAgIGNvbnN0IHN1cmZhY2VLZXkgPSBzdXJmYWNlRGV0YWlsWCArICd4JyArIHN1cmZhY2VEZXRhaWxZOw0KICAgICAgY29uc3Qgc3ViU2V0S2V5ID0gc2hhZGVySWQ7DQogICAgICAvLyBjb25zb2xlLmxvZyhqKyI6IiArIHN1cmZhY2VJZCArICIgZGV0YWlsOiIgKyBzdXJmYWNlS2V5KTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJTdXJmYWNlIERyYXc6IiArIHN1cmZhY2VLZXkpOw0KICAgICAgbGV0IGRyYXdTZXQgPSBzdXJmYWNlRHJhd1NldHNfdG1wW3N1cmZhY2VLZXldOw0KICAgICAgaWYgKCFkcmF3U2V0KSB7DQogICAgICAgIGRyYXdTZXQgPSB7fTsNCiAgICAgICAgc3VyZmFjZURyYXdTZXRzX3RtcFtzdXJmYWNlS2V5XSA9IGRyYXdTZXQ7DQogICAgICB9DQogICAgICAvLyBGb3IgZWFjaCBkcmF3IHNldCwgd2UgY2FuIGRyYXcgd2l0aCB2YXJpb3VzIHNoYWRlcnMuDQogICAgICAvLyBIZXJlIHdlIGFsbG9jYXRlIHRoZSBpdGVtIGludG8gdGhlIHN1YnNldCBiYXNlZCBvbiBpdHMgc2hhZGVyaWQuDQogICAgICBsZXQgc3ViU2V0ID0gZHJhd1NldFtzdWJTZXRLZXldOw0KICAgICAgaWYgKCFzdWJTZXQpIHsNCiAgICAgICAgc3ViU2V0ID0gW107DQogICAgICAgIGRyYXdTZXRbc3ViU2V0S2V5XSA9IHN1YlNldDsNCiAgICAgIH0NCiAgICAgIHN1YlNldC5wdXNoKHUgKyAoaiAlIGJvZHlDb3VudFVWWzBdKSAqIHBpeGVsc1BlckRyYXdJdGVtKTsNCiAgICAgIHN1YlNldC5wdXNoKHYgKyBNYXRoLmZsb29yKGogLyBib2R5Q291bnRVVlswXSkpOw0KDQogICAgICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogICAgICAvLyBMaWdodG1hcCBMYXlvdXQNCiAgICAgIC8qDQogICAgICBpZiAoZW5hYmxlTGlnaHRtYXBzKSB7DQogICAgICAgIGNvbnN0IGJwYyA9IDIgLy8gYnl0ZXMgcGVyIGNoYW5uZWwuICgxNmJpdCkNCiAgICAgICAgc3VyZmFjZXNEYXRhUmVhZGVyLnNlZWsoDQogICAgICAgICAgZ2VvbUxpYnJhcnlIZWFkZXJTaXplICsNCiAgICAgICAgICAgIHN1cmZhY2VJZCAqICh2YWx1ZXNQZXJTdXJmYWNlVG9jSXRlbSAqIGJwYykgKw0KICAgICAgICAgICAgNCAqIGJwYw0KICAgICAgICApDQogICAgICAgIGNvbnN0IHNpemVVID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCkNCiAgICAgICAgY29uc3Qgc2l6ZVYgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKQ0KDQogICAgICAgIC8vIGlmKCFOdW1iZXIuaXNGaW5pdGUoc2l6ZVUpKSB7DQogICAgICAgIC8vICAgc2l6ZVUgPSAxIDw8IDEwOw0KICAgICAgICAvLyAgIGNvbnNvbGUubG9nKCJXYXJuaW5nOiBTdXJmYWNlIHNpemVVIGlzIGJpZ2dlciB0aGFuIGNhbiBiZSByZXByZXNlbnRlZCBieSBhIDE2IGJpdCBmbG9hdC4gTGlnaHRtYXAgd2lsbCBiZSBjbGFtcGVkIHRvOiIgKyBzaXplVSk7DQogICAgICAgIC8vIH0NCiAgICAgICAgLy8gaWYoIU51bWJlci5pc0Zpbml0ZShzaXplVikpIHsNCiAgICAgICAgLy8gICBzaXplViA9IDEgPDwgMTA7DQogICAgICAgIC8vICAgY29uc29sZS5sb2coIldhcm5pbmc6IFN1cmZhY2Ugc2l6ZVYgaXMgYmlnZ2VyIHRoYW4gY2FuIGJlIHJlcHJlc2VudGVkIGJ5IGEgMTYgYml0IGZsb2F0LiBMaWdodG1hcCB3aWxsIGJlIGNsYW1wZWQgdG86IiArIHNpemVWKTsNCiAgICAgICAgLy8gfQ0KICAgICAgICBpZiAoaXNOYU4oc2l6ZVUpIHx8IGlzTmFOKHNpemVWKSkgew0KICAgICAgICAgIGNvbnNvbGUud2FybigNCiAgICAgICAgICAgICdVbmFibGUgdG8gbGF5b3V0IEJvZHkgU3VyZmFjZSBJdGVtIExpZ2h0bWFwLiBTdXJmYWNlIHNpemUgaXMgaW52YWxpZCA6JyArDQogICAgICAgICAgICAgIHNpemVVICsNCiAgICAgICAgICAgICAgJyB4ICcgKw0KICAgICAgICAgICAgICBzaXplVg0KICAgICAgICAgICkNCiAgICAgICAgICBjb250aW51ZQ0KICAgICAgICB9DQoNCiAgICAgICAgY29uc3Qgc2l6ZUluVGV4ZWxzVSA9DQogICAgICAgICAgTWF0aC5tYXgoMSwgbmVhcmVzdFBvdzIoTWF0aC5jZWlsKHNpemVVIC8gbGlnaHRtYXBUZXhlbFNpemUpKSkgKyAyIC8vIExpZ2h0bWFwcyBoYXZlIGEgMSBwaXhlbCBib3JkZXIgYXJvdW5kIGVhY2ggaXRlbS4NCiAgICAgICAgY29uc3Qgc2l6ZUluVGV4ZWxzViA9DQogICAgICAgICAgTWF0aC5tYXgoMSwgbmVhcmVzdFBvdzIoTWF0aC5jZWlsKHNpemVWIC8gbGlnaHRtYXBUZXhlbFNpemUpKSkgKyAyIC8vIExpZ2h0bWFwcyBoYXZlIGEgMSBwaXhlbCBib3JkZXIgYXJvdW5kIGVhY2ggaXRlbS4NCg0KICAgICAgICBpZiAoDQogICAgICAgICAgaXNOYU4oc2l6ZUluVGV4ZWxzVSkgfHwNCiAgICAgICAgICAhTnVtYmVyLmlzRmluaXRlKHNpemVJblRleGVsc1UpIHx8DQogICAgICAgICAgaXNOYU4oc2l6ZUluVGV4ZWxzVikgfHwNCiAgICAgICAgICAhTnVtYmVyLmlzRmluaXRlKHNpemVJblRleGVsc1YpDQogICAgICAgICkgew0KICAgICAgICAgIGNvbnNvbGUud2FybigNCiAgICAgICAgICAgICdVbmFibGUgdG8gbGF5b3V0IGl0ZW06JyArIHNpemVJblRleGVsc1UgKyAnIHggJyArIHNpemVJblRleGVsc1YNCiAgICAgICAgICApDQogICAgICAgICAgY29udGludWUNCiAgICAgICAgfQ0KDQogICAgICAgIGNvbnN0IHN1cmZhY2VJbnN0YW5jZUlkID0gKGJvZHlJZCA8PCAxNikgfCBqDQogICAgICAgIC8vIGNvbnNvbGUubG9nKGJvZHlJZCArICI6IiArIGogKyAiIFNpemU6IiArIHNpemVJblRleGVsc1UgKyAiIHggIiArIHNpemVJblRleGVsc1YpOw0KICAgICAgICBhZGRUb0JpbigNCiAgICAgICAgICBzdXJmYWNlSW5zdGFuY2VJZCwNCiAgICAgICAgICBzaXplSW5UZXhlbHNVLA0KICAgICAgICAgIHNpemVJblRleGVsc1YsDQogICAgICAgICAgbGlnaHRtYXBfYmluc0xpc3QsDQogICAgICAgICAgbGlnaHRtYXBfYmluc0RpY3QNCiAgICAgICAgKQ0KICAgICAgfQ0KICAgICAgKi8NCiAgICB9DQogIH0pOw0KDQogIC8vIHdvcmtlclN0YXRlLmJvZHlJdGVtc0xheW91dCA9IGJvZHlJdGVtc0xheW91dDsNCiAgd29ya2VyU3RhdGUubnVtU3VyZmFjZUluc3RhbmNlcyA9IG51bVN1cmZhY2VJbnN0YW5jZXM7DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIExheW91dCB0aGUgbGlnaHRtYXANCg0KICAvLyBTb3J0IHRoZSBiaW5zIGludG8gYmlnZ2VzdCB0byBzbWFsbGVzdCBzbyB3ZSBwYWNrIHRoZSBiaWdnZXIgb25lcyBmaXJzdC4NCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIE5vdyBsYXlvdXQgdGhlIHN1cmZhY2VzIGluIGJhdGNoZXMuIEJpZ2dlc3QgdG8gc21hbGxlc3QNCiAgLy8gaWYgKGVuYWJsZUxpZ2h0bWFwcykgew0KICAvLyAgIGNvbnN0IGxpZ2h0bWFwTGF5b3V0VGV4dHVyZVNpemUgPSBjYWxjQ29udGFpbmVyU2l6ZSgNCiAgLy8gICAgIG51bUJvZGllcyArIG51bVN1cmZhY2VJbnN0YW5jZXMsDQogIC8vICAgICAxLA0KICAvLyAgICAgMQ0KICAvLyAgICkNCiAgLy8gICAvLyBBbGxvY2F0ZSBzcGFjZSBmb3IgUkdCQTE2IGZsb2F0IHRleHR1cmUgdG8gc3RvcmUgdGhlIGxheW91dA0KICAvLyAgIGNvbnN0IGxpZ2h0bWFwTGF5b3V0QnVmZmVyU2l6ZSA9DQogIC8vICAgICBsaWdodG1hcExheW91dFRleHR1cmVTaXplWzBdICogbGlnaHRtYXBMYXlvdXRUZXh0dXJlU2l6ZVsxXSAqIDgNCiAgLy8gICBjb25zdCBsaWdodG1hcExheW91dFdyaXRlciA9IG5ldyBCaW5Xcml0ZXIobGlnaHRtYXBMYXlvdXRCdWZmZXJTaXplKQ0KDQogIC8vICAgbGV0IGJ1ZmZlck9mZnNldEluUGl4ZWxzID0gbnVtQm9kaWVzDQogIC8vICAgY29uc3QgYm9keUxpZ2h0bWFwTGF5b3V0T2Zmc2V0c0luUGl4ZWxzID0gW10NCiAgLy8gICBmb3IgKGxldCBpID0gMDsgaSA8IG51bUJvZGllczsgaSsrKSB7DQogIC8vICAgICBjb25zdCBhZGRyID0gWw0KICAvLyAgICAgICBidWZmZXJPZmZzZXRJblBpeGVscyAlIGxpZ2h0bWFwTGF5b3V0VGV4dHVyZVNpemVbMF0sDQogIC8vICAgICAgIE1hdGguZmxvb3IoYnVmZmVyT2Zmc2V0SW5QaXhlbHMgLyBsaWdodG1hcExheW91dFRleHR1cmVTaXplWzBdKSwNCiAgLy8gICAgIF0NCiAgLy8gICAgIGxpZ2h0bWFwTGF5b3V0V3JpdGVyLndyaXRlRmxvYXQxNihhZGRyWzBdKQ0KICAvLyAgICAgbGlnaHRtYXBMYXlvdXRXcml0ZXIud3JpdGVGbG9hdDE2KGFkZHJbMV0pDQogIC8vICAgICBsaWdodG1hcExheW91dFdyaXRlci53cml0ZUZsb2F0MTYoMCkNCiAgLy8gICAgIGxpZ2h0bWFwTGF5b3V0V3JpdGVyLndyaXRlRmxvYXQxNigwKQ0KICAvLyAgICAgYm9keUxpZ2h0bWFwTGF5b3V0T2Zmc2V0c0luUGl4ZWxzLnB1c2goYnVmZmVyT2Zmc2V0SW5QaXhlbHMpDQogIC8vICAgICBidWZmZXJPZmZzZXRJblBpeGVscyArPSBudW1Cb2R5SW5zdGFuY2VTdXJmYWNlc1tpXQ0KICAvLyAgIH0NCiAgLy8gICAvLyBjb25zb2xlLmxvZygibGlnaHRtYXBMYXlvdXRUZXh0dXJlU2l6ZToiICsgbGlnaHRtYXBMYXlvdXRUZXh0dXJlU2l6ZSk7DQoNCiAgLy8gICBsYXlvdXRCaW5zKGxpZ2h0bWFwX2JpbnNMaXN0LCBfX2xpZ2h0bWFwUGFja2VyLCAoYmluLCBpLCB1LCB2KSA9PiB7DQogIC8vICAgICBjb25zdCBzdXJmYWNlSW5zdGFuY2VJZCA9IGJpbi5pZHNbaV0NCiAgLy8gICAgIGNvbnN0IGJvZHlJZCA9IHN1cmZhY2VJbnN0YW5jZUlkID4+IDE2DQogIC8vICAgICBjb25zdCBzdXJmYWNlSWQgPSBzdXJmYWNlSW5zdGFuY2VJZCAtIChib2R5SWQgPDwgMTYpDQogIC8vICAgICAvLyBjb25zb2xlLmxvZygiYm9keUlkOiIgKyBib2R5SWQgKyAiIHN1cmZhY2VJZDoiICsgc3VyZmFjZUlkICsgIiBbIiArIChyZXMueCArICgoaSAlIGJpblNpemVbMF0pICogYmluLml0ZW1XaWR0aCkpICsgIiwiICsgKHJlcy55ICsgKE1hdGguZmxvb3IoaSAvIGJpblNpemVbMF0pICogYmluLml0ZW1IZWlnaHQpKSArICIsIiArIGJpbi5pdGVtV2lkdGggKyAiLCIrYmluLml0ZW1XaWR0aCsiXSIpOw0KICAvLyAgICAgbGlnaHRtYXBMYXlvdXRXcml0ZXIuc2VlaygNCiAgLy8gICAgICAgYm9keUxpZ2h0bWFwTGF5b3V0T2Zmc2V0c0luUGl4ZWxzW2JvZHlJZF0gKiA4ICsgc3VyZmFjZUlkICogOA0KICAvLyAgICAgKQ0KICAvLyAgICAgLy8gY29uc29sZS5sb2coIkxpZ2h0bWFwIG9mZnNldDoiICsgKGxpZ2h0bWFwTGF5b3V0V3JpdGVyLl9fYnl0ZU9mZnNldCAvIDgpKTsNCiAgLy8gICAgIGxpZ2h0bWFwTGF5b3V0V3JpdGVyLndyaXRlRmxvYXQxNih1KQ0KICAvLyAgICAgbGlnaHRtYXBMYXlvdXRXcml0ZXIud3JpdGVGbG9hdDE2KHYpDQogIC8vICAgICBsaWdodG1hcExheW91dFdyaXRlci53cml0ZUZsb2F0MTYoYmluLml0ZW1XaWR0aCkNCiAgLy8gICAgIGxpZ2h0bWFwTGF5b3V0V3JpdGVyLndyaXRlRmxvYXQxNihiaW4uaXRlbUhlaWdodCkNCiAgLy8gICB9KQ0KDQogIC8vICAgbGlnaHRtYXBMYXlvdXRXcml0ZXIuc2VlayhsaWdodG1hcExheW91dEJ1ZmZlclNpemUpDQogIC8vICAgd29ya2VyU3RhdGUubGlnaHRtYXBMYXlvdXQgPSBsaWdodG1hcExheW91dFdyaXRlci5nZXRCdWZmZXIoKQ0KICAvLyAgIHdvcmtlclN0YXRlLmxpZ2h0bWFwTGF5b3V0VGV4dHVyZVNpemUgPSBsaWdodG1hcExheW91dFRleHR1cmVTaXplDQogIC8vIH0NCg0KICAvLyBjb25zb2xlLmxvZygibGlnaHRtYXAgU2l6ZTogWyIgKyBfX2xpZ2h0bWFwUGFja2VyLnJvb3QudyArICIgeCAiICsgX19saWdodG1hcFBhY2tlci5yb290LmggKyAiXSIpDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KDQogIC8vIE5vdyBjb252ZXJ0IGFsbCB0aGUgZHJhdyBzZXRzIHRvIHR5cGVkIGFycmF5cw0KICBjb25zdCBzdXJmYWNlRHJhd1NldHMgPSB7fTsNCiAgY29uc3QgbGlnaHRtYXBEcmF3U2V0ID0gbmV3IEZsb2F0MzJBcnJheShudW1TdXJmYWNlSW5zdGFuY2VzICogMik7DQogIGxldCBsaWdodG1hcERyYXdTZXRPZmZzZXQgPSAwOw0KICBmb3IgKGNvbnN0IHN1cmZhY2VLZXkgaW4gc3VyZmFjZURyYXdTZXRzX3RtcCkgew0KICAgIGlmICghc3VyZmFjZURyYXdTZXRzW3N1cmZhY2VLZXldKSB7DQogICAgICBzdXJmYWNlRHJhd1NldHNbc3VyZmFjZUtleV0gPSB7fTsNCiAgICB9DQoNCiAgICBjb25zdCBkcmF3U2V0ID0gc3VyZmFjZURyYXdTZXRzX3RtcFtzdXJmYWNlS2V5XTsNCiAgICBmb3IgKGNvbnN0IHN1YlNldEtleSBpbiBkcmF3U2V0KSB7DQogICAgICBjb25zdCBzdWJTZXQgPSBkcmF3U2V0W3N1YlNldEtleV07DQogICAgICBzdXJmYWNlRHJhd1NldHNbc3VyZmFjZUtleV1bc3ViU2V0S2V5XSA9IEZsb2F0MzJBcnJheS5mcm9tKHN1YlNldCk7DQogICAgICBsaWdodG1hcERyYXdTZXQuc2V0KHN1YlNldCwgbGlnaHRtYXBEcmF3U2V0T2Zmc2V0KTsNCiAgICAgIGxpZ2h0bWFwRHJhd1NldE9mZnNldCArPSBzdWJTZXQubGVuZ3RoOw0KICAgIH0NCiAgfQ0KDQogIHdvcmtlclN0YXRlLnN1cmZhY2VEcmF3U2V0c190bXAgPSBzdXJmYWNlRHJhd1NldHNfdG1wOw0KICB3b3JrZXJTdGF0ZS5zdXJmYWNlRHJhd1NldHMgPSBzdXJmYWNlRHJhd1NldHM7DQogIHdvcmtlclN0YXRlLmxpZ2h0bWFwU2l6ZSA9IFtfX2xpZ2h0bWFwUGFja2VyLnJvb3QudywgX19saWdodG1hcFBhY2tlci5yb290LmhdOw0KICB3b3JrZXJTdGF0ZS5saWdodG1hcERyYXdTZXQgPSBsaWdodG1hcERyYXdTZXQ7DQogIHdvcmtlclN0YXRlLmJvZHlJdGVtc0Nvb3JkcyA9IGJvZHlJdGVtc0Nvb3JkczsNCiAgd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHMgPSBib2R5SXRlbUxheW91dENvb3JkczsNCg0KICByZXR1cm4gYm9keUl0ZW1zQ29vcmRzDQp9Ow0KDQpjb25zdCBsb2FkQXNzZW1ibHkgPSAoZGF0YSwgb25Eb25lKSA9PiB7DQogIGNvbnN0IHByb2ZpbGluZyA9IHt9Ow0KICBjb25zdCByZXN1bHQgPSB7DQogICAgZXZlbnRUeXBlOiAnbG9hZEFzc2V0RG9uZScsDQogICAgcHJvZmlsaW5nLA0KICB9Ow0KICBjb25zdCB0cmFuc2ZlcmFibGVzID0gW107DQoNCiAgbGV0IHQwID0gcGVyZm9ybWFuY2Uubm93KCk7DQogIGxldCB0MTsNCg0KICAvLyBMZXRzIHRoaXMgZGF0YSBiZSBnYXJiYWdlIGNvbGxlY3RlZC4NCiAgLy8gd29ya2VyU3RhdGUuc2NlbmVCb2R5SXRlbXNEYXRhID0gZGF0YS5zY2VuZUJvZHlJdGVtc0RhdGE7DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gQ3VydmVzDQogIGNvbnN0IGN1cnZlc0RhdGFSZWFkZXIgPSBuZXcgQmluUmVhZGVyKGRhdGEuY3VydmVzRGF0YUJ1ZmZlcik7DQogIHsNCiAgICBjb25zdCBjdXJ2ZUxheW91dERhdGEgPSBsYXlvdXRDdXJ2ZXMoDQogICAgICBjdXJ2ZXNEYXRhUmVhZGVyLA0KICAgICAgZGF0YS5lcnJvclRvbGVyYW5jZSwNCiAgICAgIGRhdGEubWF4VGV4U2l6ZQ0KICAgICk7DQogICAgaWYgKGN1cnZlTGF5b3V0RGF0YSkgew0KICAgICAgcmVzdWx0Lm51bUN1cnZlcyA9IGN1cnZlTGF5b3V0RGF0YS5udW1DdXJ2ZXM7DQogICAgICByZXN1bHQuY3VydmVzQXRsYXNMYXlvdXQgPSBjdXJ2ZUxheW91dERhdGEuY3VydmVzQXRsYXNMYXlvdXQ7DQogICAgICByZXN1bHQuY3VydmVzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSA9DQogICAgICAgIGN1cnZlTGF5b3V0RGF0YS5jdXJ2ZXNBdGxhc0xheW91dFRleHR1cmVTaXplOw0KICAgICAgcmVzdWx0LmN1cnZlc0F0bGFzVGV4dHVyZURpbSA9IFsNCiAgICAgICAgX19jdXJ2ZXNQYWNrZXIucm9vdC53LA0KICAgICAgICBfX2N1cnZlc1BhY2tlci5yb290LmgsDQogICAgICBdOw0KDQogICAgICB0cmFuc2ZlcmFibGVzLnB1c2gocmVzdWx0LmN1cnZlc0F0bGFzTGF5b3V0LmJ1ZmZlcik7DQogICAgICBmb3IgKGNvbnN0IGtleSBpbiByZXN1bHQuY3VydmVEcmF3U2V0cykgew0KICAgICAgICB0cmFuc2ZlcmFibGVzLnB1c2gocmVzdWx0LmN1cnZlRHJhd1NldHNba2V5XS5idWZmZXIpOw0KICAgICAgfQ0KDQogICAgICB0MSA9IHBlcmZvcm1hbmNlLm5vdygpOw0KICAgICAgcHJvZmlsaW5nLm51bUN1cnZlcyA9IGN1cnZlTGF5b3V0RGF0YS5udW1DdXJ2ZXM7DQogICAgICBwcm9maWxpbmcubGF5b3V0Q3VydmVzID0gdDEgLSB0MDsNCiAgICAgIHByb2ZpbGluZy5jdXJ2ZXNBdGxhc1RleHR1cmVEaW0gPSByZXN1bHQuY3VydmVzQXRsYXNUZXh0dXJlRGltOw0KICAgIH0NCiAgfQ0KDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIFN1cmZhY2VzDQogIGNvbnN0IHN1cmZhY2VzRGF0YVJlYWRlciA9IG5ldyBCaW5SZWFkZXIoZGF0YS5zdXJmYWNlc0RhdGFCdWZmZXIpOw0KICB7DQogICAgLy8gcHJvZmlsaW5nLm51bVN1cmZhY2VzID0gc3VyZmFjZXNEYXRhQnVmZmVyLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCBzdXJmYWNlTGF5b3V0RGF0YSA9IGxheW91dFN1cmZhY2VzKA0KICAgICAgc3VyZmFjZXNEYXRhUmVhZGVyLA0KICAgICAgZGF0YS5lcnJvclRvbGVyYW5jZSwNCiAgICAgIGRhdGEubWF4VGV4U2l6ZSwNCiAgICAgIGRhdGEuc3VyZmFjZUFyZWFUaHJlc2hvbGQsDQogICAgICBkYXRhLmNhZERhdGFWZXJzaW9uDQogICAgKTsNCg0KICAgIHJlc3VsdC5zdXJmYWNlc0V2YWxBdHRycyA9IHN1cmZhY2VMYXlvdXREYXRhLnN1cmZhY2VzRXZhbEF0dHJzOw0KICAgIHJlc3VsdC5zdXJmYWNlc0F0bGFzTGF5b3V0ID0gc3VyZmFjZUxheW91dERhdGEuc3VyZmFjZXNBdGxhc0xheW91dDsNCiAgICByZXN1bHQuc3VyZmFjZXNBdGxhc0xheW91dFRleHR1cmVTaXplID0NCiAgICAgIHN1cmZhY2VMYXlvdXREYXRhLnN1cmZhY2VzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZTsNCiAgICByZXN1bHQuc3VyZmFjZXNBdGxhc1RleHR1cmVEaW0gPSBbDQogICAgICBfX3N1cmZhY2VQYWNrZXIucm9vdC53LA0KICAgICAgX19zdXJmYWNlUGFja2VyLnJvb3QuaCwNCiAgICBdOw0KDQogICAgdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC5zdXJmYWNlc0F0bGFzTGF5b3V0LmJ1ZmZlcik7DQogICAgZm9yIChjb25zdCBrZXkgaW4gcmVzdWx0LnN1cmZhY2VzRXZhbEF0dHJzKQ0KICAgICAgdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC5zdXJmYWNlc0V2YWxBdHRyc1trZXldLmJ1ZmZlcik7DQoNCiAgICB0MSA9IHBlcmZvcm1hbmNlLm5vdygpOw0KICAgIHByb2ZpbGluZy5sYXlvdXRTdXJmYWNlcyA9IHQxIC0gdDA7DQogICAgcHJvZmlsaW5nLm51bVN1cmZhY2VzID0gc3VyZmFjZUxheW91dERhdGEubnVtU3VyZmFjZXM7DQogICAgcHJvZmlsaW5nLnN1cmZhY2VzQXRsYXNUZXh0dXJlRGltID0gcmVzdWx0LnN1cmZhY2VzQXRsYXNUZXh0dXJlRGltOw0KICB9DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gVHJpbSBTZXRzDQogIGlmIChkYXRhLnRyaW1TZXRzQnVmZmVyKSB7DQogICAgY29uc3QgdHJpbVNldHNSZWFkZXIgPSBuZXcgQmluUmVhZGVyKGRhdGEudHJpbVNldHNCdWZmZXIpOw0KICAgIGNvbnN0IHRyaW1TZXRMYXlvdXREYXRhID0gbGF5b3V0VHJpbVNldHMoDQogICAgICB0cmltU2V0c1JlYWRlciwNCiAgICAgIGRhdGEuY2FkRGF0YVZlcnNpb24sDQogICAgICByZXN1bHQuY3VydmVzQXRsYXNMYXlvdXQsDQogICAgICBkYXRhLmxvZCwNCiAgICAgIGRhdGEudHJpbVRleGVsU2l6ZQ0KICAgICk7DQogICAgcmVzdWx0LnRyaW1DdXJ2ZURyYXdTZXRzID0gdHJpbVNldExheW91dERhdGEudHJpbUN1cnZlRHJhd1NldHM7DQogICAgcmVzdWx0LnRyaW1TZXRzQXRsYXNMYXlvdXREYXRhID0gdHJpbVNldExheW91dERhdGEudHJpbVNldHNBdGxhc0xheW91dERhdGE7DQogICAgcmVzdWx0LnRyaW1TZXRzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSA9DQogICAgICB0cmltU2V0TGF5b3V0RGF0YS50cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemU7DQogICAgcmVzdWx0LnRyaW1TZXRBdGxhc1RleHR1cmVTaXplID0gWw0KICAgICAgX190cmltU2V0UGFja2VyLnJvb3QudywNCiAgICAgIF9fdHJpbVNldFBhY2tlci5yb290LmgsDQogICAgXTsNCg0KICAgIHRyYW5zZmVyYWJsZXMucHVzaChyZXN1bHQudHJpbVNldHNBdGxhc0xheW91dERhdGEuYnVmZmVyKTsNCiAgICBmb3IgKGNvbnN0IGtleSBpbiByZXN1bHQudHJpbUN1cnZlRHJhd1NldHMpIHsNCiAgICAgIHRyYW5zZmVyYWJsZXMucHVzaChyZXN1bHQudHJpbUN1cnZlRHJhd1NldHNba2V5XS5idWZmZXIpOw0KICAgIH0NCg0KICAgIHQwID0gcGVyZm9ybWFuY2Uubm93KCk7DQogICAgcHJvZmlsaW5nLmxheW91dFRyaW1TZXRzID0gdDAgLSB0MTsNCiAgICBwcm9maWxpbmcudHJpbVNldEF0bGFzVGV4dHVyZVNpemUgPSByZXN1bHQudHJpbVNldEF0bGFzVGV4dHVyZVNpemU7DQogIH0NCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KICAvLyBCb2R5IEl0ZW1zDQogIHsNCiAgICBjb25zdCBib2R5RGVzY1JlYWRlciA9IG5ldyBCaW5SZWFkZXIoZGF0YS5ib2R5TGlicmFyeUJ1ZmZlcik7DQogICAgY29uc3QgYm9keURlc2NUb2NSZWFkZXIgPSBuZXcgQmluUmVhZGVyKGRhdGEuYm9keUxpYnJhcnlCdWZmZXJUb2MpOw0KDQogICAgcHJvZmlsaW5nLm51bUJvZGllcyA9IGRhdGEuc2NlbmVCb2R5SXRlbXNEYXRhLmxlbmd0aCAvIGZsb2F0c1BlclNjZW5lQm9keTsNCg0KICAgIHJlc3VsdC5ib2R5SXRlbXNDb29yZHMgPSBsYXlvdXRCb2R5SXRlbXMoDQogICAgICBkYXRhLnNjZW5lQm9keUl0ZW1zRGF0YSwNCiAgICAgIGJvZHlEZXNjVG9jUmVhZGVyLA0KICAgICAgYm9keURlc2NSZWFkZXIsDQogICAgICBkYXRhLmNhZERhdGFWZXJzaW9uDQogICAgKTsNCiAgICByZXN1bHQuYm9keUF0bGFzRGltID0gW19fYm9keUF0bGFzUGFja2VyLnJvb3QudywgX19ib2R5QXRsYXNQYWNrZXIucm9vdC5oXTsNCiAgICByZXN1bHQuc3VyZmFjZURyYXdTZXRzID0gd29ya2VyU3RhdGUuc3VyZmFjZURyYXdTZXRzOw0KICAgIC8vIHRyYW5zZmVyYWJsZXMucHVzaChyZXN1bHQuYm9keUl0ZW1zQ29vcmRzLmJ1ZmZlcik7DQoNCiAgICBmb3IgKGNvbnN0IHN1cmZhY2VLZXkgaW4gcmVzdWx0LnN1cmZhY2VEcmF3U2V0cykgew0KICAgICAgY29uc3QgZHJhd1NldCA9IHJlc3VsdC5zdXJmYWNlRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgICBmb3IgKGNvbnN0IHN1YlNldEtleSBpbiBkcmF3U2V0KSB7DQogICAgICAgIHRyYW5zZmVyYWJsZXMucHVzaChkcmF3U2V0W3N1YlNldEtleV0uYnVmZmVyKTsNCiAgICAgIH0NCiAgICB9DQogICAgcHJvZmlsaW5nLm51bVN1cmZhY2VJbnN0YW5jZXMgPSB3b3JrZXJTdGF0ZS5udW1TdXJmYWNlSW5zdGFuY2VzOw0KICAgIHByb2ZpbGluZy5udW1EcmF3U2V0cyA9IE9iamVjdC5rZXlzKHJlc3VsdC5zdXJmYWNlRHJhd1NldHMpLmxlbmd0aDsNCg0KICAgIC8vIGlmIChkYXRhLmVuYWJsZUxpZ2h0bWFwcykgew0KICAgIC8vICAgcmVzdWx0LmxpZ2h0bWFwTGF5b3V0VGV4dHVyZVNpemUgPSB3b3JrZXJTdGF0ZS5saWdodG1hcExheW91dFRleHR1cmVTaXplDQogICAgLy8gICByZXN1bHQubGlnaHRtYXBTaXplID0gd29ya2VyU3RhdGUubGlnaHRtYXBTaXplDQogICAgLy8gICByZXN1bHQubGlnaHRtYXBEcmF3U2V0ID0gd29ya2VyU3RhdGUubGlnaHRtYXBEcmF3U2V0DQogICAgLy8gICByZXN1bHQubGlnaHRtYXBMYXlvdXQgPSB3b3JrZXJTdGF0ZS5saWdodG1hcExheW91dA0KICAgIC8vICAgdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC5saWdodG1hcExheW91dCkNCiAgICAvLyAgIHRyYW5zZmVyYWJsZXMucHVzaChyZXN1bHQubGlnaHRtYXBEcmF3U2V0LmJ1ZmZlcikNCg0KICAgIC8vICAgcHJvZmlsaW5nLmxpZ2h0bWFwU2l6ZSA9IHJlc3VsdC5saWdodG1hcFNpemUNCiAgICAvLyB9DQoNCiAgICB0MSA9IHBlcmZvcm1hbmNlLm5vdygpOw0KICAgIHByb2ZpbGluZy5sYXlvdXRCb2R5SXRlbXMgPSB0MSAtIHQwOw0KICAgIHByb2ZpbGluZy5ib2R5QXRsYXNEaW0gPSByZXN1bHQuYm9keUF0bGFzRGltOw0KICB9DQoNCiAgb25Eb25lKHJlc3VsdCwgdHJhbnNmZXJhYmxlcyk7DQp9Ow0KDQpjb25zdCBoaWdobGlnaHRlZERyYXdTZXRzID0ge307DQoNCmNvbnN0IGJvZHlIaWdobGlnaHRDaGFuZ2VkID0gKGRhdGEsIG9uRG9uZSkgPT4gew0KICBjb25zdCBoaWdobGlnaHRlZEJvZHlJZHMgPSBkYXRhLmhpZ2hsaWdodGVkQm9keUlkczsNCiAgY29uc3QgdW5oaWdobGlnaHRlZEJvZHlJZHMgPSBkYXRhLnVuaGlnaGxpZ2h0ZWRCb2R5SWRzOw0KDQogIGNvbnN0IGVhY2hCb2R5U3VyZmFjZSA9IChib2R5SWRzLCBjYikgPT4gew0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgYm9keUlkcy5sZW5ndGg7IGkrKykgew0KICAgICAgY29uc3QgYm9keUlkID0gYm9keUlkc1tpXTsNCg0KICAgICAgY29uc3QgYm9keURlc2NJZCA9IHdvcmtlclN0YXRlLmJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyAwXTsNCiAgICAgIGNvbnN0IHUgPSB3b3JrZXJTdGF0ZS5ib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMV07DQogICAgICBjb25zdCB2ID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDJdOw0KICAgICAgY29uc3QgY291bnR1ID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDNdOw0KICAgICAgY29uc3QgY291bnR2ID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDRdOw0KDQogICAgICBjb25zdCBib2R5RGVzYyA9IGdldEJvZHlEZXNjRGF0YShib2R5RGVzY0lkKTsNCiAgICAgIGNvbnN0IHN1cmZhY2VJZHMgPSBib2R5RGVzYy5zdXJmYWNlSWRzOw0KICAgICAgZm9yIChsZXQgaiA9IDA7IGogPCBzdXJmYWNlSWRzLmxlbmd0aDsgaisrKSB7DQogICAgICAgIGNvbnN0IHN1cmZhY2VJZCA9IHN1cmZhY2VJZHNbal07DQoNCiAgICAgICAgY29uc3Qgc3VyZmFjZURldGFpbFggPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tzdXJmYWNlSWQgKiA2ICsgNF07DQogICAgICAgIGNvbnN0IHN1cmZhY2VEZXRhaWxZID0gd29ya2VyU3RhdGUuc3VyZmFjZURldGFpbHNbc3VyZmFjZUlkICogNiArIDVdOw0KDQogICAgICAgIGNvbnN0IHN1cmZhY2VLZXkgPSBzdXJmYWNlRGV0YWlsWCArICd4JyArIHN1cmZhY2VEZXRhaWxZOw0KICAgICAgICBjb25zdCBzdXJmYWNlSW5zdGFuY2VJZCA9IChib2R5SWQgPDwgMTYpIHwgajsNCiAgICAgICAgY2Ioc3VyZmFjZUluc3RhbmNlSWQsIHN1cmZhY2VLZXksIHUsIHYsIGNvdW50dSwgY291bnR2LCBqKTsNCiAgICAgIH0NCiAgICB9DQogIH07DQogIGVhY2hCb2R5U3VyZmFjZSgNCiAgICB1bmhpZ2hsaWdodGVkQm9keUlkcywNCiAgICAoc3VyZmFjZUluc3RhbmNlSWQsIHN1cmZhY2VLZXksIHUsIHYsIGNvdW50dSwgY291bnR2LCBqKSA9PiB7DQogICAgICBsZXQgZHJhd1NldCA9IGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgICBpZiAoIWRyYXdTZXQpIHsNCiAgICAgICAgZHJhd1NldCA9IHsNCiAgICAgICAgICBzdXJmYWNlRHJhd0Nvb3Jkczoge30sDQogICAgICAgICAgY291bnQ6IDAsDQogICAgICAgIH07DQogICAgICAgIGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV0gPSBkcmF3U2V0Ow0KICAgICAgfQ0KICAgICAgZGVsZXRlIGRyYXdTZXQuc3VyZmFjZURyYXdDb29yZHNbc3VyZmFjZUluc3RhbmNlSWRdOw0KICAgICAgZHJhd1NldC5jb3VudC0tOw0KICAgIH0NCiAgKTsNCiAgZWFjaEJvZHlTdXJmYWNlKA0KICAgIGhpZ2hsaWdodGVkQm9keUlkcywNCiAgICAoc3VyZmFjZUluc3RhbmNlSWQsIHN1cmZhY2VLZXksIHUsIHYsIGNvdW50dSwgY291bnR2LCBqKSA9PiB7DQogICAgICBsZXQgZHJhd1NldCA9IGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgICBpZiAoIWRyYXdTZXQpIHsNCiAgICAgICAgZHJhd1NldCA9IHsNCiAgICAgICAgICBzdXJmYWNlRHJhd0Nvb3Jkczoge30sDQogICAgICAgICAgY291bnQ6IDAsDQogICAgICAgIH07DQogICAgICAgIGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV0gPSBkcmF3U2V0Ow0KICAgICAgfQ0KICAgICAgZHJhd1NldC5zdXJmYWNlRHJhd0Nvb3Jkc1tzdXJmYWNlSW5zdGFuY2VJZF0gPSBbDQogICAgICAgIHUgKyAoaiAlIGNvdW50dSkgKiBwaXhlbHNQZXJEcmF3SXRlbSwNCiAgICAgICAgdiArIE1hdGguZmxvb3IoaiAvIGNvdW50dSksDQogICAgICBdOw0KICAgICAgZHJhd1NldC5jb3VudCsrOw0KICAgIH0NCiAgKTsNCg0KICAvLyBOb3cgY29udmVydCBhbGwgdGhlIGRyYXcgc2V0cyB0byB0eXBlZCBhcnJheXMNCiAgY29uc3Qgb3V0X3N1cmZhY2VEcmF3U2V0cyA9IHt9Ow0KICBjb25zdCB0cmFuc2ZlcmFibGVzID0gW107DQogIGZvciAoY29uc3Qgc3VyZmFjZUtleSBpbiBoaWdobGlnaHRlZERyYXdTZXRzKSB7DQogICAgY29uc3QgaGlnaGxpZ2h0ZWREcmF3U2V0ID0gaGlnaGxpZ2h0ZWREcmF3U2V0c1tzdXJmYWNlS2V5XTsNCiAgICBjb25zdCBkcmF3U2V0ID0gbmV3IEZsb2F0MzJBcnJheShoaWdobGlnaHRlZERyYXdTZXQuY291bnQgKiAyKTsNCiAgICBsZXQgb2Zmc2V0ID0gMDsNCiAgICBmb3IgKGNvbnN0IHN1cmZhY2VJbnN0YW5jZUlkIGluIGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV0NCiAgICAgIC5zdXJmYWNlRHJhd0Nvb3Jkcykgew0KICAgICAgY29uc3Qgc3VyZmFjZURyYXdDb29yZCA9DQogICAgICAgIGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV0uc3VyZmFjZURyYXdDb29yZHNbc3VyZmFjZUluc3RhbmNlSWRdOw0KICAgICAgZHJhd1NldC5zZXQoc3VyZmFjZURyYXdDb29yZCwgb2Zmc2V0KTsNCiAgICAgIG9mZnNldCArPSAyOw0KICAgIH0NCiAgICBvdXRfc3VyZmFjZURyYXdTZXRzW3N1cmZhY2VLZXldID0gZHJhd1NldDsNCiAgICB0cmFuc2ZlcmFibGVzLnB1c2goZHJhd1NldC5idWZmZXIpOw0KICB9DQoNCiAgY29uc3QgcmVzdWx0ID0gew0KICAgIGV2ZW50VHlwZTogJ2hpZ2hsaWdodGVkU3VyZmFjZURyYXdTZXRzQ2hhbmdlZCcsDQogICAgaGlnaGxpZ2h0ZWRTdXJmYWNlRHJhd1NldHM6IG91dF9zdXJmYWNlRHJhd1NldHMsDQogICAgbnVtSGlnaGxpZ2h0ZWQ6IGhpZ2hsaWdodGVkQm9keUlkcy5sZW5ndGgsDQogICAgbnVtVW5oaWdobGlnaHRlZDogdW5oaWdobGlnaHRlZEJvZHlJZHMubGVuZ3RoLA0KICB9Ow0KICBvbkRvbmUocmVzdWx0LCB0cmFuc2ZlcmFibGVzKTsNCn07DQoNCmNvbnN0IGJvZHlJdGVtQ2hhbmdlZCA9IChkYXRhLCBvbkRvbmUpID0+IHsNCiAgY29uc3QgY2hhbmdlcyA9IGRhdGEuY2hhbmdlczsNCiAgY29uc3QgbnVtRGlydHlCb2R5SXRlbXMgPSBPYmplY3Qua2V5cyhjaGFuZ2VzKS5sZW5ndGg7DQogIC8vIE5vdGU6IFdlIG1vZGlmeSB0aGUgYm9keUl0ZW1zQ29vcmRzIGFycmF5IGluIHBsYWNlIGFuZCBjb3B5DQogIC8vIHRoZSBtb2RpZmllZCBzZWN0aW9ucyBvdXQgdG8gdXBsb2FkIHRvIHRoZSBHUFUuDQogIGNvbnN0IGJvZHlJdGVtc0Nvb3JkcyA9IHdvcmtlclN0YXRlLmJvZHlJdGVtc0Nvb3JkczsNCiAgY29uc3QgbW9kaWZpZWRCb2R5SXRlbXNDb29yZHMgPSBuZXcgRmxvYXQzMkFycmF5KA0KICAgIG51bURpcnR5Qm9keUl0ZW1zICogYm9keUl0ZW1Db29yZHNTdHJpZGUNCiAgKTsNCiAgbGV0IGkgPSAwOw0KICBmb3IgKGNvbnN0IGtleSBpbiBjaGFuZ2VzKSB7DQogICAgY29uc3QgYm9keUlkID0gTnVtYmVyLnBhcnNlSW50KGtleSk7DQogICAgY29uc3QgYm9keURhdGEgPSBjaGFuZ2VzW2tleV07DQogICAgY29uc3Qgb2Zmc2V0ID0gYm9keUlkICogYm9keUl0ZW1Db29yZHNTdHJpZGU7DQoNCiAgICAvLyBjb25zb2xlLmxvZyhib2R5SWQsICJib2R5SXRlbUNoYW5nZWQ6IiwgYm9keUl0ZW1zQ29vcmRzW29mZnNldCArIDFdKQ0KICAgIGlmIChib2R5RGF0YS5mbGFncyAhPSB1bmRlZmluZWQpDQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMl0gPSBib2R5RGF0YS5mbGFnczsNCiAgICBpZiAoYm9keURhdGEubWF0ZXJpYWwpIHsNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyA2XSA9IGJvZHlEYXRhLm1hdGVyaWFsWzBdOyAvLyBzcmMgZ2xtYXRlcmlhbGNvb3Jkcy54DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgN10gPSBib2R5RGF0YS5tYXRlcmlhbFsxXTsgLy8gc3JjIGdsbWF0ZXJpYWxjb29yZHMueQ0KICAgIH0NCiAgICBpZiAoYm9keURhdGEueGZvKSB7DQogICAgICAvLyBjb25zb2xlLmxvZyhib2R5SWQsICJib2R5SXRlbUNoYW5nZWQgeGZvOiIsIGJvZHlEYXRhLnhmbykNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyA4XSA9IGJvZHlEYXRhLnhmb1swXTsgLy8gdHIueA0KICAgICAgYm9keUl0ZW1zQ29vcmRzW29mZnNldCArIDldID0gYm9keURhdGEueGZvWzFdOyAvLyB0ci55DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMTBdID0gYm9keURhdGEueGZvWzJdOyAvLyB0ci56DQoNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAxMV0gPSBib2R5RGF0YS54Zm9bM107IC8vIG9yaS54DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMTJdID0gYm9keURhdGEueGZvWzRdOyAvLyBvcmkueQ0KICAgICAgYm9keUl0ZW1zQ29vcmRzW29mZnNldCArIDEzXSA9IGJvZHlEYXRhLnhmb1s1XTsgLy8gb3JpLnoNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAxNF0gPSBib2R5RGF0YS54Zm9bNl07IC8vIG9yaS53DQoNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAxNV0gPSBib2R5RGF0YS54Zm9bN107IC8vIHNjLncNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAxNl0gPSBib2R5RGF0YS54Zm9bOF07IC8vIHNjLncNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAxN10gPSBib2R5RGF0YS54Zm9bOV07IC8vIHNjLncNCiAgICB9DQogICAgaWYgKGJvZHlEYXRhLmhpZ2hsaWdodCkgew0KICAgICAgYm9keUl0ZW1zQ29vcmRzW29mZnNldCArIDIyXSA9IGJvZHlEYXRhLmhpZ2hsaWdodFswXTsNCiAgICAgIGJvZHlJdGVtc0Nvb3Jkc1tvZmZzZXQgKyAyM10gPSBib2R5RGF0YS5oaWdobGlnaHRbMV07DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMjRdID0gYm9keURhdGEuaGlnaGxpZ2h0WzJdOw0KICAgICAgYm9keUl0ZW1zQ29vcmRzW29mZnNldCArIDI1XSA9IGJvZHlEYXRhLmhpZ2hsaWdodFszXTsNCiAgICB9DQogICAgaWYgKGJvZHlEYXRhLmN1dFBsYW5lKSB7DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMjZdID0gYm9keURhdGEuY3V0UGxhbmVbMF07DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMjddID0gYm9keURhdGEuY3V0UGxhbmVbMV07DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMjhdID0gYm9keURhdGEuY3V0UGxhbmVbMl07DQogICAgICBib2R5SXRlbXNDb29yZHNbb2Zmc2V0ICsgMjldID0gYm9keURhdGEuY3V0UGxhbmVbM107DQogICAgfQ0KDQogICAgLy8gUHVsbCBvdXQgYSBjb3B5IG9mIHRoZSBkYXRhIGFuZCBwdXQgaW50byBvdXIgc21hbGxlciBhcnJheS4NCiAgICBjb25zdCBwcmV2Qm9keUl0ZW1zRGF0YSA9IHdvcmtlclN0YXRlLmJvZHlJdGVtc0Nvb3Jkcy5zdWJhcnJheSgNCiAgICAgIGJvZHlJZCAqIGJvZHlJdGVtQ29vcmRzU3RyaWRlLA0KICAgICAgKGJvZHlJZCArIDEpICogYm9keUl0ZW1Db29yZHNTdHJpZGUNCiAgICApOw0KICAgIG1vZGlmaWVkQm9keUl0ZW1zQ29vcmRzLnNldChwcmV2Qm9keUl0ZW1zRGF0YSwgaSAqIGJvZHlJdGVtQ29vcmRzU3RyaWRlKTsNCg0KICAgIGkrKzsNCiAgfQ0KICBjb25zdCByZXN1bHQgPSB7DQogICAgZXZlbnRUeXBlOiAnYm9keUl0ZW1DaGFuZ2VkJywNCiAgICBib2R5SXRlbXNDb29yZHM6IG1vZGlmaWVkQm9keUl0ZW1zQ29vcmRzLA0KICB9Ow0KICBvbkRvbmUocmVzdWx0KTsNCn07DQoNCi8vIC8vIGxldCBhc3NlbWJseUJCb3g7DQovLyAvLyBsZXQgc3VyZmFjZVJlbmRlclBhcmFtcyA9IFtdOw0KLy8gLy8gY29uc3QgYm9keURyYXdEYXRhcyA9IFtdOw0KDQovLyAvLyBjb25zdCByZW5kZXJEYXRhcyA9IFtdOw0KLy8gLy8gY29uc3QgSEFMRl9QSSA9IE1hdGguUEkgKiAwLjU7DQoNCi8vIC8vIGNvbnN0IG9uVmlld0NoYW5nZWQgPSAodmlld1hmbywgdmlld0Rpciwgb25Eb25lKSA9PiB7DQovLyAvLyAgICAgY29uc3QgYmVjb21pbmdWaXNpYmxlID0gW107DQovLyAvLyAgICAgY29uc3QgYmVjb21pbmdJbnZpc2libGUgPSBbXTsNCi8vIC8vICAgICBjb25zdCBsb2RDaGFuZ2VzID0gW107DQoNCi8vIC8vICAgICBjb25zdCB0ZXN0RnJ1c3R1bSA9IChwb3MsIHNpemUpID0+IHsNCg0KLy8gLy8gICAgICAgICBjb25zdCBkaXIgPSBwb3Muc3VidHJhY3Qodmlld1hmby50cik7DQovLyAvLyAgICAgICAgIGNvbnN0IGRpc3QgPSBkaXIubGVuZ3RoKCk7DQovLyAvLyAgICAgICAgIGRpci5zY2FsZUluUGxhY2UoMS4wIC8gZGlzdCk7DQovLyAvLyAgICAgICAgIGNvbnN0IHZpZXdEb3REaXIgPSBkaXIuZG90KHZpZXdEaXIpOw0KLy8gLy8gICAgICAgICBjb25zdCBhbmdsZSA9IE1hdGguYWNvcyh2aWV3RG90RGlyKTsNCg0KLy8gLy8gICAgICAgICBjb25zdCB2aWV3Q29uZUFuZ2xlID0gMS4yOyAvLyBUaGUgZm92IGRpdmlkZWQgYnkgMjsgKGF0IHRoZSBjb3JuZXIpDQovLyAvLyAgICAgICAgIC8vIGNvbnNvbGUubG9nKGFuZ2xlICsgIjoiICsgTWF0aC5hdGFuKHNpemUgLyBkaXN0KSkNCg0KLy8gLy8gICAgICAgICBsZXQgdmlzID0gMDsNCi8vIC8vICAgICAgICAgaWYgKGRpc3QgPiBzaXplKSB7DQovLyAvLyAgICAgICAgICAgICBpZiAodmlld0RvdERpciA8IDAuMCB8fCBhbmdsZSAtIE1hdGguYXRhbihzaXplIC8gZGlzdCkgPiB2aWV3Q29uZUFuZ2xlKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgLy8gY29uc29sZS5sb2coIkl0ZW0gaXMgY29tcGxldGVseSBvdXRzaWRlIG9mIHRoZSBmcnVzdHVtIikNCi8vIC8vICAgICAgICAgICAgICAgICB2aXMgPSAxOw0KLy8gLy8gICAgICAgICAgICAgfSBlbHNlIHsNCi8vIC8vICAgICAgICAgICAgICAgICBpZiAoYW5nbGUgKyBNYXRoLmF0YW4oc2l6ZSAvIGRpc3QpIDwgdmlld0NvbmVBbmdsZSkgew0KLy8gLy8gICAgICAgICAgICAgICAgICAgICAvLyBjb25zb2xlLmxvZygiSXRlbSBpcyBjb21wbGV0ZWx5IGluc2lkZSAgdGhlIGZydXN0dW0iKQ0KLy8gLy8gICAgICAgICAgICAgICAgICAgICB2aXMgPSAyOw0KLy8gLy8gICAgICAgICAgICAgICAgIH0gZWxzZSB7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgIC8vIGNvbnNvbGUubG9nKCJJdGVtIGlzIGluc2lkZSBvZiB0aGUgZnJ1c3R1bSIpDQovLyAvLyAgICAgICAgICAgICAgICAgICAgIHZpcyA9IDM7DQovLyAvLyAgICAgICAgICAgICAgICAgfQ0KLy8gLy8gICAgICAgICAgICAgfQ0KLy8gLy8gICAgICAgICB9DQovLyAvLyAgICAgICAgIHJldHVybiB7DQovLyAvLyAgICAgICAgICAgICBkaXIsDQovLyAvLyAgICAgICAgICAgICBkaXN0LA0KLy8gLy8gICAgICAgICAgICAgYW5nbGUsDQovLyAvLyAgICAgICAgICAgICB2aXMNCi8vIC8vICAgICAgICAgfTsNCi8vIC8vICAgICB9DQoNCi8vIC8vICAgICBjb25zdCBlYWNoQm9keURhdGEgPSAoYm9keURyYXdEYXRhLCBib2R5SW5kZXgpID0+IHsNCg0KLy8gLy8gICAgICAgICBjb25zdCBib2R5VmlzID0gdGVzdEZydXN0dW0oYm9keURyYXdEYXRhLmJvZHlYZm8udHIsIGJvZHlEcmF3RGF0YS5ib2R5U2l6ZSk7DQoNCi8vIC8vICAgICAgICAgY29uc3QgZHJhd0l0ZW1EYXRhID0gYm9keURyYXdEYXRhLmRyYXdJdGVtRGF0YTsNCi8vIC8vICAgICAgICAgZm9yIChsZXQgc3VyZmFjZUluZGV4ID0gMDsgc3VyZmFjZUluZGV4IDwgYm9keURyYXdEYXRhLm51bVN1cmZhY2VzOyBzdXJmYWNlSW5kZXgrKykgew0KLy8gLy8gICAgICAgICAgICAgY29uc3QgcGl4ZWxzUGVyRHJhd0l0ZW0gPSA0OyAvLyBUaGUgbnVtYmVyIG9mIFJHQkEgcGl4ZWxzIHBlciBkcmF3IGl0ZW0uDQovLyAvLyAgICAgICAgICAgICBjb25zdCBvZmZzZXQgPSAoc3VyZmFjZUluZGV4ICogcGl4ZWxzUGVyRHJhd0l0ZW0gKiA0KTsNCi8vIC8vICAgICAgICAgICAgIGNvbnN0IHBvcyA9IG5ldyBWZWMzKA0KLy8gLy8gICAgICAgICAgICAgICAgIGRyYXdJdGVtRGF0YVtvZmZzZXQgKyAzXSwgZHJhd0l0ZW1EYXRhW29mZnNldCArIDddLCBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgMTFdDQovLyAvLyAgICAgICAgICAgICApDQovLyAvLyAgICAgICAgICAgICBjb25zdCBzdXJmYWNlSWQgPSBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgMTJdOw0KLy8gLy8gICAgICAgICAgICAgY29uc3Qgc2l6ZSA9IHN1cmZhY2VSZW5kZXJQYXJhbXNbc3VyZmFjZUlkICogM107DQoNCi8vIC8vICAgICAgICAgICAgIGxldCB2aXNpYmlsaXR5U3RhdGUgPSAwOyAvLyB2aXNpYmxlDQovLyAvLyAgICAgICAgICAgICBpZiAoYm9keVZpcy52aXMgPT0gMSkgew0KLy8gLy8gICAgICAgICAgICAgICAgIHZpc2liaWxpdHlTdGF0ZSA9IDE7DQovLyAvLyAgICAgICAgICAgICB9IGVsc2UgaWYgKGJvZHlWaXMudmlzID09IDMpIHsNCi8vIC8vICAgICAgICAgICAgICAgICBjb25zdCBzdXJmYWNlVmlzID0gdGVzdEZydXN0dW0ocG9zLCBzaXplKTsNCi8vIC8vICAgICAgICAgICAgICAgICBpZiAoc3VyZmFjZVZpcy52aXMgPT0gMSkNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgdmlzaWJpbGl0eVN0YXRlID0gMTsNCi8vIC8vICAgICAgICAgICAgIH0NCg0KLy8gLy8gICAgICAgICAgICAgLy8gUmVkdWNpbmcgdGhlIG51bWJlciBvZiB2aXNpYmlsaXR5IGNoYW5nZXMuDQovLyAvLyAgICAgICAgICAgICAvLyBpZiAodmlzaWJpbGl0eVN0YXRlID09IDApIHsNCi8vIC8vICAgICAgICAgICAgIC8vICAgICBjb25zdCBjdXJ2YXR1cmUgPSBzdXJmYWNlUmVuZGVyUGFyYW1zWyhzdXJmYWNlSWQgKiAzKSArIDFdOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGNvbnN0IG51cmZhY2VOb3JtYWwgPSBuZXcgVmVjMygNCi8vIC8vICAgICAgICAgICAgIC8vICAgICAgICAgZHJhd0l0ZW1EYXRhW29mZnNldCArIDJdLCBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgNl0sIGRyYXdJdGVtRGF0YVtvZmZzZXQgKyAxMF0NCi8vIC8vICAgICAgICAgICAgIC8vICAgICApOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGNvbnN0IGFuZ2xlID0gbnVyZmFjZU5vcm1hbC5uZWdhdGUoKS5hbmdsZVRvKGJvZHlWaXMuZGlyKQ0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGlmIChhbmdsZSA8IEhBTEZfUEkgKiAoMS4wIC0gY3VydmF0dXJlKSkgew0KLy8gLy8gICAgICAgICAgICAgLy8gICAgICAgICB2aXNpYmlsaXR5U3RhdGUgPSAxOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIH0NCi8vIC8vICAgICAgICAgICAgIC8vIH0NCg0KLy8gLy8gICAgICAgICAgICAgLy8gSWYgaXMgdmlzaWJsZSwgY2hlY2sgZm9yIExPRCBjaGFuZ2VzLg0KLy8gLy8gICAgICAgICAgICAgaWYgKHZpc2liaWxpdHlTdGF0ZSA9PSAwKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgY29uc3QgZGV0YWlsID0gc3VyZmFjZVJlbmRlclBhcmFtc1soc3VyZmFjZUlkICogMykgKyAyXTsNCi8vIC8vICAgICAgICAgICAgICAgICBjb25zdCBsb2QgPSAxICsgTWF0aC5taW4oTWF0aC5yb3VuZChkZXRhaWwgKiBNYXRoLmF0YW4oMS4wIC8gYm9keVZpcy5kaXN0KSksIDUpOw0KLy8gLy8gICAgICAgICAgICAgICAgIGlmIChsb2QgIT0gcmVuZGVyRGF0YXNbYm9keUluZGV4XS5jdXJyTG9kW3N1cmZhY2VJbmRleF0pIHsNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgLy8gV2hlbiBhbiBpdGVtIGNoYW5nZXMgTE9ELCBpdCBpcyBwbGFjZWQgaW4gdGhlIG5ldyBMT0Qgc2V0IHdpdGggdmlzaWJsaXR5ID09IHRydWUNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgbG9kQ2hhbmdlcy5wdXNoKHsNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHlJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIHN1cmZhY2VJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIGxvZA0KLy8gLy8gICAgICAgICAgICAgICAgICAgICB9KQ0KLy8gLy8gICAgICAgICAgICAgICAgICAgICByZW5kZXJEYXRhc1tib2R5SW5kZXhdLmN1cnJMb2Rbc3VyZmFjZUluZGV4XSA9IGxvZDsNCi8vIC8vICAgICAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICAgICAgZWxzZSBpZiAodmlzaWJpbGl0eVN0YXRlICE9IHJlbmRlckRhdGFzW2JvZHlJbmRleF0uY3VyclZpc2liaWxpdHlbc3VyZmFjZUluZGV4XSkgew0KLy8gLy8gICAgICAgICAgICAgICAgICAgICAvLyBJZiBsb2QgZGlkbid0IGNoYW5nZSwgd2UgY2FuIGNoYW5nZSB2aXNpYmlsaXR5Lg0KLy8gLy8gICAgICAgICAgICAgICAgICAgICBiZWNvbWluZ1Zpc2libGUucHVzaCh7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgICAgICBib2R5SW5kZXgsDQovLyAvLyAgICAgICAgICAgICAgICAgICAgICAgICBzdXJmYWNlSW5kZXgNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgfSkNCi8vIC8vICAgICAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICBlbHNlIGlmICh2aXNpYmlsaXR5U3RhdGUgIT0gcmVuZGVyRGF0YXNbYm9keUluZGV4XS5jdXJyVmlzaWJpbGl0eVtzdXJmYWNlSW5kZXhdKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgYmVjb21pbmdJbnZpc2libGUucHVzaCh7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgIGJvZHlJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgc3VyZmFjZUluZGV4DQovLyAvLyAgICAgICAgICAgICAgICAgfSk7DQovLyAvLyAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICByZW5kZXJEYXRhc1tib2R5SW5kZXhdLmN1cnJWaXNpYmlsaXR5W3N1cmZhY2VJbmRleF0gPSB2aXNpYmlsaXR5U3RhdGU7DQovLyAvLyAgICAgICAgIH0NCi8vIC8vICAgICB9DQovLyAvLyAgICAgYm9keURyYXdEYXRhcy5mb3JFYWNoKGVhY2hCb2R5RGF0YSk7DQoNCi8vIC8vICAgICBpZiAoYmVjb21pbmdJbnZpc2libGUubGVuZ3RoID4gMCB8fCBiZWNvbWluZ1Zpc2libGUubGVuZ3RoID4gMCB8fCBsb2RDaGFuZ2VzLmxlbmd0aCA+IDApIHsNCi8vIC8vICAgICAgICAgY29uc3QgcmVzdWx0ID0gew0KLy8gLy8gICAgICAgICAgICAgYmVjb21pbmdJbnZpc2libGUsDQovLyAvLyAgICAgICAgICAgICBiZWNvbWluZ1Zpc2libGUsDQovLyAvLyAgICAgICAgICAgICBsb2RDaGFuZ2VzDQovLyAvLyAgICAgICAgIH07DQovLyAvLyAgICAgICAgIC8vIGNvbnNvbGUubG9nKCJvblZpZXdDaGFuZ2VkOiIgK0pTT04uc3RyaW5naWZ5KHJlc3VsdCkpOw0KLy8gLy8gICAgICAgICBvbkRvbmUocmVzdWx0KTsNCi8vIC8vICAgICB9DQovLyAvLyAgICAgZWxzZSB7DQovLyAvLyAgICAgICAgb25Eb25lKCk7DQovLyAvLyAgICAgfQ0KLy8gLy8gfQ0KDQpjb25zdCBHTENBREFzc2V0V29ya2VyX29ubWVzc2FnZSA9IGZ1bmN0aW9uKGRhdGEsIG9uRG9uZSkgew0KICBzd2l0Y2ggKGRhdGEuZXZlbnRUeXBlKSB7DQogICAgY2FzZSAnbG9hZEFzc2VtYmx5JzoNCiAgICAgIGxvYWRBc3NlbWJseShkYXRhLCBvbkRvbmUpOw0KICAgICAgYnJlYWsNCiAgICBjYXNlICdib2R5SGlnaGxpZ2h0Q2hhbmdlZCc6DQogICAgICBib2R5SGlnaGxpZ2h0Q2hhbmdlZChkYXRhLCBvbkRvbmUpOw0KICAgICAgYnJlYWsNCiAgICBjYXNlICdib2R5SXRlbUNoYW5nZWQnOg0KICAgICAgYm9keUl0ZW1DaGFuZ2VkKGRhdGEsIG9uRG9uZSk7DQogICAgICBicmVhaw0KICAgIC8vIGNhc2UgJ2JvZHlNYXRlcmlhbENoYW5nZWQnOg0KICAgIC8vICAgYm9keU1hdGVyaWFsQ2hhbmdlZChkYXRhLCBvbkRvbmUpOw0KICAgIC8vICAgYnJlYWs7DQogICAgLy8gY2FzZSAnYm9keUNvbG9yQ2hhbmdlZCc6DQogICAgLy8gICBib2R5Q29sb3JDaGFuZ2VkKGRhdGEsIG9uRG9uZSk7DQogICAgLy8gICBicmVhazsNCiAgICAvLyBjYXNlICdib2R5WGZvc0NoYW5nZWQnOg0KICAgIC8vICAgYm9keVhmb3NDaGFuZ2VkKGRhdGEsIG9uRG9uZSk7DQogICAgLy8gICBicmVhazsNCiAgfQ0KfTsNCg0Kc2VsZi5vbm1lc3NhZ2UgPSBmdW5jdGlvbihldmVudCkgew0KICBHTENBREFzc2V0V29ya2VyX29ubWVzc2FnZShldmVudC5kYXRhLCAocmVzdWx0LCB0cmFuc2ZlcmFibGVzKSA9PiB7DQogICAgc2VsZi5wb3N0TWVzc2FnZShyZXN1bHQsIHRyYW5zZmVyYWJsZXMpOw0KICB9KTsNCn07DQoNCi8vIEVuYWJsZSBtZSBmb3Igc2luZ2xlIHRocmVhZGVkIGRldi4NCi8vIGV4cG9ydCB7IEdMQ0FEQXNzZXRXb3JrZXJfb25tZXNzYWdlIH0KCg==', null, false);
+var WorkerFactory = createBase64WorkerFactory('Lyogcm9sbHVwLXBsdWdpbi13ZWItd29ya2VyLWxvYWRlciAqLwovLyBUYWtlbiBmcm9tIGhlcmU6IGh0dHBzOi8vZ2l0aHViLmNvbS9qYWtlc2dvcmRvbi9iaW4tcGFja2luZy9ibG9iL21hc3Rlci9qcy9wYWNrZXIuZ3Jvd2luZy5qcw0KDQovKiogKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKg0KDQpUaGlzIGlzIGEgYmluYXJ5IHRyZWUgYmFzZWQgYmluIHBhY2tpbmcgYWxnb3JpdGhtIHRoYXQgaXMgbW9yZSBjb21wbGV4IHRoYW4NCnRoZSBzaW1wbGUgUGFja2VyIChwYWNrZXIuanMpLiBJbnN0ZWFkIG9mIHN0YXJ0aW5nIG9mZiB3aXRoIGEgZml4ZWQgd2lkdGggYW5kDQpoZWlnaHQsIGl0IHN0YXJ0cyB3aXRoIHRoZSB3aWR0aCBhbmQgaGVpZ2h0IG9mIHRoZSBmaXJzdCBibG9jayBwYXNzZWQgYW5kIHRoZW4NCmdyb3dzIGFzIG5lY2Vzc2FyeSB0byBhY2NvbW9kYXRlIGVhY2ggc3Vic2VxdWVudCBibG9jay4gQXMgaXQgZ3Jvd3MgaXQgYXR0ZW1wdHMNCnRvIG1haW50YWluIGEgcm91Z2hseSBzcXVhcmUgcmF0aW8gYnkgbWFraW5nICdzbWFydCcgY2hvaWNlcyBhYm91dCB3aGV0aGVyIHRvDQpncm93IHJpZ2h0IG9yIGRvd24uDQoNCldoZW4gZ3Jvd2luZywgdGhlIGFsZ29yaXRobSBjYW4gb25seSBncm93IHRvIHRoZSByaWdodCBPUiBkb3duLiBUaGVyZWZvcmUsIGlmDQp0aGUgbmV3IGJsb2NrIGlzIEJPVEggd2lkZXIgYW5kIHRhbGxlciB0aGFuIHRoZSBjdXJyZW50IHRhcmdldCB0aGVuIGl0IHdpbGwgYmUNCnJlamVjdGVkLiBUaGlzIG1ha2VzIGl0IHZlcnkgaW1wb3J0YW50IHRvIGluaXRpYWxpemUgd2l0aCBhIHNlbnNpYmxlIHN0YXJ0aW5nDQp3aWR0aCBhbmQgaGVpZ2h0LiBJZiB5b3UgYXJlIHByb3ZpZGluZyBzb3J0ZWQgaW5wdXQgKGxhcmdlc3QgZmlyc3QpIHRoZW4gdGhpcw0Kd2lsbCBub3QgYmUgYW4gaXNzdWUuDQoNCkEgcG90ZW50aWFsIHdheSB0byBzb2x2ZSB0aGlzIGxpbWl0YXRpb24gd291bGQgYmUgdG8gYWxsb3cgZ3Jvd3RoIGluIEJPVEgNCmRpcmVjdGlvbnMgYXQgb25jZSwgYnV0IHRoaXMgcmVxdWlyZXMgbWFpbnRhaW5pbmcgYSBtb3JlIGNvbXBsZXggdHJlZQ0Kd2l0aCAzIGNoaWxkcmVuIChkb3duLCByaWdodCBhbmQgY2VudGVyKSBhbmQgdGhhdCBjb21wbGV4aXR5IGNhbiBiZSBhdm9pZGVkDQpieSBzaW1wbHkgY2hvc2luZyBhIHNlbnNpYmxlIHN0YXJ0aW5nIGJsb2NrLg0KDQpCZXN0IHJlc3VsdHMgb2NjdXIgd2hlbiB0aGUgaW5wdXQgYmxvY2tzIGFyZSBzb3J0ZWQgYnkgaGVpZ2h0LCBvciBldmVuIGJldHRlcg0Kd2hlbiBzb3J0ZWQgYnkgbWF4KHdpZHRoLGhlaWdodCkuDQoNCklucHV0czoNCi0tLS0tLQ0KDQogIGJsb2NrczogYXJyYXkgb2YgYW55IG9iamVjdHMgdGhhdCBoYXZlIC53IGFuZCAuaCBhdHRyaWJ1dGVzDQoNCk91dHB1dHM6DQotLS0tLS0tDQoNCiAgbWFya3MgZWFjaCBibG9jayB0aGF0IGZpdHMgd2l0aCBhIC5maXQgYXR0cmlidXRlIHBvaW50aW5nIHRvIGENCiAgbm9kZSB3aXRoIC54IGFuZCAueSBjb29yZGluYXRlcw0KDQpFeGFtcGxlOg0KLS0tLS0tLQ0KDQogIHZhciBibG9ja3MgPSBbDQogICAgeyB3OiAxMDAsIGg6IDEwMCB9LA0KICAgIHsgdzogMTAwLCBoOiAxMDAgfSwNCiAgICB7IHc6ICA4MCwgaDogIDgwIH0sDQogICAgeyB3OiAgODAsIGg6ICA4MCB9LA0KICAgIGV0Yw0KICAgIGV0Yw0KICBdOw0KDQogIHZhciBwYWNrZXIgPSBuZXcgR3Jvd2luZ1BhY2tlcigpOw0KICBwYWNrZXIuZml0KGJsb2Nrcyk7DQoNCiAgZm9yKHZhciBuID0gMCA7IG4gPCBibG9ja3MubGVuZ3RoIDsgbisrKSB7DQogICAgdmFyIGJsb2NrID0gYmxvY2tzW25dOw0KICAgIGlmIChibG9jay5maXQpIHsNCiAgICAgIERyYXcoYmxvY2suZml0LngsIGJsb2NrLmZpdC55LCBibG9jay53LCBibG9jay5oKTsNCiAgICB9DQogIH0NCg0KDQoqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKiovDQoNCi8qKiBDbGFzcyByZXByZXNlbnRpbmcgYSBncm93aW5nIHBhY2tlci4gDQogKiBAaWdub3JlDQoqLw0KY2xhc3MgR3Jvd2luZ1BhY2tlciB7DQogIC8qKg0KICAgKiBDcmVhdGUgYSBncm93aW5nIHBhY2tlci4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyB2YWx1ZS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCB2YWx1ZS4NCiAgICovDQogIGNvbnN0cnVjdG9yKHcgPSAwLCBoID0gMCkgew0KICAgIHRoaXMucm9vdCA9IHsNCiAgICAgIHg6IDAsDQogICAgICB5OiAwLA0KICAgICAgdzogdywNCiAgICAgIGg6IGgsDQogICAgfTsNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgZml0IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IGJsb2NrcyAtIFRoZSBibG9ja3MgcGFyYW0uDQogICAqLw0KICBmaXQoYmxvY2tzKSB7DQogICAgY29uc3QgbGVuID0gYmxvY2tzLmxlbmd0aDsNCiAgICBpZiAobGVuID09IDApIHJldHVybg0KICAgIGlmICh0aGlzLnJvb3QudyA8IGJsb2Nrc1swXS53KSB7DQogICAgICB0aGlzLnJvb3QudyA9IGJsb2Nrc1swXS53Ow0KICAgIH0NCiAgICBpZiAodGhpcy5yb290LmggPCBibG9ja3NbMF0uaCkgew0KICAgICAgdGhpcy5yb290LmggPSBibG9ja3NbMF0uaDsNCiAgICB9DQogICAgY29uc3QgZWFjaEJsb2NrID0gYmxvY2sgPT4gew0KICAgICAgYmxvY2suZml0ID0gdGhpcy5fX2FkZEJsb2NrKGJsb2NrKTsNCiAgICB9Ow0KICAgIGJsb2Nrcy5mb3JFYWNoKGVhY2hCbG9jayk7DQogIH0NCg0KICAvKioNCiAgICogVGhlIF9fYWRkQmxvY2sgbWV0aG9kLg0KICAgKiBAcGFyYW0ge2FueX0gYmxvY2sgLSBUaGUgYmxvY2tzIHBhcmFtLg0KICAgKiBAcmV0dXJuIHthbnl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICogQHByaXZhdGUNCiAgICovDQogIF9fYWRkQmxvY2soYmxvY2spIHsNCiAgICBjb25zdCBub2RlID0gdGhpcy5maW5kTm9kZSh0aGlzLnJvb3QsIGJsb2NrLncsIGJsb2NrLmgpOw0KICAgIGlmIChub2RlKSByZXR1cm4gdGhpcy5zcGxpdE5vZGUobm9kZSwgYmxvY2sudywgYmxvY2suaCkNCiAgICBlbHNlIHJldHVybiB0aGlzLmdyb3dOb2RlKGJsb2NrLncsIGJsb2NrLmgpDQogIH0NCg0KICAvKioNCiAgICogVGhlIGFkZEJsb2NrIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IGJsb2NrIC0gVGhlIGJsb2NrcyBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBhZGRCbG9jayhibG9jaykgew0KICAgIC8vIEluaXRpYWxpc2UgdGhlIHRyZWUgaWYgYWRkaW5nIGZpcnN0IGJsb2NrLg0KICAgIGlmICghdGhpcy5yb290LnVzZWQpIHsNCiAgICAgIGlmICh0aGlzLnJvb3QudyA8IGJsb2NrLncpIHRoaXMucm9vdC53ID0gYmxvY2sudzsNCiAgICAgIGlmICh0aGlzLnJvb3QuaCA8IGJsb2NrLmgpIHRoaXMucm9vdC5oID0gYmxvY2suaDsNCiAgICB9DQogICAgY29uc3Qgbm9kZSA9IHRoaXMuZmluZE5vZGUodGhpcy5yb290LCBibG9jay53LCBibG9jay5oKTsNCiAgICBpZiAobm9kZSkgcmV0dXJuIHRoaXMuc3BsaXROb2RlKG5vZGUsIGJsb2NrLncsIGJsb2NrLmgpDQogICAgZWxzZSByZXR1cm4gdGhpcy5ncm93Tm9kZShibG9jay53LCBibG9jay5oKQ0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBmaW5kTm9kZSBtZXRob2QuDQogICAqIEBwYXJhbSB7YW55fSByb290IC0gVGhlIHJvb3QgcGFyYW0uDQogICAqIEBwYXJhbSB7bnVtYmVyfSB3IC0gVGhlIHcgcGFyYW0uDQogICAqIEBwYXJhbSB7bnVtYmVyfSBoIC0gVGhlIGggcGFyYW0uDQogICAqIEByZXR1cm4ge2FueX0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgZmluZE5vZGUocm9vdCwgdywgaCkgew0KICAgIGlmIChyb290LnVzZWQpDQogICAgICByZXR1cm4gdGhpcy5maW5kTm9kZShyb290LnJpZ2h0LCB3LCBoKSB8fCB0aGlzLmZpbmROb2RlKHJvb3QuZG93biwgdywgaCkNCiAgICBlbHNlIGlmICh3IDw9IHJvb3QudyAmJiBoIDw9IHJvb3QuaCkgcmV0dXJuIHJvb3QNCiAgICBlbHNlIHJldHVybiBudWxsDQogIH0NCg0KICAvKioNCiAgICogVGhlIHNwbGl0Tm9kZSBtZXRob2QuDQogICAqIEBwYXJhbSB7YW55fSBub2RlIC0gVGhlIG5vZGUgcGFyYW0uDQogICAqIEBwYXJhbSB7bnVtYmVyfSB3IC0gVGhlIHcgcGFyYW0uDQogICAqIEBwYXJhbSB7bnVtYmVyfSBoIC0gVGhlIGggcGFyYW0uDQogICAqIEByZXR1cm4ge2FueX0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgc3BsaXROb2RlKG5vZGUsIHcsIGgpIHsNCiAgICBub2RlLnVzZWQgPSB0cnVlOw0KICAgIG5vZGUuZG93biA9IHsNCiAgICAgIHg6IG5vZGUueCwNCiAgICAgIHk6IG5vZGUueSArIGgsDQogICAgICB3OiBub2RlLncsDQogICAgICBoOiBub2RlLmggLSBoLA0KICAgIH07DQogICAgbm9kZS5yaWdodCA9IHsNCiAgICAgIHg6IG5vZGUueCArIHcsDQogICAgICB5OiBub2RlLnksDQogICAgICB3OiBub2RlLncgLSB3LA0KICAgICAgaDogaCwNCiAgICB9Ow0KICAgIHJldHVybiBub2RlDQogIH0NCg0KICAvKioNCiAgICogVGhlIGdyb3dOb2RlIG1ldGhvZC4NCiAgICogQHBhcmFtIHtudW1iZXJ9IHcgLSBUaGUgdyBwYXJhbS4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGggLSBUaGUgaCBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBncm93Tm9kZSh3LCBoKSB7DQogICAgY29uc3QgY2FuR3Jvd0Rvd24gPSB3IDw9IHRoaXMucm9vdC53Ow0KICAgIGNvbnN0IGNhbkdyb3dSaWdodCA9IGggPD0gdGhpcy5yb290Lmg7DQoNCiAgICBjb25zdCBzaG91bGRHcm93UmlnaHQgPSBjYW5Hcm93UmlnaHQgJiYgdGhpcy5yb290LmggPj0gdGhpcy5yb290LncgKyB3OyAvLyBhdHRlbXB0IHRvIGtlZXAgc3F1YXJlLWlzaCBieSBncm93aW5nIHJpZ2h0IHdoZW4gaGVpZ2h0IGlzIG11Y2ggZ3JlYXRlciB0aGFuIHdpZHRoDQogICAgY29uc3Qgc2hvdWxkR3Jvd0Rvd24gPSBjYW5Hcm93RG93biAmJiB0aGlzLnJvb3QudyA+PSB0aGlzLnJvb3QuaCArIGg7IC8vIGF0dGVtcHQgdG8ga2VlcCBzcXVhcmUtaXNoIGJ5IGdyb3dpbmcgZG93biAgd2hlbiB3aWR0aCAgaXMgbXVjaCBncmVhdGVyIHRoYW4gaGVpZ2h0DQoNCiAgICBpZiAoc2hvdWxkR3Jvd1JpZ2h0KSByZXR1cm4gdGhpcy5ncm93UmlnaHQodywgaCkNCiAgICBlbHNlIGlmIChzaG91bGRHcm93RG93bikgcmV0dXJuIHRoaXMuZ3Jvd0Rvd24odywgaCkNCiAgICBlbHNlIGlmIChjYW5Hcm93UmlnaHQpIHJldHVybiB0aGlzLmdyb3dSaWdodCh3LCBoKQ0KICAgIGVsc2UgaWYgKGNhbkdyb3dEb3duKSByZXR1cm4gdGhpcy5ncm93RG93bih3LCBoKQ0KICAgIGVsc2UgcmV0dXJuIG51bGwgLy8gbmVlZCB0byBlbnN1cmUgc2Vuc2libGUgcm9vdCBzdGFydGluZyBzaXplIHRvIGF2b2lkIHRoaXMgaGFwcGVuaW5nDQogIH0NCg0KICAvKioNCiAgICogVGhlIGdyb3dSaWdodCBtZXRob2QuDQogICAqIEBwYXJhbSB7bnVtYmVyfSB3IC0gVGhlIHcgcGFyYW0uDQogICAqIEBwYXJhbSB7bnVtYmVyfSBoIC0gVGhlIGggcGFyYW0uDQogICAqIEByZXR1cm4ge2FueX0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgZ3Jvd1JpZ2h0KHcsIGgpIHsNCiAgICB0aGlzLnJvb3QgPSB7DQogICAgICB1c2VkOiB0cnVlLA0KICAgICAgeDogMCwNCiAgICAgIHk6IDAsDQogICAgICB3OiB0aGlzLnJvb3QudyArIHcsDQogICAgICBoOiB0aGlzLnJvb3QuaCwNCiAgICAgIGRvd246IHRoaXMucm9vdCwNCiAgICAgIHJpZ2h0OiB7DQogICAgICAgIHg6IHRoaXMucm9vdC53LA0KICAgICAgICB5OiAwLA0KICAgICAgICB3OiB3LA0KICAgICAgICBoOiB0aGlzLnJvb3QuaCwNCiAgICAgIH0sDQogICAgfTsNCiAgICBjb25zdCBub2RlID0gdGhpcy5maW5kTm9kZSh0aGlzLnJvb3QsIHcsIGgpOw0KICAgIGxldCByZXM7DQogICAgaWYgKG5vZGUpIHJlcyA9IHRoaXMuc3BsaXROb2RlKG5vZGUsIHcsIGgpOw0KICAgIHJldHVybiByZXMNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgZ3Jvd0Rvd24gbWV0aG9kLg0KICAgKiBAcGFyYW0ge251bWJlcn0gdyAtIFRoZSB3IHBhcmFtLg0KICAgKiBAcGFyYW0ge251bWJlcn0gaCAtIFRoZSBoIHBhcmFtLg0KICAgKiBAcmV0dXJuIHthbnl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGdyb3dEb3duKHcsIGgpIHsNCiAgICB0aGlzLnJvb3QgPSB7DQogICAgICB1c2VkOiB0cnVlLA0KICAgICAgeDogMCwNCiAgICAgIHk6IDAsDQogICAgICB3OiB0aGlzLnJvb3QudywNCiAgICAgIGg6IHRoaXMucm9vdC5oICsgaCwNCiAgICAgIGRvd246IHsNCiAgICAgICAgeDogMCwNCiAgICAgICAgeTogdGhpcy5yb290LmgsDQogICAgICAgIHc6IHRoaXMucm9vdC53LA0KICAgICAgICBoOiBoLA0KICAgICAgfSwNCiAgICAgIHJpZ2h0OiB0aGlzLnJvb3QsDQogICAgfTsNCiAgICBjb25zdCBub2RlID0gdGhpcy5maW5kTm9kZSh0aGlzLnJvb3QsIHcsIGgpOw0KICAgIGxldCByZXM7DQogICAgaWYgKG5vZGUpIHJlcyA9IHRoaXMuc3BsaXROb2RlKG5vZGUsIHcsIGgpOw0KICAgIHJldHVybiByZXMNCiAgfQ0KfQoKLy8gaW1wb3J0IHsNCi8vICAgICBWZWMyLA0KLy8gICAgIFZlYzMsDQovLyAgICAgUXVhdCwNCi8vICAgICBDb2xvciwNCi8vICAgICBCb3gyLA0KLy8gICAgIEJveDMNCi8vIH0gZnJvbSAnLi4vTWF0aCc7DQoNCmNvbnN0IGRlY29kZTE2Qml0RmxvYXQgPSBoID0+IHsNCiAgY29uc3QgcyA9IChoICYgMHg4MDAwKSA+PiAxNTsNCiAgY29uc3QgZSA9IChoICYgMHg3YzAwKSA+PiAxMDsNCiAgY29uc3QgZiA9IGggJiAweDAzZmY7DQoNCiAgaWYgKGUgPT0gMCkgew0KICAgIHJldHVybiAocyA/IC0xIDogMSkgKiBNYXRoLnBvdygyLCAtMTQpICogKGYgLyBNYXRoLnBvdygyLCAxMCkpDQogIH0gZWxzZSBpZiAoZSA9PSAweDFmKSB7DQogICAgcmV0dXJuIGYgPyBOYU4gOiAocyA/IC0xIDogMSkgKiBJbmZpbml0eQ0KICB9DQoNCiAgcmV0dXJuIChzID8gLTEgOiAxKSAqIE1hdGgucG93KDIsIGUgLSAxNSkgKiAoMSArIGYgLyBNYXRoLnBvdygyLCAxMCkpDQp9Ow0KDQovKiogQ2xhc3MgcmVwcmVzZW50aW5nIGEgYmluIHJlYWRlci4gDQogKiBAaWdub3JlDQoqLw0KY2xhc3MgQmluUmVhZGVyIHsNCiAgLyoqDQogICAqIENyZWF0ZSBhIGJpbiByZWFkZXIuDQogICAqIEBwYXJhbSB7QnVmZmVyfSBkYXRhIC0gVGhlIGRhdGEgYnVmZmVyLg0KICAgKiBAcGFyYW0ge251bWJlcn0gYnl0ZU9mZnNldCAtIFRoZSBieXRlIG9mZnNldCB2YWx1ZSB0byBzdGFydCByZWFkaW5nIHRoZSBidWZmZXIuDQogICAqIEBwYXJhbSB7Ym9vbGVhbn0gaXNNb2JpbGVEZXZpY2UgLSBUaGUgaXNNb2JpbGVEZXZpY2UgdmFsdWUuDQogICAqLw0KICBjb25zdHJ1Y3RvcihkYXRhLCBieXRlT2Zmc2V0ID0gMCwgaXNNb2JpbGVEZXZpY2UgPSB0cnVlKSB7DQogICAgdGhpcy5fX2RhdGEgPSBkYXRhOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ID0gYnl0ZU9mZnNldDsNCiAgICB0aGlzLl9fZGF0YVZpZXcgPSBuZXcgRGF0YVZpZXcodGhpcy5fX2RhdGEpOw0KICAgIHRoaXMuX19pc01vYmlsZURldmljZSA9IGlzTW9iaWxlRGV2aWNlOw0KICAgIHRoaXMudXRmOGRlY29kZXIgPSBuZXcgVGV4dERlY29kZXIoKTsNCiAgfQ0KDQogIC8qKg0KICAgKiBHZXR0ZXIgZm9yIGlzTW9iaWxlRGV2aWNlLg0KICAgKiBAcmV0dXJuIHtCb29sZWFufSAtIFJldHVybnMgdHJ1ZSBpcyBhIG1vYmlsZSBkZXZpY2UgaXMgZGV0ZWN0ZWQuDQogICAqLw0KICBnZXQgaXNNb2JpbGVEZXZpY2UoKSB7DQogICAgcmV0dXJuIHRoaXMuX19pc01vYmlsZURldmljZQ0KICB9DQoNCiAgLyoqDQogICAqIEdldHRlciBmb3IgZGF0YS4NCiAgICogQHJldHVybiB7QnVmZmVyfSAtIFRoZSBkYXRhIGJ1ZmZlciB3ZSBhcmUgcmVhZGluZyBmcm9tLA0KICAgKi8NCiAgZ2V0IGRhdGEoKSB7DQogICAgcmV0dXJuIHRoaXMuX19kYXRhDQogIH0NCg0KICAvKioNCiAgICogR2V0dGVyIGZvciBieXRlTGVuZ3RoLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHRvdGFsIGxlbmd0aCBvZiB0aGUgYnVmZmVyDQogICAqLw0KICBnZXQgYnl0ZUxlbmd0aCgpIHsNCiAgICByZXR1cm4gdGhpcy5fX2RhdGFWaWV3LmJ5dGVMZW5ndGgNCiAgfQ0KDQogIC8qKg0KICAgKiBHZXR0ZXIgZm9yIHJlbWFpbmluZ0J5dGVMZW5ndGguDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmVlbWFpbmluZyBsZW5ndGggb2YgdGhlIGJ1ZmZlciB0byByZWFkLg0KICAgKi8NCiAgZ2V0IHJlbWFpbmluZ0J5dGVMZW5ndGgoKSB7DQogICAgcmV0dXJuIHRoaXMuX19kYXRhVmlldy5ieXRlTGVuZ3RoIC0gdGhpcy5fX2J5dGVPZmZzZXQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgcG9zIG1ldGhvZC4NCiAgICogQHJldHVybiB7bnVtYmVyfSAtIFRoZSBjdXJyZW50IG9mZnNldCBpbiB0aGUgYmluYXJ5IGJ1ZmZlcg0KICAgKi8NCiAgcG9zKCkgew0KICAgIHJldHVybiB0aGlzLl9fYnl0ZU9mZnNldA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBzZWVrIG1ldGhvZC4NCiAgICogQHBhcmFtIHtudW1iZXJ9IGJ5dGVPZmZzZXQgLSBUaGUgYnl0ZU9mZnNldCBwYXJhbS4NCiAgICovDQogIHNlZWsoYnl0ZU9mZnNldCkgew0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ID0gYnl0ZU9mZnNldDsNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgYWR2YW5jZSBtZXRob2QuDQogICAqIEBwYXJhbSB7bnVtYmVyfSBieXRlT2Zmc2V0IC0gVGhlIGJ5dGUgT2Zmc2V0IGFtb3VudC4NCiAgICovDQogIGFkdmFuY2UoYnl0ZU9mZnNldCkgew0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IGJ5dGVPZmZzZXQ7DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRVSW50OCBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVJbnQ4KCkgew0KICAgIGNvbnN0IHJlc3VsdCA9IHRoaXMuX19kYXRhVmlldy5nZXRVaW50OCh0aGlzLl9fYnl0ZU9mZnNldCk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMTsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRVSW50MTYgbWV0aG9kLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRVSW50MTYoKSB7DQogICAgY29uc3QgcmVzdWx0ID0gdGhpcy5fX2RhdGFWaWV3LmdldFVpbnQxNih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMjsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQzMiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVJbnQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDMyKHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSA0Ow0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFNJbnQzMiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFNJbnQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0SW50MzIodGhpcy5fX2J5dGVPZmZzZXQsIHRydWUpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDQ7DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkRmxvYXQxNiBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZEZsb2F0MTYoKSB7DQogICAgY29uc3QgdWludDE2ID0gdGhpcy5sb2FkVUludDE2KCk7DQogICAgcmV0dXJuIGRlY29kZTE2Qml0RmxvYXQodWludDE2KQ0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkVUZsb2F0MTYgcmV0dXJucyBhIGZsb2F0IHdoZXJlIHRoZSBzaWduIGJpZyBpbmRpY2F0ZXMgaXQgaXMgPiAyMDEuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZFVGbG9hdDE2KCkgew0KICAgIGNvbnN0IHJlc3VsdCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgICBpZiAocmVzdWx0IDwgMC4wKSB7DQogICAgICByZXR1cm4gMjA0OC4wIC0gcmVzdWx0IC8vIE5vdGU6IHN1YnRyYWN0IGEgbmVnYXRpdmUgbnVtYmVyIHRvIGFkZCBpdC4NCiAgICB9IGVsc2Ugew0KICAgICAgcmV0dXJuIHJlc3VsdA0KICAgIH0NCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZEZsb2F0MTZGcm9tMnhVSW50OCBtZXRob2QuDQogICAqIEByZXR1cm4ge251bWJlcn0gLSBUaGUgcmV0dXJuIHZhbHVlLg0KICAgKi8NCiAgbG9hZEZsb2F0MTZGcm9tMnhVSW50OCgpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQxNih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgLy8gY29uc3QgdWludDhzID0gdGhpcy5sb2FkVUludDhBcnJheSgyKTsNCiAgICAvLyByZXR1cm4gZGVjb2RlMTZCaXRGbG9hdCh1aW50OHMpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDI7DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkVUludDMyRnJvbTJ4VUZsb2F0MTYgbG9hZHMgYSBzaW5nbGUgU2lnbmVkIGludGVnZXIgdmFsdWUgZnJvbSAyIFVuc2lnbmVkIEZsb2F0MTYgdmFsdWVzLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRVSW50MzJGcm9tMnhVRmxvYXQxNigpIHsNCiAgICBjb25zdCBwYXJ0QSA9IHRoaXMubG9hZFVGbG9hdDE2KCk7DQogICAgY29uc3QgcGFydEIgPSB0aGlzLmxvYWRVRmxvYXQxNigpOw0KICAgIHJldHVybiBwYXJ0QSArIHBhcnRCICogNDA5Ng0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkU0ludDMyRnJvbTJ4RmxvYXQxNiBsb2FkcyBhIHNpbmdsZSBTaWduZWQgaW50ZWdlciB2YWx1ZSBmcm9tIDIgc2lnbmVkIEZsb2F0MTYgdmFsdWVzLg0KICAgKiBAcmV0dXJuIHtudW1iZXJ9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRTSW50MzJGcm9tMnhGbG9hdDE2KCkgew0KICAgIGNvbnN0IHBhcnRBID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAgIGNvbnN0IHBhcnRCID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAgIHJldHVybiBwYXJ0QSArIHBhcnRCICogMjA0OA0KICB9DQoNCg0KICAvKioNCiAgICogVGhlIGxvYWRGbG9hdDMyIG1ldGhvZC4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkRmxvYXQzMigpIHsNCiAgICBjb25zdCByZXN1bHQgPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQzMih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gNDsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRGbG9hdDMyIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDhBcnJheShzaXplID0gdW5kZWZpbmVkLCBjbG9uZSA9IGZhbHNlKSB7DQogICAgaWYgKHNpemUgPT0gdW5kZWZpbmVkKSBzaXplID0gdGhpcy5sb2FkVUludDMyKCk7DQogICAgY29uc3QgcmVzdWx0ID0gbmV3IFVpbnQ4QXJyYXkodGhpcy5fX2RhdGEsIHRoaXMuX19ieXRlT2Zmc2V0LCBzaXplKTsNCiAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplOw0KICAgIGNvbnN0IHBhZGQgPSB0aGlzLl9fYnl0ZU9mZnNldCAlIDQ7DQogICAgLy8gdGhpcy5yZWFkUGFkZCgpOw0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQxNkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDE2QXJyYXkoc2l6ZSA9IHVuZGVmaW5lZCwgY2xvbmUgPSBmYWxzZSkgew0KICAgIGlmIChzaXplID09IHVuZGVmaW5lZCkgc2l6ZSA9IHRoaXMubG9hZFVJbnQzMigpOw0KICAgIGlmIChzaXplID09IDApIHJldHVybiBuZXcgVWludDE2QXJyYXkoKQ0KICAgIHRoaXMucmVhZFBhZGQoMik7DQogICAgbGV0IHJlc3VsdDsNCiAgICBpZiAodGhpcy5fX2lzTW9iaWxlRGV2aWNlKSB7DQogICAgICByZXN1bHQgPSBuZXcgVWludDE2QXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDE2KHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICAgICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gMjsNCiAgICAgIH0NCiAgICB9IGVsc2Ugew0KICAgICAgcmVzdWx0ID0gbmV3IFVpbnQxNkFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgc2l6ZSk7DQogICAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplICogMjsNCiAgICB9DQogICAgLy8gdGhpcy5yZWFkUGFkZCgpOw0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8qKg0KICAgKiBUaGUgbG9hZFVJbnQzMkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkVUludDMyQXJyYXkoc2l6ZSA9IHVuZGVmaW5lZCwgY2xvbmUgPSBmYWxzZSkgew0KICAgIGlmIChzaXplID09IHVuZGVmaW5lZCkgc2l6ZSA9IHRoaXMubG9hZFVJbnQzMigpOw0KICAgIGlmIChzaXplID09IDApIHJldHVybiBuZXcgVWludDMyQXJyYXkoKQ0KICAgIHRoaXMucmVhZFBhZGQoNCk7DQogICAgbGV0IHJlc3VsdDsNCiAgICBpZiAodGhpcy5fX2lzTW9iaWxlRGV2aWNlKSB7DQogICAgICByZXN1bHQgPSBuZXcgVWludDMyQXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0VWludDMyKHRoaXMuX19ieXRlT2Zmc2V0LCB0cnVlKTsNCiAgICAgICAgdGhpcy5fX2J5dGVPZmZzZXQgKz0gNDsNCiAgICAgIH0NCiAgICB9IGVsc2Ugew0KICAgICAgcmVzdWx0ID0gbmV3IFVpbnQzMkFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgc2l6ZSk7DQogICAgICB0aGlzLl9fYnl0ZU9mZnNldCArPSBzaXplICogNDsNCiAgICB9DQogICAgcmV0dXJuIHJlc3VsdA0KICB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkRmxvYXQzMkFycmF5IG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHNpemUgLSBUaGUgc2l6ZSBwYXJhbS4NCiAgICogQHBhcmFtIHtib29sZWFufSBjbG9uZSAtIFRoZSBjbG9uZSBwYXJhbS4NCiAgICogQHJldHVybiB7YW55fSAtIFRoZSByZXR1cm4gdmFsdWUuDQogICAqLw0KICBsb2FkRmxvYXQzMkFycmF5KHNpemUgPSB1bmRlZmluZWQsIGNsb25lID0gZmFsc2UpIHsNCiAgICBpZiAoc2l6ZSA9PSB1bmRlZmluZWQpIHNpemUgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBpZiAoc2l6ZSA9PSAwKSByZXR1cm4gbmV3IEZsb2F0MzJBcnJheSgpDQogICAgdGhpcy5yZWFkUGFkZCg0KTsNCiAgICBsZXQgcmVzdWx0Ow0KICAgIGlmICh0aGlzLl9faXNNb2JpbGVEZXZpY2UpIHsNCiAgICAgIHJlc3VsdCA9IG5ldyBGbG9hdDMyQXJyYXkoc2l6ZSk7DQogICAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgICByZXN1bHRbaV0gPSB0aGlzLl9fZGF0YVZpZXcuZ2V0RmxvYXQzMih0aGlzLl9fYnl0ZU9mZnNldCwgdHJ1ZSk7DQogICAgICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IDQ7DQogICAgICB9DQogICAgfSBlbHNlIHsNCiAgICAgIHJlc3VsdCA9IG5ldyBGbG9hdDMyQXJyYXkodGhpcy5fX2RhdGEsIHRoaXMuX19ieXRlT2Zmc2V0LCBzaXplKTsNCiAgICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IHNpemUgKiA0Ow0KICAgIH0NCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICogVGhlIGxvYWRTdHIgbWV0aG9kLg0KICAgKiBAcmV0dXJuIHtzdHJpbmd9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICovDQogIGxvYWRTdHIoKSB7DQogICAgY29uc3QgbnVtQ2hhcnMgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCBjaGFycyA9IG5ldyBVaW50OEFycmF5KHRoaXMuX19kYXRhLCB0aGlzLl9fYnl0ZU9mZnNldCwgbnVtQ2hhcnMpOw0KICAgIHRoaXMuX19ieXRlT2Zmc2V0ICs9IG51bUNoYXJzOw0KICAgIGxldCByZXN1bHQgPSAnJzsNCiAgICBmb3IgKGxldCBpID0gMDsgaSA8IG51bUNoYXJzOyBpKyspDQogICAgICByZXN1bHQgPSByZXN1bHQgKyBTdHJpbmcuZnJvbUNoYXJDb2RlKGNoYXJzW2ldKTsNCiAgICByZXR1cm4gcmVzdWx0DQogIH0NCg0KICAvKioNCiAgICAqIFRoZSBsb2FkU3RyQXJyYXkgbWV0aG9kLg0KICAgICogQHJldHVybiB7YXJyYXl9IC0gVGhlIHJldHVybiB2YWx1ZS4NCiAgICAqLw0KICAgbG9hZFN0ckFycmF5KCkgew0KICAgIGNvbnN0IHNpemUgPSB0aGlzLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCByZXN1bHQgPSBbXTsNCiAgICBmb3IgKGxldCBpID0gMDsgaSA8IHNpemU7IGkrKykgew0KICAgICAgcmVzdWx0W2ldID0gdGhpcy5sb2FkU3RyKCk7DQogICAgfQ0KICAgIHJldHVybiByZXN1bHQNCiAgfQ0KDQogIC8vIGxvYWRTSW50MzJWZWMyKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZFNJbnQzMigpOw0KICAvLyAgICAgY29uc3QgeSA9IHRoaXMubG9hZFNJbnQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMyKHgsIHkpOw0KICAvLyB9DQoNCiAgLy8gbG9hZFVJbnQzMlZlYzIoKSB7DQogIC8vICAgICBjb25zdCB4ID0gdGhpcy5sb2FkVUludDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkVUludDMyKCk7DQogIC8vICAgICByZXR1cm4gbmV3IFZlYzIoeCwgeSk7DQogIC8vIH0NCg0KICAvLyBsb2FkRmxvYXQxNlZlYzIoKSB7DQogIC8vICAgICBjb25zdCB4ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgY29uc3QgeSA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgVmVjMih4LCB5KTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRGbG9hdDMyVmVjMigpIHsNCiAgLy8gICAgIGNvbnN0IHggPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMyKHgsIHkpOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MTZWZWMzKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDE2KCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMzKHgsIHksIHopOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MzJWZWMzKCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBWZWMzKHgsIHksIHopOw0KICAvLyB9DQoNCiAgLy8gbG9hZEZsb2F0MTZRdWF0KCkgew0KICAvLyAgICAgY29uc3QgeCA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIGNvbnN0IHkgPSB0aGlzLmxvYWRGbG9hdDE2KCk7DQogIC8vICAgICBjb25zdCB6ID0gdGhpcy5sb2FkRmxvYXQxNigpOw0KICAvLyAgICAgY29uc3QgdyA9IHRoaXMubG9hZEZsb2F0MTYoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgUXVhdCh4LCB5LCB6LCB3KTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRGbG9hdDMyUXVhdCgpIHsNCiAgLy8gICAgIGNvbnN0IHggPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCB5ID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgY29uc3QgeiA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IHcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICByZXR1cm4gbmV3IFF1YXQoeCwgeSwgeiwgdyk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCRmxvYXQzMkNvbG9yKCkgew0KICAvLyAgICAgY29uc3QgciA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgcmV0dXJuIG5ldyBDb2xvcihyLCBnLCBiKTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRSR0JBRmxvYXQzMkNvbG9yKCkgew0KICAvLyAgICAgY29uc3QgciA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRGbG9hdDMyKCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkRmxvYXQzMigpOw0KICAvLyAgICAgY29uc3QgYSA9IHRoaXMubG9hZEZsb2F0MzIoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociwgZywgYiwgYSk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCVUludDhDb2xvcigpIHsNCiAgLy8gICAgIGNvbnN0IHIgPSB0aGlzLmxvYWRVSW50OCgpOw0KICAvLyAgICAgY29uc3QgZyA9IHRoaXMubG9hZFVJbnQ4KCk7DQogIC8vICAgICBjb25zdCBiID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociAvIDI1NSwgZyAvIDI1NSwgYiAvIDI1NSk7DQogIC8vIH0NCg0KICAvLyBsb2FkUkdCQVVJbnQ4Q29sb3IoKSB7DQogIC8vICAgICBjb25zdCByID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIGNvbnN0IGcgPSB0aGlzLmxvYWRVSW50OCgpOw0KICAvLyAgICAgY29uc3QgYiA9IHRoaXMubG9hZFVJbnQ4KCk7DQogIC8vICAgICBjb25zdCBhID0gdGhpcy5sb2FkVUludDgoKTsNCiAgLy8gICAgIHJldHVybiBuZXcgQ29sb3IociAvIDI1NSwgZyAvIDI1NSwgYiAvIDI1NSwgYSAvIDI1NSk7DQogIC8vIH0NCg0KICAvLyBsb2FkQm94MigpIHsNCiAgLy8gICAgIHJldHVybiBuZXcgQm94Mih0aGlzLmxvYWRGbG9hdDMyVmVjMigpLCB0aGlzLmxvYWRGbG9hdDMyVmVjMigpKTsNCiAgLy8gfQ0KDQogIC8vIGxvYWRCb3gzKCkgew0KICAvLyAgICAgcmV0dXJuIG5ldyBCb3gzKHRoaXMubG9hZEZsb2F0MzJWZWMzKCksIHRoaXMubG9hZEZsb2F0MzJWZWMzKCkpOw0KICAvLyB9DQoNCiAgLyoqDQogICAqIFRoZSBsb2FkU3RyIG1ldGhvZC4NCiAgICogQHBhcmFtIHthbnl9IHN0cmlkZSAtIFRoZSBzdHJpZGUgcGFyYW0uDQogICAqLw0KICByZWFkUGFkZChzdHJpZGUpIHsNCiAgICBjb25zdCBwYWRkID0gdGhpcy5fX2J5dGVPZmZzZXQgJSBzdHJpZGU7DQogICAgaWYgKHBhZGQgIT0gMCkgdGhpcy5fX2J5dGVPZmZzZXQgKz0gc3RyaWRlIC0gcGFkZDsNCiAgfQ0KfQoKY29uc3QgQ0FEU3VyZmFjZVR5cGVzID0gew0KICBTVVJGQUNFX1RZUEVfUExBTkU6IDAsDQogIFNVUkZBQ0VfVFlQRV9DT05FOiAxLA0KICBTVVJGQUNFX1RZUEVfQ1lMSU5ERVI6IDIsDQogIFNVUkZBQ0VfVFlQRV9TUEhFUkU6IDMsDQogIFNVUkZBQ0VfVFlQRV9UT1JVUzogNCwNCiAgU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT046IDUsDQogIFNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OOiA2LA0KICAvLyAgU1VSRkFDRV9UWVBFX0JFWklFUl9TVVJGQUNFOiA3LA0KICBTVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRTogOCwNCiAgU1VSRkFDRV9UWVBFX09GRlNFVF9TVVJGQUNFOiA5LA0KICBTVVJGQUNFX1RZUEVfVFJJTU1FRF9SRUNUX1NVUkZBQ0U6IDEwLA0KICBTVVJGQUNFX1RZUEVfUE9MWV9QTEFORTogMTQsDQogIFNVUkZBQ0VfVFlQRV9GQU46IDE1LA0KICBTVVJGQUNFX1RZUEVfUkVWT0xVVElPTl9GTElQUEVEX0RPTUFJTjogMTYsDQp9Ow0KDQpjb25zdCBnZXRTdXJmYWNlVHlwZU5hbWUgPSBpZCA9PiB7DQogIHN3aXRjaCAoaWQpIHsNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUExBTkU6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9QTEFORScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfQ09ORToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0NPTkUnDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0NZTElOREVSOg0KICAgICAgcmV0dXJuICdTVVJGQUNFX1RZUEVfQ1lMSU5ERVInDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1NQSEVSRToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1NQSEVSRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfVE9SVVM6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9UT1JVUycNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfTElORUFSX0VYVFJVU0lPTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT04nDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1JFVk9MVVRJT046DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OJw0KICAgIC8vICAgIGNhc2UgQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9CRVpJRVJfU1VSRkFDRTogcmV0dXJuICdTVVJGQUNFX1RZUEVfQkVaSUVSX1NVUkZBQ0UnOw0KICAgIGNhc2UgQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9OVVJCU19TVVJGQUNFOg0KICAgICAgcmV0dXJuICdTVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfT0ZGU0VUX1NVUkZBQ0U6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9PRkZTRVRfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfVFJJTU1FRF9SRUNUX1NVUkZBQ0U6DQogICAgICByZXR1cm4gJ1NVUkZBQ0VfVFlQRV9UUklNTUVEX1JFQ1RfU1VSRkFDRScNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUE9MWV9QTEFORToNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1BPTFlfUExBTkUnDQogICAgY2FzZSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0ZBTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX0ZBTicNCiAgICBjYXNlIENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUkVWT0xVVElPTl9GTElQUEVEX0RPTUFJTjoNCiAgICAgIHJldHVybiAnU1VSRkFDRV9UWVBFX1JFVk9MVVRJT05fRkxJUFBFRF9ET01BSU4nDQogIH0NCn07DQoNCmNvbnN0IGdlb21MaWJyYXJ5SGVhZGVyU2l6ZSA9IDg7IC8vIDIgRlAxNiBwaXhlbHMgYXQgdGhlIHN0YXJ0IG9mIHRoZSBHZW9tTGlicmFyeSBhbmQgQ3VydmVMaWJyYXJ5DQpjb25zdCB2YWx1ZXNQZXJDdXJ2ZVRvY0l0ZW0gPSA4Ow0KY29uc3QgdmFsdWVzUGVyU3VyZmFjZVRvY0l0ZW0gPSA5Ow0KY29uc3QgdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSA9IDg7DQpjb25zdCB2YWx1ZXNQZXJTdXJmYWNlTGlicmFyeUxheW91dEl0ZW0gPSA4Ow0KY29uc3QgZmxvYXRzUGVyU2NlbmVCb2R5ID0gMjsNCmNvbnN0IGRyYXdTaGFkZXJBdHRyaWJzU3RyaWRlID0gNDsgLypkcmF3Q29vcmRzOiBib2R5IElELCBTdXJmYWNlIGluZGV4IGluIEJvZHksIFN1cmZhY2UgSWQsIFRyaW1TZXQgSWQqLy8vICsgMi8qZHJhd0l0ZW1UZXhBZGRyKi8NCmNvbnN0IENVUlZFX0ZMQUdfQ09TVF9JU19ERVRBSUwgPSAxIDw8IDM7DQpjb25zdCBTVVJGQUNFX0ZMQUdfRkxJUFBFRF9VViA9IDEgPDwgNTsNCmNvbnN0IFNVUkZBQ0VfRkxBR19DT1NUX0lTX0RFVEFJTF9VID0gMSA8PCA2Ow0KY29uc3QgU1VSRkFDRV9GTEFHX0NPU1RfSVNfREVUQUlMX1YgPSAxIDw8IDc7Cgpjb25zdCBfX2N1cnZlc1BhY2tlciA9IG5ldyBHcm93aW5nUGFja2VyKCk7DQpjb25zdCBfX3N1cmZhY2VQYWNrZXIgPSBuZXcgR3Jvd2luZ1BhY2tlcigpOw0KY29uc3QgX190cmltU2V0UGFja2VyID0gbmV3IEdyb3dpbmdQYWNrZXIoKTsNCi8vIGNvbnN0IF9fYm9keUF0bGFzUGFja2VyID0gbmV3IEdyb3dpbmdQYWNrZXIoKQ0KDQpjb25zdCB3b3JrZXJTdGF0ZSA9IHt9Ow0KDQovLyBodHRwczovL3N0YWNrb3ZlcmZsb3cuY29tL3F1ZXN0aW9ucy82ODMyNTk2L2hvdy10by1jb21wYXJlLXNvZnR3YXJlLXZlcnNpb24tbnVtYmVyLXVzaW5nLWpzLW9ubHktbnVtYmVyDQovLyAybmQgYW5zd2VyLg0KLy8gcmV0dXJuIHBvc2l0aXZlOiB2MSA+IHYyLCB6ZXJvOnYxID09IHYyLCBuZWdhdGl2ZTogdjEgPCB2MiANCmZ1bmN0aW9uIGNvbXBhcmVWZXJzaW9ucyh2MSwgdjIpIHsNCiAgLypkZWZhdWx0IGlzIHRydWUqLw0KICBmb3IobGV0IGk9MDsgaSA8IDM7IGkrKykgew0KICAgIGlmICh2MVtpXSAhPT0gdjJbaV0pIHJldHVybiB2MVtpXSAtIHYyW2ldOw0KICB9DQogIHJldHVybiAwOw0KfQ0KDQpjb25zdCBuZWFyZXN0UG93MiA9IHZhbHVlID0+IHsNCiAgcmV0dXJuIE1hdGgucG93KDIsIE1hdGgucm91bmQoTWF0aC5sb2codmFsdWUpIC8gTWF0aC5sb2coMikpKQ0KfTsNCg0KZnVuY3Rpb24gY2FsY0NvbnRhaW5lclNpemUobnVtSXRlbXMsIGl0ZW1XaWR0aCA9IDEsIGl0ZW1IZWlnaHQgPSAxKSB7DQogIGNvbnN0IHNpZGVMZW5ndGggPSBNYXRoLnNxcnQobnVtSXRlbXMgKiBpdGVtV2lkdGggKiBpdGVtSGVpZ2h0KTsNCiAgbGV0IHc7DQogIGxldCBoOw0KICBpZiAoaXRlbVdpZHRoID49IGl0ZW1IZWlnaHQpIHsNCiAgICB3ID0gc2lkZUxlbmd0aCAvIGl0ZW1XaWR0aDsNCiAgICBjb25zdCBmcmFjdFcgPSB3IC0gTWF0aC5mbG9vcih3KTsNCiAgICBpZiAoZnJhY3RXID4gMC41ICYmIGZyYWN0VyA8IDEuMCkgdyArPSAxLjAgLSBmcmFjdFc7DQogICAgZWxzZSB3ID0gTWF0aC5tYXgoMSwgTWF0aC5mbG9vcih3KSk7DQogICAgaCA9IG51bUl0ZW1zIC8gdzsNCiAgICBjb25zdCBmcmFjdEggPSBoIC0gTWF0aC5mbG9vcihoKTsNCiAgICBpZiAoZnJhY3RIID4gMC4wICYmIGZyYWN0SCA8IDEuMCkgew0KICAgICAgaCArPSAxLjAgLSBmcmFjdEg7DQogICAgfQ0KICB9IGVsc2Ugew0KICAgIGggPSBzaWRlTGVuZ3RoIC8gaXRlbUhlaWdodDsNCiAgICBjb25zdCBmcmFjdEggPSBoIC0gTWF0aC5mbG9vcihoKTsNCiAgICBpZiAoZnJhY3RIID4gMC41ICYmIGZyYWN0SCA8IDEuMCkgaCArPSAxLjAgLSBmcmFjdEg7DQogICAgZWxzZSBoID0gTWF0aC5tYXgoMSwgTWF0aC5mbG9vcihoKSk7DQogICAgdyA9IG51bUl0ZW1zIC8gaDsNCiAgICBjb25zdCBmcmFjdFcgPSB3IC0gTWF0aC5mbG9vcih3KTsNCiAgICBpZiAoZnJhY3RXID4gMC4wICYmIGZyYWN0VyA8IDEuMCkgew0KICAgICAgdyArPSAxLjAgLSBmcmFjdFc7DQogICAgfQ0KICB9DQogIGlmICh3ICogaCA8IG51bUl0ZW1zKSB0aHJvdyBuZXcgRXJyb3IoJ0ludmFsaWQgY29udGFpbmVyIHNpemUnKQ0KICByZXR1cm4gW3csIGhdDQp9DQoNCmZ1bmN0aW9uIGFkZFRvQmluKHZhbHVlLCBpdGVtV2lkdGgsIGl0ZW1IZWlnaHQsIGJpbnMsIGJpbnNEaWN0KSB7DQogIGNvbnN0IGtleSA9IGl0ZW1XaWR0aCArICd4JyArIGl0ZW1IZWlnaHQ7DQogIGNvbnN0IGJpbklkID0gYmluc0RpY3Rba2V5XTsNCiAgaWYgKGJpbklkICE9IHVuZGVmaW5lZCkgew0KICAgIGJpbnNbYmluSWRdLmlkcy5wdXNoKHZhbHVlKTsNCiAgfSBlbHNlIHsNCiAgICBiaW5zRGljdFtrZXldID0gYmlucy5sZW5ndGg7DQogICAgYmlucy5wdXNoKHsNCiAgICAgIGl0ZW1XaWR0aCwNCiAgICAgIGl0ZW1IZWlnaHQsDQogICAgICBpZHM6IFt2YWx1ZV0sDQogICAgfSk7DQogIH0NCn0NCg0KZnVuY3Rpb24gc29ydEJpbnMoYmlucykgew0KICBjb25zdCBpbmRleEFycmF5ID0gbmV3IFVpbnQxNkFycmF5KGJpbnMubGVuZ3RoKTsNCiAgZm9yIChsZXQgaSA9IDA7IGkgPCBiaW5zLmxlbmd0aDsgaSsrKSB7DQogICAgaW5kZXhBcnJheVtpXSA9IGk7DQogICAgY29uc3QgYmluID0gYmluc1tpXTsNCiAgICBjb25zdCBpdGVtQ291bnRVViA9IGNhbGNDb250YWluZXJTaXplKA0KICAgICAgYmluLmlkcy5sZW5ndGgsDQogICAgICBiaW4uaXRlbVdpZHRoLA0KICAgICAgYmluLml0ZW1IZWlnaHQNCiAgICApOw0KICAgIGJpbi5pdGVtQ291bnRVViA9IGl0ZW1Db3VudFVWOw0KICAgIGJpbi53ID0gaXRlbUNvdW50VVZbMF0gKiBiaW4uaXRlbVdpZHRoOw0KICAgIGJpbi5oID0gaXRlbUNvdW50VVZbMV0gKiBiaW4uaXRlbUhlaWdodDsNCiAgICBiaW4ubCA9IE1hdGgubWF4KGJpbi53LCBiaW4uaCk7DQogIH0NCg0KICBpbmRleEFycmF5LnNvcnQoKGEsIGIpID0+DQogICAgYmluc1thXS5sID4gYmluc1tiXS5sID8gLTEgOiBiaW5zW2FdLmwgPCBiaW5zW2JdLmwgPyAxIDogMA0KICApOw0KICByZXR1cm4gaW5kZXhBcnJheQ0KfQ0KDQpmdW5jdGlvbiBsYXlvdXRCaW5zKGJpbnMsIHBhY2tlciwgaXRlbUNiLCBiaW5DYikgew0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIFNvcnQgdGhlIGJpbnMgaW50byBiaWdnZXN0IHRvIHNtYWxsZXN0IHNvIHdlIHBhY2sgdGhlIGJpZ2dlciBvbmVzIGZpcnN0Lg0KICBjb25zdCBpbmRleEFycmF5ID0gc29ydEJpbnMoYmlucyk7DQoNCiAgZm9yIChjb25zdCBiaW5JZCBvZiBpbmRleEFycmF5KSB7DQogICAgY29uc3QgYmluID0gYmluc1tiaW5JZF07DQogICAgLy8gY29uc29sZS5sb2coImJpbjoiICsgIGJpbi5pdGVtV2lkdGgrICIgeCAiICtiaW4uaXRlbUhlaWdodCkNCiAgICBjb25zdCBibG9jayA9IHBhY2tlci5hZGRCbG9jayh7DQogICAgICB3OiBiaW4udywNCiAgICAgIGg6IGJpbi5oLA0KICAgIH0pOw0KICAgIGlmICghYmxvY2spIHRocm93IG5ldyBFcnJvcignVW5hYmxlIHRvIGxheW91dCBiaW46JyArIGJpbi53ICsgJyB4ICcgKyBiaW4uaCkNCg0KICAgIGlmIChiaW5DYikgYmluQ2IoYmluLCBibG9jayk7DQoNCiAgICBmb3IgKGxldCBpID0gMDsgaSA8IGJpbi5pZHMubGVuZ3RoOyBpKyspIHsNCiAgICAgIGNvbnN0IHUgPSBibG9jay54ICsgKGkgJSBiaW4uaXRlbUNvdW50VVZbMF0pICogYmluLml0ZW1XaWR0aDsNCiAgICAgIGNvbnN0IHYgPSBibG9jay55ICsgTWF0aC5mbG9vcihpIC8gYmluLml0ZW1Db3VudFVWWzBdKSAqIGJpbi5pdGVtSGVpZ2h0Ow0KICAgICAgaXRlbUNiKGJpbiwgaSwgdSwgdik7DQogICAgfQ0KICB9DQp9DQoNCmNvbnN0IGxheW91dEN1cnZlcyA9IChjdXJ2ZXNEYXRhUmVhZGVyLCBlcnJvclRvbGVyYW5jZSwgbWF4VGV4U2l6ZSkgPT4gew0KICAvLyBjb25zdCBudW1DdXJ2ZXMgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxlbmd0aCAvIDg7DQogIGNvbnN0IG51bUN1cnZlcyA9IGN1cnZlc0RhdGFSZWFkZXIubG9hZFVJbnQzMigpOw0KICBpZiAobnVtQ3VydmVzID09IDApIHJldHVybg0KICAvLyBjb25zb2xlLmxvZygibnVtQ3VydmVzIDoiLCBudW1DdXJ2ZXMpOw0KDQogIGNvbnN0IGN1cnZlTGlicmFyeVNpemUgPSBNYXRoLnNxcnQoY3VydmVzRGF0YVJlYWRlci5kYXRhLmJ5dGVMZW5ndGggLyA4KTsgLy8gUkdCQTE2IHBpeGVscw0KDQogIGNvbnN0IGN1cnZlRGV0YWlscyA9IG5ldyBVaW50MzJBcnJheShudW1DdXJ2ZXMpOyAvL2RldGFpbDsNCiAgY29uc3QgYmluc0xpc3QgPSBbXTsNCiAgY29uc3QgYmluc0RpY3QgPSB7fTsNCiAgZm9yIChsZXQgY3VydmVJZCA9IDA7IGN1cnZlSWQgPCBudW1DdXJ2ZXM7IGN1cnZlSWQrKykgew0KICAgIHRyeSB7DQogICAgICBjdXJ2ZXNEYXRhUmVhZGVyLnNlZWsoDQogICAgICAgIGdlb21MaWJyYXJ5SGVhZGVyU2l6ZSArDQogICAgICAgIGN1cnZlSWQgKiAodmFsdWVzUGVyQ3VydmVUb2NJdGVtICogMikgLyogYnBjKi8gKw0KICAgICAgICAgIDIgKiAyIC8qIGJwYyovDQogICAgICApOw0KDQogICAgICBsZXQgcGFyYW0gPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICBsZXQgbGVuZ3RoID0gY3VydmVzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KICAgICAgY29uc3QgZmxhZ3MgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICANCiAgICAgIGlmICghTnVtYmVyLmlzRmluaXRlKHBhcmFtKSkNCiAgICAgICAgcGFyYW0gPSA2NTUzNjsNCiAgICAgIGlmICghTnVtYmVyLmlzRmluaXRlKGxlbmd0aCkpDQogICAgICAgIGxlbmd0aCA9IDY1NTM2Ow0KICAgICAgICANCiAgICAgIGxldCBkZXRhaWw7DQogICAgICBpZiAoZmxhZ3MgJiBDVVJWRV9GTEFHX0NPU1RfSVNfREVUQUlMKSB7DQogICAgICAgIGRldGFpbCA9IHBhcmFtOw0KICAgICAgfSBlbHNlIHsNCiAgICAgICAgaWYgKHBhcmFtID09IDAuMCkgew0KICAgICAgICAgIGRldGFpbCA9IDE7DQogICAgICAgIH0gZWxzZSB7DQogICAgICAgICAgY29uc3QgY3VydmF0dXJlID0gcGFyYW0gLyBsZW5ndGg7DQogICAgICAgICAgY29uc3QgcmFkaXVzID0gMSAvIGN1cnZhdHVyZTsNCiAgICAgICAgICBpZiAocmFkaXVzIDwgZXJyb3JUb2xlcmFuY2UpIHsNCiAgICAgICAgICAgIGRldGFpbCA9IDY7DQogICAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICAgIGNvbnN0IGEgPSByYWRpdXMgLSBlcnJvclRvbGVyYW5jZTsNCiAgICAgICAgICAgIGNvbnN0IGFyY0FuZ2xlID0gTWF0aC5hY29zKGEgLyByYWRpdXMpICogMjsNCiAgICAgICAgICAgIGRldGFpbCA9IHBhcmFtIC8gYXJjQW5nbGU7DQogICAgICAgICAgICBkZXRhaWwgPSBNYXRoLm1heCgxLCBNYXRoLnJvdW5kKG5lYXJlc3RQb3cyKGRldGFpbCkpKTsNCiAgICAgICAgICAgIGlmIChkZXRhaWwgPiAxMDI1KXsNCiAgICAgICAgICAgICAgY29uc29sZS53YXJuKCdDdXJ2ZSBkZXRhaWw6JyArIGRldGFpbCk7DQogICAgICAgICAgICAgIGRldGFpbCA9IE1hdGgubWluKGRldGFpbCwgMTAyNSk7DQogICAgICAgICAgICB9DQogICAgICAgICAgICBpZiAoaXNOYU4oZGV0YWlsKSkgew0KICAgICAgICAgICAgICBjb25zb2xlLndhcm4oJ1VuYWJsZSB0byBsYXlvdXQgQ3VydmU6JyArIGRldGFpbCk7DQogICAgICAgICAgICAgIGNvbnRpbnVlDQogICAgICAgICAgICB9DQogICAgICAgICAgfQ0KICAgICAgICB9DQogICAgICB9DQoNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJDdXJ2ZSA6IiwgY3VydmVJZCwgZ2V0Q3VydmVUeXBlTmFtZShjdXJ2ZVR5cGUpLCAiIGZsYWdzOiIsIGZsYWdzLCAiIHBhcmFtOiIsIHBhcmFtLCAiIGRldGFpbDoiLCBkZXRhaWwpOw0KICAgICAgLy8gY29uc29sZS5sb2coIkN1cnZlIDoiLCBjdXJ2ZUlkLCAiIGZsYWdzOiIsIGZsYWdzLCAiIHBhcmFtOiIsIHBhcmFtLCAiIGRldGFpbDoiLCBkZXRhaWwpOw0KDQogICAgICAvLyBOb3RlOiB0aGUgZGV0YWlsIHZhbHVlIGlzIGFsd2F5cyBhIHBvd2VyIG9mIDIsIGFuZCB0aGUgbnVtIHZlcnRpY2VzIGFyZSBhbHdheXMgb2RkLg0KICAgICAgLy8gZS5nLiBkZXRhaWwgPSA0LCBudW1WZXJ0cyA9IDUuDQogICAgICBhZGRUb0JpbihjdXJ2ZUlkLCBkZXRhaWwgKyAxLCAxLCBiaW5zTGlzdCwgYmluc0RpY3QpOw0KICAgICAgDQogICAgICBjdXJ2ZURldGFpbHNbY3VydmVJZF0gPSBkZXRhaWw7DQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIENBREN1cnZlIGRhdGEgaW4gd2ViIHdvcmtlcjogIiwgY3VydmVJZCwgZSk7DQogICAgfQ0KICB9DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KICAvLyBOb3cgbGF5b3V0IHRoZSBjdXJ2ZXMgaW4gYmF0Y2hlcy4gQmlnZ2VzdCB0byBzbWFsbGVzdA0KICAvLyBUaGUgY29vcmRpbmF0ZXMgZm9yIHRoZSBwYXRjaGVzIGluIHRoZSBnZW9tIHRleHR1cmUgbmVlZCB0byBiZQ0KICAvLyBpbiBhIHRleHR1cmUgdGhhdCB3ZSBiaW5kIHRvIHRoZSBHTEV2YWx1YXRlRHJhd0l0ZW1zU2hhZGVyLCB3aGVyZQ0KICAvLyBpdCBjYW4gc2NhdHRlciB0aGUgdmFsdWVzIGludG8gdGhlIGRyYXcgaW5zdGFuY2VzLg0KICBjb25zdCBjdXJ2ZXNBdGxhc0xheW91dFRleHR1cmVTaXplID0gY2FsY0NvbnRhaW5lclNpemUobnVtQ3VydmVzICogMik7IC8vICwgMi8qIHBpeGVscyBwZXIgaXRlbSAqLywgMSk7DQogIGNvbnN0IGN1cnZlc0F0bGFzTGF5b3V0ID0gbmV3IEZsb2F0MzJBcnJheSgNCiAgICBjdXJ2ZXNBdGxhc0xheW91dFRleHR1cmVTaXplWzBdICogY3VydmVzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZVsxXSAqIDQNCiAgKTsNCg0KICBsYXlvdXRCaW5zKGJpbnNMaXN0LCBfX2N1cnZlc1BhY2tlciwgKGJpbiwgaSwgdSwgdikgPT4gew0KICAgIGNvbnN0IGN1cnZlSWQgPSBiaW4uaWRzW2ldOw0KDQogICAgY29uc3Qgb2Zmc2V0ID0gY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW07DQogICAgY3VydmVzQXRsYXNMYXlvdXRbb2Zmc2V0ICsgMF0gPSB1Ow0KICAgIGN1cnZlc0F0bGFzTGF5b3V0W29mZnNldCArIDFdID0gdjsNCiAgICBjdXJ2ZXNBdGxhc0xheW91dFtvZmZzZXQgKyAyXSA9IGJpbi5pdGVtV2lkdGg7DQogICAgY3VydmVzQXRsYXNMYXlvdXRbb2Zmc2V0ICsgM10gPSBiaW4uaXRlbUhlaWdodDsNCg0KICAgIC8vIGNvbnN0IGxheW91dCA9IFsNCiAgICAvLyAgIGN1cnZlc0F0bGFzTGF5b3V0WyhvZmZzZXQpICsgMF0sDQogICAgLy8gICBjdXJ2ZXNBdGxhc0xheW91dFsob2Zmc2V0KSArIDFdLA0KICAgIC8vICAgY3VydmVzQXRsYXNMYXlvdXRbKG9mZnNldCkgKyAyXSwNCiAgICAvLyAgIGN1cnZlc0F0bGFzTGF5b3V0WyhvZmZzZXQpICsgM11dOw0KICAgIC8vIGNvbnNvbGUubG9nKCJSZW5kZXIgQ3VydmUgSWQgIiArIGN1cnZlSWQgKyAiOlsiICsgbGF5b3V0ICsgIl0iKQ0KDQogICAgLy8gVE9ETzoganVzdCB3cml0ZSB0aGUgY3VydmVJRCBoZXJlIGluc3RlYWQgYW5kIHdlIGNhbiBsb29rdXAgdGhlIGNvb3JkcyBpbiB0aGUgc2hhZGVyDQogICAgY3VydmVzRGF0YVJlYWRlci5zZWVrKA0KICAgICAgZ2VvbUxpYnJhcnlIZWFkZXJTaXplICsgY3VydmVJZCAqICh2YWx1ZXNQZXJDdXJ2ZVRvY0l0ZW0gKiAyKSAvKiBicGMqLw0KICAgICk7DQogICAgY29uc3QgY29vcmRzWCA9IGN1cnZlc0RhdGFSZWFkZXIubG9hZFVGbG9hdDE2KCk7DQogICAgY29uc3QgY29vcmRzWSA9IGN1cnZlc0RhdGFSZWFkZXIubG9hZFVGbG9hdDE2KCk7DQogICAgLy8gY29uc29sZS5sb2coIkN1cnZlIElkICIsIGN1cnZlSWQsICI6WyIsIGNvb3Jkc1gsICIsICIsIGNvb3Jkc1ksICJdIikNCiAgICBjdXJ2ZXNBdGxhc0xheW91dFtvZmZzZXQgKyA0XSA9IGNvb3Jkc1g7DQogICAgY3VydmVzQXRsYXNMYXlvdXRbb2Zmc2V0ICsgNV0gPSBjb29yZHNZOw0KDQogICAgLy8gY29uc29sZS5sb2coIkN1cnZlIDoiLCBjdXJ2ZUlkLCAiOiIsIHUsIHYsIGJpbi5pdGVtV2lkdGgsIGJpbi5pdGVtSGVpZ2h0KTsNCiAgfSk7DQoNCiAgd29ya2VyU3RhdGUuY3VydmVEZXRhaWxzID0gY3VydmVEZXRhaWxzOw0KDQogIHJldHVybiB7DQogICAgbnVtQ3VydmVzLA0KICAgIGN1cnZlc0F0bGFzTGF5b3V0LA0KICAgIGN1cnZlc0F0bGFzTGF5b3V0VGV4dHVyZVNpemUsDQogIH0NCn07DQoNCmNvbnN0IGxheW91dFN1cmZhY2VzID0gKHN1cmZhY2VzRGF0YVJlYWRlciwgZXJyb3JUb2xlcmFuY2UsIG1heFRleFNpemUsIHN1cmZhY2VBcmVhVGhyZXNob2xkLCBjYWREYXRhVmVyc2lvbikgPT4gew0KICBjb25zdCBzdXJmYWNlTGlicmFyeVNpemUgPSBNYXRoLnNxcnQoc3VyZmFjZXNEYXRhUmVhZGVyLmRhdGEuYnl0ZUxlbmd0aCAvIDgpOyAvLyBSR0JBMTYgcGl4ZWxzDQogIGNvbnN0IG51bVN1cmZhY2VzID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRVSW50MzIoKTsNCiAgY29uc29sZS5sb2coIm51bVN1cmZhY2VzIDoiLCBudW1TdXJmYWNlcyk7DQogIGlmIChudW1TdXJmYWNlcyA9PSAwKSByZXR1cm47DQoNCiAgY29uc3QgdG90YWxTdXJmYWNlQXJlYSA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkRmxvYXQzMigpOw0KICBjb25zdCB0b3RhbFN1cmZhY2VDb3N0ID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogIGNvbnN0IHN1cmZhY2VEZXRhaWxzID0gbmV3IEludDMyQXJyYXkobnVtU3VyZmFjZXMgKiA3KTsgLy8gZmxhZ3MsIGFkZHJYLCBhZGRyWSwgc3VyZmFjZVR5cGUsIGRldGFpbFgsIGRldGFpbFksIHRyaW1TZXRJZDsNCiAgY29uc3Qgc2Vla1N1cmZhY2VEYXRhID0gYWRkciA9PiB7DQogICAgLy8gWCwgWSBpbiBwaXhlbHMuDQogICAgY29uc3QgYnl0ZXNQZXJQaXhlbCA9IDg7IC8vIFJHQkExNiBwaXhlbA0KICAgIGNvbnN0IGJ5dGVPZmZzZXQgPQ0KICAgICAgYWRkci54ICogYnl0ZXNQZXJQaXhlbCArIGFkZHIueSAqIGJ5dGVzUGVyUGl4ZWwgKiBzdXJmYWNlTGlicmFyeVNpemU7DQogICAgLy8gY29uc29sZS5sb2coIl9fc2Vla1N1cmZhY2VEYXRhOiIgKyBzdXJmYWNlSWQgKyAiIGJ5dGVPZmZzZXQ6IiArIChieXRlT2Zmc2V0ICtvZmZzZXQpICsgIiBwaXhlbDoiICsgKChieXRlT2Zmc2V0ICtvZmZzZXQpLzgpICsgIiB4OiIgKyBhZGRyLnggKyAiIHk6IiArIGFkZHIueSk7DQogICAgc3VyZmFjZXNEYXRhUmVhZGVyLnNlZWsoYnl0ZU9mZnNldCk7DQogIH07DQoNCiAgY29uc3QgYmluc0xpc3QgPSBbXTsNCiAgY29uc3QgYmluc0RpY3QgPSB7fTsNCiAgY29uc3QgY291bnRzID0ge307DQogIGxldCB0b3RhbERldGFpbCA9IDA7DQogIGNvbnN0IGxvYWQyeEZsb2F0MTZUcmltU2V0SWQgPSBjb21wYXJlVmVyc2lvbnMoW2NhZERhdGFWZXJzaW9uLm1ham9yLCBjYWREYXRhVmVyc2lvbi5taW5vciwgY2FkRGF0YVZlcnNpb24ucGF0Y2hdLCBbMCwwLDI3XSkgPj0gMDsNCiAgZm9yIChsZXQgc3VyZmFjZUlkID0gMDsgc3VyZmFjZUlkIDwgbnVtU3VyZmFjZXM7IHN1cmZhY2VJZCsrKSB7DQogICAgdHJ5IHsNCiAgICAgIC8vIGlmKHN1cmZhY2VJZCAhPSA5NjI4KSB7DQogICAgICAvLyAgIGNvbnRpbnVlOw0KICAgICAgLy8gfQ0KDQogICAgICBzdXJmYWNlc0RhdGFSZWFkZXIuc2VlaygNCiAgICAgICAgZ2VvbUxpYnJhcnlIZWFkZXJTaXplICsgc3VyZmFjZUlkICogKHZhbHVlc1BlclN1cmZhY2VUb2NJdGVtICogMikgLyogYnBjKi8NCiAgICAgICk7DQoNCiAgICAgIGNvbnN0IGFkZHJYID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRVRmxvYXQxNigpOw0KICAgICAgY29uc3QgYWRkclkgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZFVGbG9hdDE2KCk7DQogICAgICBsZXQgcGFyYW1VID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICBsZXQgcGFyYW1WID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICBsZXQgc2l6ZVUgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgIGxldCBzaXplViA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkRmxvYXQxNigpOw0KICAgICAgY29uc3QgZmxhZ3MgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCg0KICAgICAgaWYgKCFOdW1iZXIuaXNGaW5pdGUoc2l6ZVUpKQ0KICAgICAgICBzaXplVSA9IDY1NTM2Ow0KICAgICAgaWYgKCFOdW1iZXIuaXNGaW5pdGUoc2l6ZVYpKQ0KICAgICAgICBzaXplViA9IDY1NTM2Ow0KDQoNCiAgICAgIC8vIGRlYnVnIHRyaW0gc2V0IElkDQogICAgICBsZXQgdHJpbVNldElkOw0KICAgICAgew0KICAgICAgICBpZiAobG9hZDJ4RmxvYXQxNlRyaW1TZXRJZCkgew0KICAgICAgICAgIHRyaW1TZXRJZCA9IHN1cmZhY2VzRGF0YVJlYWRlci5sb2FkU0ludDMyRnJvbTJ4RmxvYXQxNigpOw0KICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgIGNvbnN0IHBhcnRBID0gc3VyZmFjZXNEYXRhUmVhZGVyLmxvYWRGbG9hdDE2KCk7DQogICAgICAgICAgY29uc3QgcGFydEIgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgICAgICB0cmltU2V0SWQgPSBwYXJ0QSArIChwYXJ0QiA8PCA4KTsNCiAgICAgICAgfQ0KICAgICAgICAvLyBjb25zb2xlLmxvZyhzdXJmYWNlSWQsICIgdHJpbVNldElkOiIsIHRyaW1TZXRJZCk7DQogICAgICAgIC8vIGlmKHRyaW1TZXRJZCA+PSAwKSB7DQogICAgICAgIC8vICAgY29uc29sZS5sb2coc3VyZmFjZUlkICsiIHRyaW1TZXRJZDoiICsgdHJpbVNldElkKTsNCiAgICAgICAgLy8gfQ0KICAgICAgICAvLyBlbHNlIHsNCiAgICAgICAgLy8gICBjb250aW51ZTsgDQogICAgICAgIC8vIH0NCiAgICAgIH0NCg0KICAgICAgc2Vla1N1cmZhY2VEYXRhKHsgeDogYWRkclgsIHk6IGFkZHJZIH0pOw0KICAgICAgbGV0IHN1cmZhY2VUeXBlOw0KICAgICAgdHJ5IHsNCiAgICAgICAgc3VyZmFjZVR5cGUgPSBzdXJmYWNlc0RhdGFSZWFkZXIubG9hZEZsb2F0MTYoKTsNCiAgICAgIH0gY2F0Y2ggKGUpIHsNCiAgICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFN1cmZhY2UgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBzdXJmYWNlSWQsIGUpOw0KICAgICAgICBjb250aW51ZTsNCiAgICAgIH0NCg0KICAgICAgLy8gaWYodHJpbVNldElkID09IDkyKSB7DQogICAgICAvLyAgIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgdHJpbVNldElkOiIsIHRyaW1TZXRJZCwgIiBzaXplOiIsc2l6ZVUsICJ4Iiwgc2l6ZVYpOw0KICAgICAgLy8gfQ0KICAgICAgICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIHRyaW1TZXRJZDoiLCB0cmltU2V0SWQsICIgc2l6ZToiLHNpemVVLCAieCIsIHNpemVWKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgYWRkclg6IiwgYWRkclgsICIsIiwgYWRkclkpOw0KDQogICAgICAvLyBpZiAoc3VyZmFjZVR5cGUgIT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9MSU5FQVJfRVhUUlVTSU9OKSB7DQogICAgICAvLyAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgYWRkclg6IiwgYWRkclgsICIsIiwgYWRkclkpDQogICAgICAvLyAgIGNvbnRpbnVlOw0KICAgICAgLy8gfQ0KICAgICAgLy8gaWYgKHN1cmZhY2VUeXBlICE9IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfTlVSQlNfU1VSRkFDRSkgew0KICAgICAgLy8gICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIGFkZHJYOiIsIGFkZHJYLCAiLCIsIGFkZHJZKQ0KICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgIC8vIH0NCiAgICAgIC8vIGlmKHN1cmZhY2VUeXBlICE9IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfUkVWT0xVVElPTiAmJiBzdXJmYWNlVHlwZSAhPSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX1JFVk9MVVRJT05fRkxJUFBFRF9ET01BSU4gKSB7DQogICAgICAvLyAgIGNvbnRpbnVlOw0KICAgICAgLy8gfQ0KICAgICAgICAvLyBpZihzaXplViA8IDAuNykgew0KICAgICAgICAvLyAvLyAgIC8vIGxldCBicmVha2hlcmUgPSAzOzsNCiAgICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgICAgLy8gfQ0KDQogICAgICBsZXQgZGV0YWlsVTsNCiAgICAgIGxldCBkZXRhaWxWOw0KICAgICAgbGV0IGV2YWxmbGFncyA9IDA7DQogICAgICBpZiAoc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9GQU4pIHsNCiAgICAgICAgZGV0YWlsVSA9IHBhcmFtVTsNCiAgICAgICAgZGV0YWlsViA9IHBhcmFtVjsNCiAgICAgIH0gZWxzZSB7DQogICAgICAgIC8vIElmIHRoZSBhcmVhIGZhbGxzIGJlbG93ICBhdGhyZWFzaG9sZCwgd2Ugc2tpcCB0aGUgc3VyZmFjZS4NCiAgICAgICAgY29uc3QgYXJlYSA9IHNpemVVICogc2l6ZVY7DQogICAgICAgIGlmIChhcmVhIDwgc3VyZmFjZUFyZWFUaHJlc2hvbGQpIHsNCiAgICAgICAgICBjb25zb2xlLmxvZygnU2tpcHBpbmcgOicsIGdldFN1cmZhY2VUeXBlTmFtZShzdXJmYWNlVHlwZSksICIgc2l6ZToiLHNpemVVLCAieCIsIHNpemVWLCAiIGFyZWE6IiwgYXJlYSk7DQogICAgICAgICAgY29udGludWU7DQogICAgICAgIH0NCg0KICAgICAgICBpZiAoIU51bWJlci5pc0Zpbml0ZShwYXJhbVUpKQ0KICAgICAgICAgIHBhcmFtVSA9IDY1NTM2Ow0KICAgICAgICBpZiAoIU51bWJlci5pc0Zpbml0ZShwYXJhbVYpKQ0KICAgICAgICAgIHBhcmFtViA9IDY1NTM2Ow0KICAgICAgICAvLyBwYXJhbSB2YWx1ZXMgZW5jb2RlIGN1cnZhdHVyZSBpbnRlZ3JhdGVkIG92ZXIgdGhlIGxlbmd0aA0KICAgICAgICAvLyBnaXZpbmcgdGhlIHRvdGFsIGN1cnZlLiBXZSBub3cgbmVlZCB0byBpbnRlZ3JhdGUgYWdhaW4NCiAgICAgICAgLy8gdG8gZ2V0IGNvc3QuDQogICAgICAgIGlmIChmbGFncyAmIFNVUkZBQ0VfRkxBR19DT1NUX0lTX0RFVEFJTF9VKSB7DQogICAgICAgICAgZGV0YWlsVSA9IHBhcmFtVTsNCiAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICBpZiAocGFyYW1VID09IDApIHsNCiAgICAgICAgICAgIGRldGFpbFUgPSAxOw0KICAgICAgICAgIH0gZWxzZSB7DQogICAgICAgICAgICBjb25zdCBjdXJ2YXR1cmUgPSBwYXJhbVUgLyBzaXplVTsNCiAgICAgICAgICAgIGNvbnN0IHJhZGl1cyA9IDEgLyBjdXJ2YXR1cmU7DQogICAgICAgICAgICBpZiAocmFkaXVzIDwgZXJyb3JUb2xlcmFuY2UpIHsNCiAgICAgICAgICAgICAgZGV0YWlsVSA9IDY7DQogICAgICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgICAgICBjb25zdCBhID0gcmFkaXVzIC0gZXJyb3JUb2xlcmFuY2U7DQogICAgICAgICAgICAgIGNvbnN0IGFyY0FuZ2xlID0gTWF0aC5hY29zKGEgLyByYWRpdXMpICogMjsNCiAgICAgICAgICAgICAgZGV0YWlsVSA9IHBhcmFtVSAvIGFyY0FuZ2xlOw0KICAgICAgICAgICAgICBkZXRhaWxVID0gTWF0aC5tYXgoMSwgTWF0aC5yb3VuZChuZWFyZXN0UG93MihkZXRhaWxVKSkpOw0KICAgICAgICAgICAgICBpZiAoZGV0YWlsVSA+IDEwMjUpew0KICAgICAgICAgICAgICAgIGNvbnNvbGUud2FybignR2VvbSBkZXRhaWxVOicgKyBkZXRhaWxVKTsNCiAgICAgICAgICAgICAgICBkZXRhaWxVID0gMTAyNTsNCiAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgfQ0KICAgICAgICAgIH0NCiAgICAgICAgfQ0KICAgICAgICBpZiAoZmxhZ3MgJiBTVVJGQUNFX0ZMQUdfQ09TVF9JU19ERVRBSUxfVikgew0KICAgICAgICAgIGRldGFpbFYgPSBwYXJhbVY7DQogICAgICAgIH0gZWxzZSB7DQogICAgICAgICAgaWYgKHBhcmFtViA9PSAwKSB7DQogICAgICAgICAgICBkZXRhaWxWID0gMTsNCiAgICAgICAgICB9IGVsc2Ugew0KICAgICAgICAgICAgY29uc3QgY3VydmF0dXJlID0gcGFyYW1WIC8gc2l6ZVY7DQogICAgICAgICAgICBjb25zdCByYWRpdXMgPSAxIC8gY3VydmF0dXJlOw0KICAgICAgICAgICAgaWYgKHJhZGl1cyA8IGVycm9yVG9sZXJhbmNlKSB7DQogICAgICAgICAgICAgIGRldGFpbFYgPSA2Ow0KICAgICAgICAgICAgfSBlbHNlIHsNCiAgICAgICAgICAgICAgY29uc3QgYSA9IHJhZGl1cyAtIGVycm9yVG9sZXJhbmNlOw0KICAgICAgICAgICAgICBjb25zdCBhcmNBbmdsZSA9IE1hdGguYWNvcyhhIC8gcmFkaXVzKSAqIDI7DQogICAgICAgICAgICAgIGRldGFpbFYgPSBwYXJhbVYgLyBhcmNBbmdsZTsNCiAgICAgICAgICAgICAgZGV0YWlsViA9IE1hdGgubWF4KDEsIE1hdGgucm91bmQobmVhcmVzdFBvdzIoZGV0YWlsVikpKTsNCiAgICAgICAgICAgICAgaWYgKGRldGFpbFYgPiAxMDI1KXsNCiAgICAgICAgICAgICAgICBjb25zb2xlLndhcm4oJ0dlb20gZGV0YWlsVjonICsgZGV0YWlsVik7DQogICAgICAgICAgICAgICAgZGV0YWlsViA9IDEwMjU7DQogICAgICAgICAgICAgIH0NCiAgICAgICAgICAgIH0NCiAgICAgICAgICB9DQogICAgICAgIH0NCg0KICAgICAgICAvLyBSb3RhdGUgc3VyZmFjZXMgdG8gZml0IGV4aXN0aW5nIGRyYXcgc2V0cy4NCiAgICAgICAgLy8gTm90ZTogVGhpcyBtaW5pbWlzZXMgdGhlIG51bWJlciBvZiBkcmF3IHNldHMgYW5kIHJlZHVjZXMgdGhlIHRpbWUgcGFja2luZw0KICAgICAgICAvLyBieSBmbGlwcGluZyBzb21lIHN1cmZhY2VzIGRpYWdvbmFsbHkuDQogICAgICAgIGlmIChkZXRhaWxVIDwgZGV0YWlsVikgew0KICAgICAgICAgIGNvbnN0IHRtcCA9IGRldGFpbFU7DQogICAgICAgICAgZGV0YWlsVSA9IGRldGFpbFY7DQogICAgICAgICAgZGV0YWlsViA9IHRtcDsNCiAgICAgICAgICBldmFsZmxhZ3MgPSBTVVJGQUNFX0ZMQUdfRkxJUFBFRF9VVjsNCiAgICAgICAgfQ0KICAgICAgICAvLyBjb25zb2xlLmxvZygnc3VyZmFjZVR5cGU6JywgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwgIiBzdXJmYWNlSWQ6Iiwgc3VyZmFjZUlkLCAiIGRldGFpbDoiLGRldGFpbFUsICJ4IiwgZGV0YWlsViwgIiBjb3N0OiIscGFyYW1VLCAieCIsIHBhcmFtViwgIiBzaXplOiIsc2l6ZVUsICJ4Iiwgc2l6ZVYpOw0KICAgICAgfQ0KDQogICAgICBpZiAoaXNOYU4oZGV0YWlsVSkgfHwgaXNOYU4oZGV0YWlsVikgfHwgIU51bWJlci5pc0Zpbml0ZShkZXRhaWxVKSB8fCAhTnVtYmVyLmlzRmluaXRlKGRldGFpbFYpKSB7DQogICAgICAgIGNvbnNvbGUud2FybigNCiAgICAgICAgICAnVW5hYmxlIHRvIGxheW91dCBpdGVtICcsDQogICAgICAgICAgZ2V0U3VyZmFjZVR5cGVOYW1lKHN1cmZhY2VUeXBlKSwNCiAgICAgICAgICAnIDonICsgZGV0YWlsVSArICcgeCAnICsgZGV0YWlsVg0KICAgICAgICApOw0KICAgICAgICBjb250aW51ZQ0KICAgICAgfQ0KDQogICAgICAvLyBpZiAoIShkZXRhaWxVID49IDIwNDggfHwgZGV0YWlsViA+PSAyMDQ4KSkgew0KICAgICAgLy8gICBjb250aW51ZTsNCiAgICAgIC8vIH0NCg0KICAgICAgLy8gVGhlIHF1YWQgc2l6ZSBkZWZpbmVkIHRoZSBudW1iZXIgb2YgdmVydGljZXMuIFNvIGEgc2ltcGxlIHBsYW5lIHF1YWQgd2lsbCBjb3ZlciA0IHZlcnRzLg0KICAgICAgLy8gTm90ZTogdGhlIGRldGFpbCB2YWx1ZSBpcyBhbHdheXMgYSBwb3dlciBvZiAyLCBhbmQgdGhlIG51bSB2ZXJ0aWNlcyBhcmUgYWx3YXlzIG9kZC4NCiAgICAgIC8vIGUuZy4gZGV0YWlsID0gNCwgbnVtVmVydHMgPSA1Lg0KICAgICAgZGV0YWlsVSsrOw0KICAgICAgZGV0YWlsVisrOw0KDQogICAgICBsZXQgY2F0ZWdvcnkgPSAwOw0KICAgICAgaWYgKA0KICAgICAgICBzdXJmYWNlVHlwZSA9PSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX0xJTkVBUl9FWFRSVVNJT04gfHwNCiAgICAgICAgc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OIHx8DQogICAgICAgIHN1cmZhY2VUeXBlID09IENBRFN1cmZhY2VUeXBlcy5TVVJGQUNFX1RZUEVfT0ZGU0VUX1NVUkZBQ0UgfHwNCiAgICAgICAgc3VyZmFjZVR5cGUgPT0gQ0FEU3VyZmFjZVR5cGVzLlNVUkZBQ0VfVFlQRV9SRVZPTFVUSU9OX0ZMSVBQRURfRE9NQUlODQogICAgICApIHsNCiAgICAgICAgY2F0ZWdvcnkgPSAxOw0KICAgICAgfSBlbHNlIGlmIChzdXJmYWNlVHlwZSA9PSBDQURTdXJmYWNlVHlwZXMuU1VSRkFDRV9UWVBFX05VUkJTX1NVUkZBQ0UpIHsNCiAgICAgICAgY2F0ZWdvcnkgPSAyOw0KICAgICAgfQ0KDQogICAgICBpZiAoIWNvdW50c1tjYXRlZ29yeV0pIHsNCiAgICAgICAgY291bnRzW2NhdGVnb3J5XSA9IDE7DQogICAgICB9IGVsc2Ugew0KICAgICAgICBjb3VudHNbY2F0ZWdvcnldKys7DQogICAgICB9DQogICAgICBhZGRUb0JpbihzdXJmYWNlSWQsIGRldGFpbFUsIGRldGFpbFYsIGJpbnNMaXN0LCBiaW5zRGljdCk7DQoNCiAgICAgIC8vIGNvbnNvbGUubG9nKCdzdXJmYWNlVHlwZTonLCBnZXRTdXJmYWNlVHlwZU5hbWUoc3VyZmFjZVR5cGUpLCAiIHN1cmZhY2VJZDoiLCBzdXJmYWNlSWQsICIgZGV0YWlsOiIsZGV0YWlsVSwgIngiLCBkZXRhaWxWKTsNCg0KICAgICAgY29uc3Qgb2Zmc2V0ID0gc3VyZmFjZUlkICogNzsNCiAgICAgIHN1cmZhY2VEZXRhaWxzW29mZnNldCArIDBdID0gZXZhbGZsYWdzIHwgZmxhZ3M7DQogICAgICBzdXJmYWNlRGV0YWlsc1tvZmZzZXQgKyAxXSA9IGFkZHJYOw0KICAgICAgc3VyZmFjZURldGFpbHNbb2Zmc2V0ICsgMl0gPSBhZGRyWTsNCiAgICAgIHN1cmZhY2VEZXRhaWxzW29mZnNldCArIDNdID0gY2F0ZWdvcnk7DQogICAgICBzdXJmYWNlRGV0YWlsc1tvZmZzZXQgKyA0XSA9IGRldGFpbFU7DQogICAgICBzdXJmYWNlRGV0YWlsc1tvZmZzZXQgKyA1XSA9IGRldGFpbFY7DQogICAgICBzdXJmYWNlRGV0YWlsc1tvZmZzZXQgKyA2XSA9IHRyaW1TZXRJZDsNCiAgICAgIHRvdGFsRGV0YWlsICs9IGRldGFpbFUgKiBkZXRhaWxWOw0KDQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFN1cmZhY2UgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBzdXJmYWNlSWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIC8vIGNvbnNvbGUubG9nKCdudW1TdXJmYWNlczonLCBudW1TdXJmYWNlcywgJyB0b3RhbERldGFpbDonLCB0b3RhbERldGFpbCkNCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIE5vdyBsYXlvdXQgdGhlIHN1cmZhY2VzIGluIGJhdGNoZXMuIEJpZ2dlc3QgdG8gc21hbGxlc3QNCiAgLy8gVGhlIGNvb3JkaW5hdGVzIGZvciB0aGUgcGF0Y2hlcyBpbiB0aGUgZ2VvbSB0ZXh0dXJlIG5lZWQgdG8gYmUNCiAgLy8gaW4gYSB0ZXh0dXJlIHRoYXQgd2UgYmluZCB0byB0aGUgR0xFdmFsdWF0ZURyYXdJdGVtc1NoYWRlciwgd2hlcmUNCiAgLy8gaXQgY2FuIHNjYXR0ZXIgdGhlIHZhbHVlcyBpbnRvIHRoZSBkcmF3IGluc3RhbmNlcy4NCiAgY29uc3QgaXRlbUNvdW50VVYgPSBjYWxjQ29udGFpbmVyU2l6ZShudW1TdXJmYWNlcywgMiAvKiBwaXhlbHMgcGVyIGl0ZW0gKi8sIDEpOw0KICBjb25zdCBzdXJmYWNlc0F0bGFzTGF5b3V0VGV4dHVyZVNpemUgPSBbaXRlbUNvdW50VVZbMF0gKiAyLCBpdGVtQ291bnRVVlsxXV07DQogIGNvbnN0IHN1cmZhY2VzQXRsYXNMYXlvdXQgPSBuZXcgRmxvYXQzMkFycmF5KA0KICAgIGl0ZW1Db3VudFVWWzBdICoNCiAgICAyIC8qIHBpeGVscyBwZXIgaXRlbSAqLyAqDQogICAgICBpdGVtQ291bnRVVlsxXSAqDQogICAgICA0IC8qIGNoYW5uZWxzIHBlciBwaXhlbCovDQogICk7DQoNCiAgY29uc3Qgc3VyZmFjZXNFdmFsQXR0cnMgPSBbXTsNCiAgZm9yIChjb25zdCBjYXRlZ29yeSBpbiBjb3VudHMpIHsNCiAgICBjb25zdCBjb3VudCA9IGNvdW50c1tjYXRlZ29yeV07DQogICAgc3VyZmFjZXNFdmFsQXR0cnNbcGFyc2VJbnQoY2F0ZWdvcnkpXSA9IG5ldyBGbG9hdDMyQXJyYXkoDQogICAgICBjb3VudCAvKiBmbG9hdHMgcGVyIGl0ZW0gKi8NCiAgICApOw0KICAgIC8vIHJlc2V0IHNvIHdlIGNhbiByZS1jb3VudA0KICAgIGNvdW50c1tjYXRlZ29yeV0gPSBudWxsOw0KICB9DQogIGxheW91dEJpbnMoDQogICAgYmluc0xpc3QsDQogICAgX19zdXJmYWNlUGFja2VyLA0KICAgIChiaW4sIGksIHUsIHYpID0+IHsNCiAgICAgIGNvbnN0IHN1cmZhY2VJZCA9IGJpbi5pZHNbaV07DQogICAgICAvLyBjb25zb2xlLmxvZygic3VyZmFjZUlkOiIgKyBzdXJmYWNlSWQgKyAiIHU6IiArdSArICIgdjoiICsgdiArICIgdzoiICsgYmluLml0ZW1XaWR0aCArICIgaDoiICsgYmluLml0ZW1IZWlnaHQpOw0KICAgICAgY29uc3QgZGV0YWlsc09mZnNldCA9IHN1cmZhY2VJZCAqIDc7DQogICAgICBjb25zdCBmbGFncyA9IHN1cmZhY2VEZXRhaWxzW2RldGFpbHNPZmZzZXQgKyAwXTsNCiAgICAgIGNvbnN0IGFkZHJYID0gc3VyZmFjZURldGFpbHNbZGV0YWlsc09mZnNldCArIDFdOw0KICAgICAgY29uc3QgYWRkclkgPSBzdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgMl07DQogICAgICBjb25zdCBjYXRlZ29yeSA9IHN1cmZhY2VEZXRhaWxzW2RldGFpbHNPZmZzZXQgKyAzXTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJzdXJmYWNlSWQ6IiArIHN1cmZhY2VJZCArICIgYWRkclg6IiArYWRkclggKyAiIGFkZHJZOiIgKyBhZGRyWSArICIgY2F0ZWdvcnk6IiArIGNhdGVnb3J5KTsNCg0KICAgICAgY29uc3Qgb2Zmc2V0ID0gc3VyZmFjZUlkICogdmFsdWVzUGVyU3VyZmFjZUxpYnJhcnlMYXlvdXRJdGVtOw0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFtvZmZzZXQgKyAwXSA9IHU7DQogICAgICBzdXJmYWNlc0F0bGFzTGF5b3V0W29mZnNldCArIDFdID0gdjsNCiAgICAgIHN1cmZhY2VzQXRsYXNMYXlvdXRbb2Zmc2V0ICsgMl0gPSBiaW4uaXRlbVdpZHRoOw0KICAgICAgc3VyZmFjZXNBdGxhc0xheW91dFtvZmZzZXQgKyAzXSA9IGJpbi5pdGVtSGVpZ2h0Ow0KDQogICAgICBzdXJmYWNlc0F0bGFzTGF5b3V0W29mZnNldCArIDRdID0gYWRkclg7DQogICAgICBzdXJmYWNlc0F0bGFzTGF5b3V0W29mZnNldCArIDVdID0gYWRkclk7DQogICAgICBzdXJmYWNlc0F0bGFzTGF5b3V0W29mZnNldCArIDZdID0gZmxhZ3M7DQoNCiAgICAgIC8vIHdyaXRlIHRoZSBzdXJmYWNlSUQgd2UgbG9va3VwIHRoZSBsYXlvdXQgY29vcmRzIGluIHRoZSBzaGFkZXINCiAgICAgIGlmIChjb3VudHNbY2F0ZWdvcnldID09PSBudWxsKSB7DQogICAgICAgIGNvdW50c1tjYXRlZ29yeV0gPSAwOw0KICAgICAgfSBlbHNlIHsNCiAgICAgICAgY291bnRzW2NhdGVnb3J5XSsrOw0KICAgICAgfQ0KICAgICAgc3VyZmFjZXNFdmFsQXR0cnNbY2F0ZWdvcnldW2NvdW50c1tjYXRlZ29yeV1dID0gc3VyZmFjZUlkOw0KICAgIH0NCiAgICAvKiAsIChiaW4sIGJsb2NrKT0+ew0KICAgICAgICBjb25zb2xlLmxvZyhbX19zdXJmYWNlUGFja2VyLnJvb3QudywgX19zdXJmYWNlUGFja2VyLnJvb3QuaF0gKyAiOiIgKyBbYmluLml0ZW1XaWR0aCwgYmluLml0ZW1IZWlnaHRdICsgIjoiICsgYmluLml0ZW1Db3VudFVWICsgIjoiICsgW2Jpbi53LCBiaW4uaF0pDQogICAgICB9Ki8NCiAgKTsNCg0KICB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlscyA9IHN1cmZhY2VEZXRhaWxzOw0KICB3b3JrZXJTdGF0ZS5zdXJmYWNlc0F0bGFzTGF5b3V0ID0gc3VyZmFjZXNBdGxhc0xheW91dDsNCg0KICByZXR1cm4gew0KICAgIG51bVN1cmZhY2VzLA0KICAgIHN1cmZhY2VzQXRsYXNMYXlvdXQsDQogICAgc3VyZmFjZXNFdmFsQXR0cnMsDQogICAgc3VyZmFjZXNBdGxhc0xheW91dFRleHR1cmVTaXplLA0KICB9DQp9Ow0KDQpjb25zdCBsYXlvdXRUcmltU2V0cyA9ICgNCiAgdHJpbVNldHNSZWFkZXIsDQogIGNhZERhdGFWZXJzaW9uLA0KICBjdXJ2ZXNBdGxhc0xheW91dCwNCiAgbG9kLA0KICB0cmltVGV4ZWxTaXplDQopID0+IHsNCiAgY29uc3QgbnVtVHJpbVNldHMgPSB0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCk7DQogIGxldCB0cmltU2V0c0J1ZmZlckhlYWRlciA9IDQ7DQogIGlmIChjb21wYXJlVmVyc2lvbnMoW2NhZERhdGFWZXJzaW9uLm1ham9yLCBjYWREYXRhVmVyc2lvbi5taW5vciwgY2FkRGF0YVZlcnNpb24ucGF0Y2hdLCBbMCwwLDBdKSA+IDApIHsNCiAgICB0cmltU2V0c0J1ZmZlckhlYWRlciA9IDg7DQogIH0NCg0KICAvLyBUaGUgY29vcmRpbmF0ZXMgZm9yIHRoZSBwYXRjaGVzIGluIHRoZSB0cmltIHRleHR1cmUgbmVlZCB0byBiZQ0KICAvLyBpbiBhIHRleHR1cmUgdGhhdCB3ZSBiaW5kIHRvIHRoZSBHTEV2YWx1YXRlRHJhd0l0ZW1zU2hhZGVyLCB3aGVyZQ0KICAvLyBpdCBjYW4gc2NhdHRlciB0aGUgdmFsdWVzIGludG8gdGhlIGRyYXcgaW5zdGFuY2VzLg0KICBjb25zdCB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemUgPSBjYWxjQ29udGFpbmVyU2l6ZShudW1UcmltU2V0cywgMSwgMSk7DQogIGNvbnN0IHRyaW1TZXRzQXRsYXNMYXlvdXREYXRhID0gbmV3IEZsb2F0MzJBcnJheSgNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemVbMF0gKiB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemVbMV0gKiA0DQogICk7DQoNCiAgY29uc3QgbG9hZEN1cnZlUmVmID0gKGxvb3BTdGFydFBvcywgY3VydmVJbmRleFdpdGhpbkxvb3ApID0+IHsNCiAgICBjb25zdCBjdXJ2ZUlkID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCB0cl94ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCB0cl95ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCByb3cwX3ggPSB0cmltU2V0c1JlYWRlci5sb2FkRmxvYXQzMigpOw0KICAgIGNvbnN0IHJvdzBfeSA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgY29uc3Qgcm93MV94ID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICBjb25zdCByb3cxX3kgPSB0cmltU2V0c1JlYWRlci5sb2FkRmxvYXQzMigpOw0KICAgIGNvbnN0IGZsYWdzID0gdHJpbVNldHNSZWFkZXIubG9hZEZsb2F0MzIoKTsNCg0KICAgIC8vIGNvbnNvbGUubG9nKCJDdXJ2ZVJlZiA6IiwgY3VydmVJZCwgIiBmbGFnczoiLCBmbGFncyk7DQogICAgLy8gTm90ZTogdGhlIGN1cnZlIGxheW91dCBzdG9yZXMgdGhlIG51bWJlciBvZiB2ZXJ0aWNlcywgbm90IHRoZSAnZGV0YWlsJyB2YWx1ZSwgd2hpY2gNCiAgICAvLyBpcyB3aGF0IHdlIGV4cGVjdCBoZXJlLg0KICAgIGNvbnN0IGRldGFpbCA9DQogICAgICBjdXJ2ZXNBdGxhc0xheW91dFtjdXJ2ZUlkICogdmFsdWVzUGVyQ3VydmVMaWJyYXJ5TGF5b3V0SXRlbSArIDJdIC0gMTsNCiAgICBjb25zdCByZXN1bHQgPSB7DQogICAgICAvKiBsb29wU3RhcnRQb3MsDQogICAgICBjdXJ2ZUluZGV4V2l0aGluTG9vcCwqLw0KICAgICAgY3VydmVJZCwNCiAgICAgIGFkZHI6IFsNCiAgICAgICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyAwXSwNCiAgICAgICAgY3VydmVzQXRsYXNMYXlvdXRbY3VydmVJZCAqIHZhbHVlc1BlckN1cnZlTGlicmFyeUxheW91dEl0ZW0gKyAxXSwNCiAgICAgIF0sDQogICAgICBkZXRhaWwsDQogICAgICB0cjogW3RyX3gsIHRyX3ldLA0KICAgICAgcm93MDogW3JvdzBfeCwgcm93MF95XSwNCiAgICAgIHJvdzE6IFtyb3cxX3gsIHJvdzFfeV0sDQogICAgICBmbGFncywNCiAgICB9Ow0KICAgIHJldHVybiByZXN1bHQNCiAgfTsNCg0KICBjb25zdCBnZXRUcmltU2V0Q3VydmVSZWZzID0gdHJpbVNldElkID0+IHsNCiAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzQnVmZmVySGVhZGVyICsgdHJpbVNldElkICogNCk7DQogICAgdHJpbVNldHNSZWFkZXIuc2Vlayh0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCkgKyA4KTsNCg0KICAgIGNvbnN0IG51bUhvbGVzID0gdHJpbVNldHNSZWFkZXIubG9hZFVJbnQzMigpOw0KICAgIGNvbnN0IHBlcmltZXRlclN0YXJ0ID0gdHJpbVNldHNSZWFkZXIucG9zKCk7DQogICAgY29uc3QgbnVtUGVybWl0ZXJDdXJ2ZXMgPSB0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IFtdOw0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbnVtUGVybWl0ZXJDdXJ2ZXM7IGkrKykgew0KICAgICAgdHJpbVNldEN1cnZlUmVmcy5wdXNoKGxvYWRDdXJ2ZVJlZigpKTsNCiAgICB9DQogICAgZm9yIChsZXQgaSA9IDA7IGkgPCBudW1Ib2xlczsgaSsrKSB7DQogICAgICBjb25zdCBob2xlU3RhcnQgPSB0cmltU2V0c1JlYWRlci5wb3MoKTsNCiAgICAgIGNvbnN0IG51bUhvbGVDdXJ2ZXMgPSB0cmltU2V0c1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgICBmb3IgKGxldCBqID0gMDsgaiA8IG51bUhvbGVDdXJ2ZXM7IGorKykgew0KICAgICAgICBjb25zdCBjdXJ2ZVJlZiA9IGxvYWRDdXJ2ZVJlZigpOw0KICAgICAgICB0cmltU2V0Q3VydmVSZWZzLnB1c2goY3VydmVSZWYpOw0KICAgICAgfQ0KICAgIH0NCiAgICAvLyBpZih0cmltU2V0SWQ9PTApew0KICAgIC8vICAgLy8gY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IGdldFRyaW1TZXRDdXJ2ZVJlZnModHJpbVNldElkKTsNCiAgICAvLyAgIGNvbnNvbGUubG9nKHRyaW1TZXRDdXJ2ZVJlZnMpDQogICAgLy8gICB0cmltU2V0Q3VydmVSZWZzLnNwbGljZSgwLCAxKQ0KICAgIC8vIH0NCiAgICByZXR1cm4gdHJpbVNldEN1cnZlUmVmcw0KICB9Ow0KDQogIGNvbnN0IGJpbnNMaXN0ID0gW107DQogIGNvbnN0IGJpbnNEaWN0ID0ge307DQogIGNvbnN0IHRyaW1TZXRCb3JkZXIgPSAxOw0KDQogIGZvciAobGV0IHRyaW1TZXRJZCA9IDA7IHRyaW1TZXRJZCA8IG51bVRyaW1TZXRzOyB0cmltU2V0SWQrKykgew0KICAgIHRyeSB7DQogICAgICAvLyBpZih0cmltU2V0SWQgIT0gMjApIHsNCiAgICAgIC8vICAgY29udGludWU7DQogICAgICAvLyB9DQogICAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzQnVmZmVySGVhZGVyICsgdHJpbVNldElkICogNCk7DQogICAgICB0cmltU2V0c1JlYWRlci5zZWVrKHRyaW1TZXRzUmVhZGVyLmxvYWRVSW50MzIoKSk7DQogICAgICBjb25zdCBzaXplVSA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgICBjb25zdCBzaXplViA9IHRyaW1TZXRzUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQoNCiAgICAgIC8vIGlmIChzaXplVSA+IDIwMCB8fCBzaXplViA+IDIwMCkNCiAgICAgICAgLy8gY29uc29sZS5sb2coIiB0cmltU2V0SWQ6IiwgdHJpbVNldElkLCAiIHNpemU6IixzaXplVSwgIngiLCBzaXplVik7DQoNCiAgICAgIGlmIChpc05hTihzaXplVSkgfHwgaXNOYU4oc2l6ZVYpKSB7DQogICAgICAgIGNvbnNvbGUud2FybignVW5hYmxlIHRvIGxheW91dCBpdGVtOicgKyBzaXplVSArICcgeCAnICsgc2l6ZVYpOw0KICAgICAgICBjb250aW51ZQ0KICAgICAgfQ0KICAgICAgLy8gTm90ZTogU3VidHJhY3Qgb2ZmIHRoZSBib3JkZXIgd2lkdGguDQogICAgICBjb25zdCBudW1QaXhlbHNVID0gTWF0aC5tYXgoDQogICAgICAgIDEsDQogICAgICAgIG5lYXJlc3RQb3cyKE1hdGguY2VpbChzaXplVSAvIHRyaW1UZXhlbFNpemUpKS10cmltU2V0Qm9yZGVyDQogICAgICApOw0KICAgICAgY29uc3QgbnVtUGl4ZWxzViA9IE1hdGgubWF4KA0KICAgICAgICAxLA0KICAgICAgICBuZWFyZXN0UG93MihNYXRoLmNlaWwoc2l6ZVYgLyB0cmltVGV4ZWxTaXplKSktdHJpbVNldEJvcmRlcg0KICAgICAgKTsNCiAgICAgIC8vIGlmKG51bVBpeGVsc1UgPiAxIHx8IG51bVBpeGVsc1YgPiAxKQ0KICAgICAgLy8gICBjb25zb2xlLmxvZygiVHJpbVNldDoiICsgaSArICIgc2l6ZToiICsgc2l6ZVUgKyAiOiIgKyBzaXplViArICIgIiArIG51bVBpeGVsc1UgKyAiLCIgKyBudW1QaXhlbHNWKQ0KICAgICAgaWYgKGlzTmFOKG51bVBpeGVsc1UpIHx8IGlzTmFOKG51bVBpeGVsc1YpKSB7DQogICAgICAgIGNvbnNvbGUud2FybignVW5hYmxlIHRvIGxheW91dCBpdGVtOicgKyBudW1QaXhlbHNVICsgJyB4ICcgKyBudW1QaXhlbHNWKTsNCiAgICAgICAgY29udGludWUNCiAgICAgIH0NCiAgICAgIGFkZFRvQmluKA0KICAgICAgICB0cmltU2V0SWQsDQogICAgICAgIG51bVBpeGVsc1UgKyB0cmltU2V0Qm9yZGVyICogMiwNCiAgICAgICAgbnVtUGl4ZWxzViArIHRyaW1TZXRCb3JkZXIgKiAyLA0KICAgICAgICBiaW5zTGlzdCwNCiAgICAgICAgYmluc0RpY3QNCiAgICAgICk7DQogICAgfSBjYXRjaCAoZSkgew0KICAgICAgY29uc29sZS53YXJuKCJFcnJvciB3aGlsZSByZWFkaW5nIFRyaW1TZXQgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCB0cmltU2V0SWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gU29ydCB0aGUgYmlucyBpbnRvIGJpZ2dlc3QgdG8gc21hbGxlc3Qgc28gd2UgcGFjayB0aGUgYmlnZ2VyIG9uZXMgZmlyc3QuDQoNCiAgY29uc3QgdHJpbUN1cnZlRHJhd1NldHNfdG1wID0ge307DQoNCiAgbGF5b3V0QmlucygNCiAgICBiaW5zTGlzdCwNCiAgICBfX3RyaW1TZXRQYWNrZXIsDQogICAgKGJpbiwgaSwgdSwgdikgPT4gew0KICAgICAgY29uc3QgdHJpbVNldElkID0gYmluLmlkc1tpXTsNCg0KICAgICAgY29uc3QgdHJpbVNldEN1cnZlUmVmcyA9IGdldFRyaW1TZXRDdXJ2ZVJlZnModHJpbVNldElkKTsNCiAgICAgIC8vIGlmKHRyaW1TZXRJZD09MCkgew0KICAgICAgLy8gICBjb25zb2xlLmxvZygiVHJpbVNldDoiLCBbdSt0cmltU2V0Qm9yZGVyLCB2K3RyaW1TZXRCb3JkZXIsIGJpbi5pdGVtV2lkdGgtKHRyaW1TZXRCb3JkZXIqMiksIGJpbi5pdGVtSGVpZ2h0LSh0cmltU2V0Qm9yZGVyKjIpXSkNCiAgICAgIC8vIH0NCg0KICAgICAgLy8gY29uc29sZS5sb2coIlRyaW1TZXQ6IiwgW3UrdHJpbVNldEJvcmRlciwgdit0cmltU2V0Qm9yZGVyLCBiaW4uaXRlbVdpZHRoLSh0cmltU2V0Qm9yZGVyKjIpLCBiaW4uaXRlbUhlaWdodC0odHJpbVNldEJvcmRlcioyKV0pDQoNCiAgICAgIC8vIEdlbmVyYXRpbmcgdGhlIHRleHR1cmUgdG8gYmUgcmVhZCBmcm9tIGR1cmluZyBpbnN0YW5jZSByYXN0ZXJpemF0aW9uLihHTEV2YWx1YXRlRHJhd0l0ZW1zU2hhZGVyKQ0KICAgICAgY29uc3Qgb2Zmc2V0ID0gdHJpbVNldElkICogNDsNCiAgICAgIHRyaW1TZXRzQXRsYXNMYXlvdXREYXRhW29mZnNldCArIDBdID0gdSArIHRyaW1TZXRCb3JkZXI7DQogICAgICB0cmltU2V0c0F0bGFzTGF5b3V0RGF0YVtvZmZzZXQgKyAxXSA9IHYgKyB0cmltU2V0Qm9yZGVyOw0KICAgICAgdHJpbVNldHNBdGxhc0xheW91dERhdGFbb2Zmc2V0ICsgMl0gPSBiaW4uaXRlbVdpZHRoIC0gdHJpbVNldEJvcmRlciAqIDI7DQogICAgICB0cmltU2V0c0F0bGFzTGF5b3V0RGF0YVtvZmZzZXQgKyAzXSA9IGJpbi5pdGVtSGVpZ2h0IC0gdHJpbVNldEJvcmRlciAqIDI7DQoNCiAgICAgIGZvciAoY29uc3QgdHJpbUN1cnZlIG9mIHRyaW1TZXRDdXJ2ZVJlZnMpIHsNCiAgICAgICAgbGV0IGRyYXdTZXQgPSB0cmltQ3VydmVEcmF3U2V0c190bXBbdHJpbUN1cnZlLmRldGFpbF07DQogICAgICAgIGlmICghZHJhd1NldCkgew0KICAgICAgICAgIGRyYXdTZXQgPSBbXTsNCiAgICAgICAgICB0cmltQ3VydmVEcmF3U2V0c190bXBbdHJpbUN1cnZlLmRldGFpbF0gPSBkcmF3U2V0Ow0KICAgICAgICB9DQoNCiAgICAgICAgLy8gcGF0Y2hDb29yZHMNCiAgICAgICAgZHJhd1NldC5wdXNoKHUgKyB0cmltU2V0Qm9yZGVyKTsNCiAgICAgICAgZHJhd1NldC5wdXNoKHYgKyB0cmltU2V0Qm9yZGVyKTsNCiAgICAgICAgZHJhd1NldC5wdXNoKGJpbi5pdGVtV2lkdGggLSB0cmltU2V0Qm9yZGVyICogMik7DQogICAgICAgIGRyYXdTZXQucHVzaChiaW4uaXRlbUhlaWdodCAtIHRyaW1TZXRCb3JkZXIgKiAyKTsNCg0KICAgICAgICAvLyBkYXRhMCAodmVjNCkNCiAgICAgICAgZHJhd1NldC5wdXNoKHRyaW1DdXJ2ZS50clswXSk7DQogICAgICAgIGRyYXdTZXQucHVzaCh0cmltQ3VydmUudHJbMV0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzBbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzBbMV0pOw0KDQogICAgICAgIC8vIGRhdGExICh2ZWM0KQ0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzFbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLnJvdzFbMV0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmFkZHJbMF0pOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmFkZHJbMV0pOw0KDQogICAgICAgIGRyYXdTZXQucHVzaCh0cmltQ3VydmUuZmxhZ3MpOw0KICAgICAgICBkcmF3U2V0LnB1c2godHJpbUN1cnZlLmN1cnZlSWQpOw0KDQogICAgICAgIC8vIGRyYXdTZXQucHVzaChsb29wU3RhcnRQb3MpOw0KICAgICAgICAvLyBkcmF3U2V0LnB1c2goY3VydmVJbmRleFdpdGhpbkxvb3ApOw0KICAgICAgfQ0KICAgIH0NCiAgICAvKiAsIChiaW4sIGJsb2NrKT0+ew0KICAgICAgICAgIGNvbnNvbGUubG9nKCJMYXlvdXQgVHJpbVNldCBiaW46IiArIGJpbi5pdGVtQ291bnRVViArICIgPiAiICsgYmxvY2sueCArICIsIiArIGJsb2NrLnkgKyAiICIgKyBiaW4udyArICIsIiArIGJpbi5oKTsNCiAgICAgIH0qLw0KICApOw0KDQogIC8vIE5vdyBjb252ZXJ0IGFsbCB0aGUgZHJhdyBzZXRzIHRvIHR5cGVkIGFycmF5cw0KICBjb25zdCB0cmltQ3VydmVEcmF3U2V0cyA9IHt9Ow0KICBmb3IgKGNvbnN0IGtleSBpbiB0cmltQ3VydmVEcmF3U2V0c190bXApIHsNCiAgICB0cmltQ3VydmVEcmF3U2V0c1trZXldID0gRmxvYXQzMkFycmF5LmZyb20odHJpbUN1cnZlRHJhd1NldHNfdG1wW2tleV0pOw0KICB9DQogIHdvcmtlclN0YXRlLnRyaW1TZXRzQXRsYXNMYXlvdXREYXRhID0gdHJpbVNldHNBdGxhc0xheW91dERhdGE7DQoNCiAgcmV0dXJuIHsNCiAgICB0cmltQ3VydmVEcmF3U2V0cywNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0RGF0YSwNCiAgICB0cmltU2V0c0F0bGFzTGF5b3V0VGV4dHVyZVNpemUsDQogIH0NCn07DQoNCmxldCBnZXRCb2R5RGVzY0RhdGE7DQpsZXQgYm9keURlc2NJZHM7DQoNCmNvbnN0IGxheW91dEJvZHlJdGVtcyA9ICgNCiAgc2NlbmVCb2R5SXRlbXNEYXRhLA0KICBib2R5RGVzY1RvY1JlYWRlciwNCiAgYm9keURlc2NSZWFkZXIsDQogIGNhZERhdGFWZXJzaW9uLA0KICBjdXJ2ZXNEYXRhUmVhZGVyDQopID0+IHsNCiAgY29uc3QgbnVtQm9kaWVzID0gc2NlbmVCb2R5SXRlbXNEYXRhLmxlbmd0aCAvIGZsb2F0c1BlclNjZW5lQm9keTsNCg0KICAvLyBjb25zdCBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzID0gbmV3IEZsb2F0MzJBcnJheSgNCiAgLy8gICBudW1Cb2RpZXMgKiBkcmF3SXRlbVNoYWRlckF0dHJpYnNTdHJpZGUNCiAgLy8gKQ0KDQogIC8vIFRoaXMgaXMgYSBjYWNoZSBvZiB2YWx1ZXMgdXNlZCB3aGVuIGhpZ2hsaWdodGluZyBib2RpZXMuDQogIC8vIGNvbnN0IGJvZHlJdGVtTGF5b3V0Q29vcmRzID0gbmV3IEZsb2F0MzJBcnJheShudW1Cb2RpZXMgKiA1KQ0KICBib2R5RGVzY0lkcyA9IG5ldyBVaW50MzJBcnJheShudW1Cb2RpZXMpOw0KDQogIGNvbnN0IGJ5dGVzUGVyVmFsdWUgPSA0OyAvLyAzMiBiaXQgZmxvYXRzDQogIGNvbnN0IGJ5dGVzUGVyUGl4ZWwgPSBieXRlc1BlclZhbHVlICogNDsgLy8gUkdCQSBwaXhlbHMNCiAgY29uc3QgYm9keUxpYnJhcnlCdWZmZXJUZXh0dXJlU2l6ZSA9IE1hdGguc3FydCgNCiAgICBib2R5RGVzY1JlYWRlci5ieXRlTGVuZ3RoIC8gYnl0ZXNQZXJQaXhlbA0KICApOyAvLyBSR0JBMTYgcGl4ZWxzDQoNCiAgLy8gY29uc29sZS5sb2coImJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemU6IiArIGJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemUpOw0KDQogIGNvbnN0IGdldEJvZHlOdW1TdXJmYWNlc0FuZEN1cnZlcyA9IGJvZHlJZCA9PiB7DQogICAgYm9keURlc2NUb2NSZWFkZXIuc2VlayhieXRlc1BlclZhbHVlICsgYm9keUlkICogKDMgKiBieXRlc1BlclZhbHVlKSk7DQogICAgY29uc3QgeCA9IGJvZHlEZXNjVG9jUmVhZGVyLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCB5ID0gYm9keURlc2NUb2NSZWFkZXIubG9hZFVJbnQzMigpOw0KICAgIC8vIGNvbnNvbGUubG9nKCJCb2R5IERlc2MgQ29vcmRzOiIgKyB4ICsgIiAsIiArIHkpOw0KICAgIA0KICAgIA0KICAgIC8vIFgsIFkgaW4gcGl4ZWxzLg0KICAgIGNvbnN0IGJ5dGVPZmZzZXQgPQ0KICAgIHggKiBieXRlc1BlclBpeGVsICsgeSAqIGJ5dGVzUGVyUGl4ZWwgKiBib2R5TGlicmFyeUJ1ZmZlclRleHR1cmVTaXplOw0KICAgIGNvbnN0IG9mZnNldEluQnl0ZXMgPSA2IC8qIGJib3gqLyAqIGJ5dGVzUGVyVmFsdWU7IC8vIHNraXAgdGhlIGJib3gNCiAgICAvLyBjb25zb2xlLmxvZygiX19zZWVrU3VyZmFjZURhdGE6IiArIGJvZHlJZCArICIgYnl0ZU9mZnNldDoiICsgKGJ5dGVPZmZzZXQgK29mZnNldCkgKyAiIHBpeGVsOiIgKyAoKGJ5dGVPZmZzZXQgK29mZnNldCkvOCkgKyAiIHg6IiArIHggKyAiIHk6IiArIHkpOw0KICAgIGJvZHlEZXNjUmVhZGVyLnNlZWsoYnl0ZU9mZnNldCArIG9mZnNldEluQnl0ZXMpOw0KICAgIGNvbnN0IG51bUJvZHlTdXJmYWNlcyA9IGJvZHlEZXNjUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgY29uc3QgbnVtQm9keUN1cnZlcyA9IGJvZHlEZXNjUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgcmV0dXJuIHsgbnVtQm9keVN1cmZhY2VzLCBudW1Cb2R5Q3VydmVzIH0NCiAgfTsNCg0KICANCiAgbGV0IHZhbHVlc1BlckRyYXdJdGVtUmVmOw0KICBpZiAoY29tcGFyZVZlcnNpb25zKFtjYWREYXRhVmVyc2lvbi5tYWpvciwgY2FkRGF0YVZlcnNpb24ubWlub3IsIGNhZERhdGFWZXJzaW9uLnBhdGNoXSwgWzAsMCwyOV0pID49IDApIHsNCiAgICB2YWx1ZXNQZXJEcmF3SXRlbVJlZiA9IDE1OyAvLyBOb3cgd2UgaW5jbHVkZSBhIDQgZmxvYXQgY29sb3IgdmFsdWUgcGVyIHN1cmZhY2UgcmVmLg0KICB9IGVsc2Ugew0KICAgIHZhbHVlc1BlckRyYXdJdGVtUmVmID0gMTE7DQogIH0NCiAgLy8gbGV0IHZhbHVlc1BlckN1cnZlUmVmID0gMTENCiAgY29uc3QgbG9hZENBREJvZHlDdXJ2ZXMgPSBjb21wYXJlVmVyc2lvbnMoW2NhZERhdGFWZXJzaW9uLm1ham9yLCBjYWREYXRhVmVyc2lvbi5taW5vciwgY2FkRGF0YVZlcnNpb24ucGF0Y2hdLCBbMSwwLDVdKSA+PSAwOw0KDQogIGdldEJvZHlEZXNjRGF0YSA9IChib2R5RGVzY0lkKSA9PiB7DQogICAgYm9keURlc2NUb2NSZWFkZXIuc2VlayhieXRlc1BlclZhbHVlICsgYm9keURlc2NJZCAqICgzICogYnl0ZXNQZXJWYWx1ZSkpOw0KICAgIGNvbnN0IHggPSBib2R5RGVzY1RvY1JlYWRlci5sb2FkVUludDMyKCk7DQogICAgY29uc3QgeSA9IGJvZHlEZXNjVG9jUmVhZGVyLmxvYWRVSW50MzIoKTsNCiAgICAvLyBjb25zb2xlLmxvZygiQm9keSBEZXNjIENvb3JkczoiICsgeCArICIgLCIgKyB5KTsNCg0KICAgIGNvbnN0IG9mZnNldEluQnl0ZXMgPSA2IC8qIGJib3gqLyAqIGJ5dGVzUGVyVmFsdWU7IC8vIHNraXAgdGhlIGJib3gNCg0KICAgIC8vIFgsIFkgaW4gcGl4ZWxzLg0KICAgIGNvbnN0IGJ5dGVPZmZzZXQgPQ0KICAgICAgeCAqIGJ5dGVzUGVyUGl4ZWwgKyB5ICogYnl0ZXNQZXJQaXhlbCAqIGJvZHlMaWJyYXJ5QnVmZmVyVGV4dHVyZVNpemU7DQogICAgLy8gY29uc29sZS5sb2coIl9fc2Vla1N1cmZhY2VEYXRhOiIgKyBib2R5SWQgKyAiIGJ5dGVPZmZzZXQ6IiArIChieXRlT2Zmc2V0ICtvZmZzZXQpICsgIiBwaXhlbDoiICsgKChieXRlT2Zmc2V0ICtvZmZzZXQpLzgpICsgIiB4OiIgKyB4ICsgIiB5OiIgKyB5KTsNCiAgICBib2R5RGVzY1JlYWRlci5zZWVrKGJ5dGVPZmZzZXQgKyBvZmZzZXRJbkJ5dGVzKTsNCg0KICAgIGNvbnN0IG51bUJvZHlTdXJmYWNlcyA9IGJvZHlEZXNjUmVhZGVyLmxvYWRGbG9hdDMyKCk7DQogICAgY29uc3QgbnVtQm9keUN1cnZlcyA9IGxvYWRDQURCb2R5Q3VydmVzID8gYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSA6IDA7DQogICAgY29uc3Qgc3VyZmFjZUlkcyA9IFtdOw0KICAgIGZvciAobGV0IGkgPSAwOyBpIDwgbnVtQm9keVN1cmZhY2VzOyBpKyspIHsNCiAgICAgIGNvbnN0IGlkID0gYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKGksICJpZDoiLCBpZCkNCiAgICAgIHN1cmZhY2VJZHMucHVzaChpZCk7DQogICAgICBib2R5RGVzY1JlYWRlci5hZHZhbmNlKCh2YWx1ZXNQZXJEcmF3SXRlbVJlZiAtIDEpICogYnl0ZXNQZXJWYWx1ZSk7DQogICAgfQ0KICAgIGNvbnN0IGN1cnZlSWRzID0gW107DQogICAgY29uc3QgY3VydmVYZm9zID0gW107DQogICAgY29uc3QgcG9zID0gYm9keURlc2NSZWFkZXIucG9zKCk7DQogICAgZm9yIChsZXQgaSA9IDA7IGkgPCBudW1Cb2R5Q3VydmVzOyBpKyspIHsNCiAgICAgIGJvZHlEZXNjUmVhZGVyLnNlZWsocG9zICsgKGkgKiB2YWx1ZXNQZXJEcmF3SXRlbVJlZiAqIGJ5dGVzUGVyVmFsdWUpKTsNCg0KICAgICAgY29uc3QgaWQgPSBib2R5RGVzY1JlYWRlci5sb2FkRmxvYXQzMigpOw0KICAgICAgLy8gY29uc29sZS5sb2coaSwgImlkOiIsIGlkKQ0KICAgICAgY3VydmVJZHMucHVzaChpZCk7DQogICAgICBjb25zdCB0ciA9IFsNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSwNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSwNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKQ0KICAgICAgXTsNCiAgICAgIGNvbnN0IG9yaSA9IFsNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSwNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSwNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKSwNCiAgICAgICAgYm9keURlc2NSZWFkZXIubG9hZEZsb2F0MzIoKQ0KICAgICAgXTsNCiAgICAgIGNvbnN0IHNjID0gWw0KICAgICAgICBib2R5RGVzY1JlYWRlci5sb2FkRmxvYXQzMigpLA0KICAgICAgICBib2R5RGVzY1JlYWRlci5sb2FkRmxvYXQzMigpLA0KICAgICAgICBib2R5RGVzY1JlYWRlci5sb2FkRmxvYXQzMigpDQogICAgICBdOw0KICAgICAgY29uc3QgeGZvID0geyB0ciwgb3JpLCBzYyB9Ow0KICAgICAgY3VydmVYZm9zLnB1c2goeGZvKTsNCiAgICB9DQogICAgLy8gY29uc29sZS5sb2coImdldEJvZHlEZXNjRGF0YToiLCBib2R5RGVzY0lkLCAiIHN1cmZhY2VJZHM6Iiwgc3VyZmFjZUlkcy5sZW5ndGgsICIgY3VydmVJZHM6IiwgY3VydmVJZHMubGVuZ3RoLCAiZHJhd0l0ZW1zOiIsIHN1cmZhY2VJZHMubGVuZ3RoICsgY3VydmVJZHMubGVuZ3RoKTsNCiAgICByZXR1cm4gew0KICAgICAgeCwNCiAgICAgIHksDQogICAgICBzdXJmYWNlSWRzLA0KICAgICAgY3VydmVJZHMsDQogICAgICBjdXJ2ZVhmb3MNCiAgICB9DQogIH07DQoNCiAgY29uc3Qgc3VyZmFjZURyYXdTZXRzX3RtcCA9IHt9Ow0KICBjb25zdCBjdXJ2ZURyYXdTZXRzX3RtcCA9IHt9Ow0KICBsZXQgbnVtU3VyZmFjZUluc3RhbmNlcyA9IDA7DQogIGxldCBudW1DdXJ2ZUluc3RhbmNlcyA9IDA7DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KICAvLyBGb3IgZGVidWdnaW5nIEN1cnZlcyBpbiB0aGUgM2Qgc2NlbmUuDQogIC8vIGNvbnN0IGN1cnZlTGlicmFyeVNpemUgPSBNYXRoLnNxcnQoY3VydmVzRGF0YVJlYWRlci5kYXRhLmJ5dGVMZW5ndGggLyA4KSAvLyBSR0JBMTYgcGl4ZWxzDQogIC8vIGNvbnN0IGdldEN1cnZlRGF0YVRleGVsQ29vcmRzID0gY3VydmVJZCA9PiB7DQogIC8vICAgY3VydmVzRGF0YVJlYWRlci5zZWVrKA0KICAvLyAgICAgZ2VvbUxpYnJhcnlIZWFkZXJTaXplICsNCiAgLy8gICAgICAgY3VydmVJZCAqICh2YWx1ZXNQZXJDdXJ2ZVRvY0l0ZW0gKiAyKSAvKiBicGMqLyAvKiBicGMqLw0KICAvLyAgICkNCiAgLy8gICBjb25zdCB4ID0gY3VydmVzRGF0YVJlYWRlci5sb2FkVUZsb2F0MTYoKQ0KICAvLyAgIGNvbnN0IHkgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRVRmxvYXQxNigpDQogIC8vICAgcmV0dXJuIHsNCiAgLy8gICAgIHgsDQogIC8vICAgICB5LA0KICAvLyAgIH0NCiAgLy8gfQ0KDQogIC8vIGNvbnN0IF9fc2Vla0N1cnZlRGF0YSA9IGN1cnZlSWQgPT4gew0KICAvLyAgIGNvbnN0IGFkZHIgPSBnZXRDdXJ2ZURhdGFUZXhlbENvb3JkcyhjdXJ2ZUlkKQ0KICAvLyAgIC8vIFgsIFkgaW4gcGl4ZWxzLg0KDQogIC8vICAgY29uc3QgYnl0ZXNQZXJQaXhlbCA9IDggLy8gUkdCQTE2IHBpeGVsDQogIC8vICAgY29uc3QgYnl0ZU9mZnNldCA9DQogIC8vICAgICBhZGRyLnggKiBieXRlc1BlclBpeGVsICsgYWRkci55ICogYnl0ZXNQZXJQaXhlbCAqIGN1cnZlTGlicmFyeVNpemUNCiAgLy8gICAvLyBjb25zb2xlLmxvZygiX19zZWVrU3VyZmFjZURhdGE6IiArIGN1cnZlSWQgKyAiIGJ5dGVPZmZzZXQ6IiArIChieXRlT2Zmc2V0ICtvZmZzZXQpICsgIiBwaXhlbDoiICsgKChieXRlT2Zmc2V0ICtvZmZzZXQpLzgpICsgIiB4OiIgKyBhZGRyLnggKyAiIHk6IiArIGFkZHIueSk7DQogIC8vICAgY3VydmVzRGF0YVJlYWRlci5zZWVrKGJ5dGVPZmZzZXQpDQogIC8vIH0NCg0KICAvLyBjb25zdCBnZXRDdXJ2ZVR5cGUgPSBjdXJ2ZUlkID0+IHsNCiAgLy8gICBfX3NlZWtDdXJ2ZURhdGEoY3VydmVJZCkNCiAgLy8gICBjb25zdCBjdXJ2ZVR5cGUgPSBjdXJ2ZXNEYXRhUmVhZGVyLmxvYWRVRmxvYXQxNigpDQogIC8vICAgcmV0dXJuIGN1cnZlVHlwZQ0KICAvLyB9DQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCg0KICBmb3IgKGxldCBib2R5SWQgPSAwOyBib2R5SWQgPCBudW1Cb2RpZXM7IGJvZHlJZCsrKSB7DQogICAgdHJ5IHsNCiAgICAgIGNvbnN0IHNyY29mZnNldCA9IGJvZHlJZCAqIGZsb2F0c1BlclNjZW5lQm9keTsNCiAgICAgIGNvbnN0IGJvZHlEZXNjSWQgPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgMF07DQogICAgICAvLyBjb25zb2xlLmxvZygiYm9keUlkOiIsIGJvZHlJZCwgIiBib2R5RGVzY0lkOiIsIGJvZHlEZXNjSWQpDQogICAgICAvLyBpZihib2R5SWQgIT0gMikNCiAgICAgIC8vICAgY29udGludWU7DQogICAgICBpZiAoYm9keURlc2NJZCA9PSAtMSkgY29udGludWUNCiAgICAgIGNvbnN0IG51bVN1cmZhY2VzQW5kQ3VydmVzID0gZ2V0Qm9keU51bVN1cmZhY2VzQW5kQ3VydmVzKGJvZHlEZXNjSWQpOw0KICAgICAgbnVtU3VyZmFjZUluc3RhbmNlcyArPSBudW1TdXJmYWNlc0FuZEN1cnZlcy5udW1Cb2R5U3VyZmFjZXM7DQogICAgICBudW1DdXJ2ZUluc3RhbmNlcyArPSBudW1TdXJmYWNlc0FuZEN1cnZlcy5udW1Cb2R5Q3VydmVzOw0KDQogICAgICAvLyBmb3IgZWFjaCBib2R5IHdlIHdhbnQgdG8gYWxsb2NhdGUgYSByb3VnaGx5IHNxdWFyZSBxdWFkIHRoYXQgcGFja3MgYWxsIHRoZSBkcmF3IGRhdGEgZm9yIGVhY2ggc3VyZmFjZS4NCiAgICAgIC8vIGNvbnN0IG51bUJvZHlEcmF3SXRlbXMgPSBudW1TdXJmYWNlc0FuZEN1cnZlcy5udW1Cb2R5U3VyZmFjZXMgKyBudW1TdXJmYWNlc0FuZEN1cnZlcy5udW1Cb2R5Q3VydmVzDQogICAgICAvLyBjb25zdCBiaW5TaXplID0gY2FsY0NvbnRhaW5lclNpemUobnVtQm9keURyYXdJdGVtcywgcGl4ZWxzUGVyRHJhd0l0ZW0sIDEpDQogICAgICAvLyBhZGRUb0JpbigNCiAgICAgIC8vICAgYm9keUlkLA0KICAgICAgLy8gICBiaW5TaXplWzBdICogcGl4ZWxzUGVyRHJhd0l0ZW0sDQogICAgICAvLyAgIGJpblNpemVbMV0sDQogICAgICAvLyAgIGJvZGllc19iaW5zTGlzdCwNCiAgICAgIC8vICAgYm9kaWVzX2JpbnNEaWN0DQogICAgICAvLyApDQoNCiAgICAgIGNvbnN0IHNoYWRlcklkID0gc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDFdOw0KICAgICAgY29uc3QgYm9keURlc2MgPSBnZXRCb2R5RGVzY0RhdGEoYm9keURlc2NJZCk7DQogICAgICAvLyBjb25zdCBib2R5Q291bnRVViA9IFtiaW4uaXRlbVdpZHRoIC8gcGl4ZWxzUGVyRHJhd0l0ZW0sIGJpbi5pdGVtSGVpZ2h0XQ0KDQogICAgICAvLyBjb25zb2xlLmxvZygiQm9keToiLCBib2R5SWQsICI6IiwgdSwgdiwgYm9keUNvdW50VVZbMF0sIGJvZHlDb3VudFVWWzFdKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJCb2R5OiIsIGJvZHlJZCwgIiBib2R5RGVzYzoiLCBib2R5RGVzYyk7DQogICAgICAvLyBjb25zb2xlLmxvZygiQm9keToiLCBib2R5SWQsICIgZmxhZ3M6Iiwgc2NlbmVCb2R5SXRlbXNEYXRhW3NyY29mZnNldCArIDFdKTsNCiAgICAgIC8vIGNvbnNvbGUubG9nKCJCb2R5OiIgKyBib2R5SWQgKyAiIG51bVN1cmZhY2VzOiIgKyBudW1TdXJmYWNlcyArICIgYmluU2l6ZToiICsgYmluU2l6ZSk7DQoNCiAgICAgIC8vIFRoaXMgaXMgYSBjYWNoZSBvZiB2YWx1ZXMgdXNlZCB3aGVuIGhpZ2hsaWdodGluZyBib2RpZXMuDQogICAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMF0gPSBib2R5RGVzY0lkDQogICAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMV0gPSB1DQogICAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMl0gPSB2DQogICAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgM10gPSBib2R5Q291bnRVVlswXQ0KICAgICAgLy8gYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDRdID0gYm9keUNvdW50VVZbMV0NCiAgICAgIGJvZHlEZXNjSWRzW2JvZHlJZF0gPSBib2R5RGVzY0lkOw0KDQogICAgICBjb25zdCBzdXJmYWNlSWRzID0gYm9keURlc2Muc3VyZmFjZUlkczsNCiAgICAgIGZvciAobGV0IGogPSAwOyBqIDwgc3VyZmFjZUlkcy5sZW5ndGg7IGorKykgew0KICAgICAgICBjb25zdCBzdXJmYWNlSWQgPSBzdXJmYWNlSWRzW2pdOw0KDQogICAgICAgIGNvbnN0IGRldGFpbHNPZmZzZXQgPSBzdXJmYWNlSWQgKiA3Ow0KICAgICAgICBjb25zdCBzdXJmYWNlRGV0YWlsWCA9IHdvcmtlclN0YXRlLnN1cmZhY2VEZXRhaWxzW2RldGFpbHNPZmZzZXQgKyA0XTsNCiAgICAgICAgY29uc3Qgc3VyZmFjZURldGFpbFkgPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgNV07DQoNCiAgICAgICAgLy8gSWYgSXRlbXMgd2VyZSBza2lwcGVkIGluIGxheWluZyBvdXQgdGhlIHN1cmZhY2VzLCB3ZSB3aWxsIHNlZSB6ZXJvIGRldGFpbCB2YWx1ZXMgaGVyZS4NCiAgICAgICAgaWYgKHN1cmZhY2VEZXRhaWxYID09IDAgfHwgc3VyZmFjZURldGFpbFkgPT0gMCkgY29udGludWUNCg0KICAgICAgICBjb25zdCBzdXJmYWNlS2V5ID0gc3VyZmFjZURldGFpbFggKyAneCcgKyBzdXJmYWNlRGV0YWlsWTsNCiAgICAgICAgDQogICAgICAgIC8vIGNvbnNvbGUubG9nKGorIjoiICsgc3VyZmFjZUlkICsgIiBkZXRhaWw6IiArIHN1cmZhY2VLZXkpOw0KICAgICAgICAvLyBjb25zb2xlLmxvZygiU3VyZmFjZSBEcmF3OiIgKyBzdXJmYWNlS2V5KTsNCiAgICAgICAgbGV0IGRyYXdTZXQgPSBzdXJmYWNlRHJhd1NldHNfdG1wW3N1cmZhY2VLZXldOw0KICAgICAgICBpZiAoIWRyYXdTZXQpIHsNCiAgICAgICAgICBkcmF3U2V0ID0ge307DQogICAgICAgICAgc3VyZmFjZURyYXdTZXRzX3RtcFtzdXJmYWNlS2V5XSA9IGRyYXdTZXQ7DQogICAgICAgIH0NCiAgICAgICAgLy8gRm9yIGVhY2ggZHJhdyBzZXQsIHdlIGNhbiBkcmF3IHdpdGggdmFyaW91cyBzaGFkZXJzLg0KICAgICAgICAvLyBIZXJlIHdlIGFsbG9jYXRlIHRoZSBpdGVtIGludG8gdGhlIHN1YnNldCBiYXNlZCBvbiBpdHMgc2hhZGVyaWQuDQogICAgICAgIGxldCBzdWJTZXQgPSBkcmF3U2V0W3NoYWRlcklkXTsNCiAgICAgICAgaWYgKCFzdWJTZXQpIHsNCiAgICAgICAgICBzdWJTZXQgPSBbXTsNCiAgICAgICAgICBkcmF3U2V0W3NoYWRlcklkXSA9IHN1YlNldDsNCiAgICAgICAgfQ0KICAgICAgICBjb25zdCB0cmltU2V0SWQgPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgNl07DQogICAgICAgIA0KICAgICAgICBjb25zdCBkcmF3SXRlbUluZGV4SW5Cb2R5ID0gajsNCiAgICAgICAgc3ViU2V0LnB1c2goYm9keUlkKTsNCiAgICAgICAgc3ViU2V0LnB1c2goZHJhd0l0ZW1JbmRleEluQm9keSk7DQogICAgICAgIHN1YlNldC5wdXNoKHN1cmZhY2VJZCk7DQogICAgICAgIHN1YlNldC5wdXNoKHRyaW1TZXRJZCk7DQogICAgICAgIA0KICAgICAgICAvLyBjb25zdCBkcmF3SXRlbUlkID0gag0KICAgICAgICAvLyBzdWJTZXQucHVzaCh1ICsgKGRyYXdJdGVtSWQgJSBib2R5Q291bnRVVlswXSkgKiBwaXhlbHNQZXJEcmF3SXRlbSkNCiAgICAgICAgLy8gc3ViU2V0LnB1c2godiArIE1hdGguZmxvb3IoZHJhd0l0ZW1JZCAvIGJvZHlDb3VudFVWWzBdKSkNCiAgICAgIH0NCiAgICAgIC8vIGNvbnNvbGUubG9nKCJib2R5RGVzYy5jdXJ2ZUlkcyA6IiwgYm9keURlc2MuY3VydmVJZHMubGVuZ3RoKTsNCiAgICAgIGNvbnN0IGN1cnZlSWRzID0gYm9keURlc2MuY3VydmVJZHM7DQogICAgICBmb3IgKGxldCBqID0gMDsgaiA8IGN1cnZlSWRzLmxlbmd0aDsgaisrKSB7DQogICAgICAgIGNvbnN0IGN1cnZlSWQgPSBjdXJ2ZUlkc1tqXTsNCg0KICAgICAgICBjb25zdCBjdXJ2ZURldGFpbCA9IHdvcmtlclN0YXRlLmN1cnZlRGV0YWlsc1tjdXJ2ZUlkXTsNCg0KICAgICAgICAvLyBJZiBJdGVtcyB3ZXJlIHNraXBwZWQgaW4gbGF5aW5nIG91dCB0aGUgc3VyZmFjZXMsIHdlIHdpbGwgc2VlIHplcm8gZGV0YWlsIHZhbHVlcyBoZXJlLg0KICAgICAgICBpZiAoY3VydmVEZXRhaWwgPT0gMCkgY29udGludWUNCg0KICAgICAgICAvLyBjb25zdCBjdXJ2ZVR5cGUgPSBnZXRDdXJ2ZVR5cGUoY3VydmVJZCk7DQogICAgICAgIC8vIC8vICAgY29uc29sZS5sb2coIkN1cnZlIDoiLCBjdXJ2ZUlkLCBnZXRDdXJ2ZVR5cGVOYW1lKGN1cnZlVHlwZSksICIgZmxhZ3M6IiwgZmxhZ3MsICIgcGFyYW06IiwgcGFyYW0pOw0KICAgICAgICAvLyBpZiAoZ2V0Q3VydmVUeXBlKGN1cnZlVHlwZSkgIT0gQ0FEQ3VydmVUeXBlcy5DVVJWRV9UWVBFX05VUkJTX0NVUlZFKSB7DQogICAgICAgIC8vICAgY29udGludWUNCiAgICAgICAgLy8gfQ0KICAgICAgICANCiAgICAgICAgLy8gY29uc3QgY3VydmVYZm8gPSBib2R5RGVzYy5jdXJ2ZVhmb3Nbal0NCiAgICAgICAgLy8gaWYgKGN1cnZlWGZvLnNjWzBdID4gMCB8fCBjdXJ2ZVhmby5zY1sxXSA+IDAgfHwgY3VydmVYZm8uc2NbMl0gPiAwKSB7DQogICAgICAgIC8vICAgLy8gY29udGludWUNCiAgICAgICAgLy8gICBjb25zb2xlLmxvZyhjdXJ2ZVhmby5zYykNCiAgICAgICAgLy8gfSBlbHNlIHsNCiAgICAgICAgLy8gICBjb250aW51ZQ0KICAgICAgICAvLyB9DQogICAgICAgIC8vIGNvbnNvbGUubG9nKGN1cnZlWGZvLnNjKQ0KICANCiAgICAgICAgLy8gY29uc29sZS5sb2coImN1cnZlSWQgOiIsIGN1cnZlSWQsICIgY3VydmVEZXRhaWw6IiwgY3VydmVEZXRhaWwpOw0KDQogICAgICAgIGxldCBkcmF3U2V0ID0gY3VydmVEcmF3U2V0c190bXBbY3VydmVEZXRhaWxdOw0KICAgICAgICBpZiAoIWRyYXdTZXQpIHsNCiAgICAgICAgICBkcmF3U2V0ID0ge307DQogICAgICAgICAgY3VydmVEcmF3U2V0c190bXBbY3VydmVEZXRhaWxdID0gZHJhd1NldDsNCiAgICAgICAgfQ0KICAgICAgICAvLyBOb3RlOiBhbGwgY3VydmVzIGFyZSBkcmF3biB3aXRoIHRoZSBzYW1lIHNoYWRlcg0KICAgICAgICBsZXQgc3ViU2V0ID0gZHJhd1NldFswXTsNCiAgICAgICAgaWYgKCFzdWJTZXQpIHsNCiAgICAgICAgICBzdWJTZXQgPSBbXTsNCiAgICAgICAgICBkcmF3U2V0WzBdID0gc3ViU2V0Ow0KICAgICAgICB9DQoNCiAgICAgICAgY29uc3QgZHJhd0l0ZW1JbmRleEluQm9keSA9IHN1cmZhY2VJZHMubGVuZ3RoICsgajsNCiAgICAgICAgc3ViU2V0LnB1c2goYm9keUlkKTsNCiAgICAgICAgc3ViU2V0LnB1c2goZHJhd0l0ZW1JbmRleEluQm9keSk7DQogICAgICAgIHN1YlNldC5wdXNoKGN1cnZlSWQpOw0KICAgICAgICBzdWJTZXQucHVzaCgtMSk7DQoNCiAgICAgICAgLy8gY29uc3QgZHJhd0l0ZW1JZCA9IHN1cmZhY2VJZHMubGVuZ3RoICsgag0KICAgICAgICAvLyBzdWJTZXQucHVzaCh1ICsgKGRyYXdJdGVtSWQgJSBib2R5Q291bnRVVlswXSkgKiBwaXhlbHNQZXJEcmF3SXRlbSkNCiAgICAgICAgLy8gc3ViU2V0LnB1c2godiArIE1hdGguZmxvb3IoZHJhd0l0ZW1JZCAvIGJvZHlDb3VudFVWWzBdKSkNCiAgICAgIH0NCiAgICB9IGNhdGNoIChlKSB7DQogICAgICBjb25zb2xlLndhcm4oIkVycm9yIHdoaWxlIHJlYWRpbmcgQ0FEQm9keURlc2MgZGF0YSBpbiB3ZWIgd29ya2VyOiAiLCBib2R5SWQsIGUpOw0KICAgIH0NCiAgfQ0KDQogIC8vIGxheW91dEJpbnMoYm9kaWVzX2JpbnNMaXN0LCBfX2JvZHlBdGxhc1BhY2tlciwgKGJpbiwgaSwgdSwgdikgPT4gew0KICAgIC8vIGNvbnN0IGJvZHlJZCA9IGJpbi5pZHNbaV0NCiAgICAvLyBjb25zdCBzcmNvZmZzZXQgPSBib2R5SWQgKiBmbG9hdHNQZXJTY2VuZUJvZHkNCg0KICAgIC8vIGNvbnN0IGJvZHlEZXNjSWQgPSBzY2VuZUJvZHlJdGVtc0RhdGFbc3Jjb2Zmc2V0ICsgMF0NCiAgICAvLyBjb25zdCBzaGFkZXJJZCA9IHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAxXQ0KICAgIC8vIGNvbnN0IGJvZHlEZXNjID0gZ2V0Qm9keURlc2NEYXRhKGJvZHlEZXNjSWQpDQogICAgLy8gY29uc3QgYm9keUNvdW50VVYgPSBbYmluLml0ZW1XaWR0aCAvIHBpeGVsc1BlckRyYXdJdGVtLCBiaW4uaXRlbUhlaWdodF0NCg0KICAgIC8vIC8vIGNvbnNvbGUubG9nKCJCb2R5OiIsIGJvZHlJZCwgIjoiLCB1LCB2LCBib2R5Q291bnRVVlswXSwgYm9keUNvdW50VVZbMV0pOw0KICAgIC8vIC8vIGNvbnNvbGUubG9nKCJCb2R5OiIsIGJvZHlJZCwgIiBib2R5RGVzYzoiLCBib2R5RGVzYyk7DQogICAgLy8gLy8gY29uc29sZS5sb2coIkJvZHk6IiwgYm9keUlkLCAiIGZsYWdzOiIsIHNjZW5lQm9keUl0ZW1zRGF0YVtzcmNvZmZzZXQgKyAxXSk7DQogICAgLy8gLy8gY29uc29sZS5sb2coIkJvZHk6IiArIGJvZHlJZCArICIgbnVtU3VyZmFjZXM6IiArIG51bVN1cmZhY2VzICsgIiBiaW5TaXplOiIgKyBiaW5TaXplKTsNCg0KICAgIC8vIC8vIFRoaXMgaXMgYSBjYWNoZSBvZiB2YWx1ZXMgdXNlZCB3aGVuIGhpZ2hsaWdodGluZyBib2RpZXMuDQogICAgLy8gYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDBdID0gYm9keURlc2NJZA0KICAgIC8vIGJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyAxXSA9IHUNCiAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgMl0gPSB2DQogICAgLy8gYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDNdID0gYm9keUNvdW50VVZbMF0NCiAgICAvLyBib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgNF0gPSBib2R5Q291bnRVVlsxXQ0KDQogICAgLy8gY29uc3QgdGd0b2Zmc2V0ID0gYm9keUlkICogZHJhd0l0ZW1TaGFkZXJBdHRyaWJzU3RyaWRlDQogICAgLy8gZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1t0Z3RvZmZzZXQgKyAwXSA9IHUgLy8gdGd0IGNvb3Jkcy54DQogICAgLy8gZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1t0Z3RvZmZzZXQgKyAxXSA9IHYgLy8gdGd0IGNvb3Jkcy55DQogICAgLy8gZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1t0Z3RvZmZzZXQgKyAyXSA9IGJpbi5pdGVtV2lkdGggLy8gdGd0IHNpemUueA0KICAgIC8vIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbdGd0b2Zmc2V0ICsgM10gPSBiaW4uaXRlbUhlaWdodCAvLyB0Z3Qgc2l6ZS55DQoNCiAgICAvLyBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW3RndG9mZnNldCArIDRdID0gYm9keURlc2MueCAvLyBzcmMgYm9keURhdGEgY29vcmQueA0KICAgIC8vIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbdGd0b2Zmc2V0ICsgNV0gPSBib2R5RGVzYy55IC8vIHNyYyBib2R5RGF0YSBjb29yZC55DQogICAgLy8gZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1t0Z3RvZmZzZXQgKyA2XSA9IGJvZHlJZCAvLyBib2R5SWQNCiAgICAvLyBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW3RndG9mZnNldCArIDddID0gMCAvLyBhdmFpbGFibGUuDQoNCiAgICAvLyBjb25zdCBzdXJmYWNlSWRzID0gYm9keURlc2Muc3VyZmFjZUlkcw0KICAgIC8vIGZvciAobGV0IGogPSAwOyBqIDwgc3VyZmFjZUlkcy5sZW5ndGg7IGorKykgew0KICAgIC8vICAgY29uc3Qgc3VyZmFjZUlkID0gc3VyZmFjZUlkc1tqXQ0KDQogICAgLy8gICBjb25zdCBkZXRhaWxzT2Zmc2V0ID0gc3VyZmFjZUlkICogNw0KICAgIC8vICAgY29uc3Qgc3VyZmFjZURldGFpbFggPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgNF0NCiAgICAvLyAgIGNvbnN0IHN1cmZhY2VEZXRhaWxZID0gd29ya2VyU3RhdGUuc3VyZmFjZURldGFpbHNbZGV0YWlsc09mZnNldCArIDVdDQoNCiAgICAvLyAgIC8vIElmIEl0ZW1zIHdlcmUgc2tpcHBlZCBpbiBsYXlpbmcgb3V0IHRoZSBzdXJmYWNlcywgd2Ugd2lsbCBzZWUgemVybyBkZXRhaWwgdmFsdWVzIGhlcmUuDQogICAgLy8gICBpZiAoc3VyZmFjZURldGFpbFggPT0gMCB8fCBzdXJmYWNlRGV0YWlsWSA9PSAwKSBjb250aW51ZQ0KDQogICAgLy8gICBjb25zdCBzdXJmYWNlS2V5ID0gc3VyZmFjZURldGFpbFggKyAneCcgKyBzdXJmYWNlRGV0YWlsWQ0KICAgICAgDQogICAgLy8gICAvLyBjb25zb2xlLmxvZyhqKyI6IiArIHN1cmZhY2VJZCArICIgZGV0YWlsOiIgKyBzdXJmYWNlS2V5KTsNCiAgICAvLyAgIC8vIGNvbnNvbGUubG9nKCJTdXJmYWNlIERyYXc6IiArIHN1cmZhY2VLZXkpOw0KICAgIC8vICAgbGV0IGRyYXdTZXQgPSBzdXJmYWNlRHJhd1NldHNfdG1wW3N1cmZhY2VLZXldDQogICAgLy8gICBpZiAoIWRyYXdTZXQpIHsNCiAgICAvLyAgICAgZHJhd1NldCA9IHt9DQogICAgLy8gICAgIHN1cmZhY2VEcmF3U2V0c190bXBbc3VyZmFjZUtleV0gPSBkcmF3U2V0DQogICAgLy8gICB9DQogICAgLy8gICAvLyBGb3IgZWFjaCBkcmF3IHNldCwgd2UgY2FuIGRyYXcgd2l0aCB2YXJpb3VzIHNoYWRlcnMuDQogICAgLy8gICAvLyBIZXJlIHdlIGFsbG9jYXRlIHRoZSBpdGVtIGludG8gdGhlIHN1YnNldCBiYXNlZCBvbiBpdHMgc2hhZGVyaWQuDQogICAgLy8gICBsZXQgc3ViU2V0ID0gZHJhd1NldFtzaGFkZXJJZF0NCiAgICAvLyAgIGlmICghc3ViU2V0KSB7DQogICAgLy8gICAgIHN1YlNldCA9IFtdDQogICAgLy8gICAgIGRyYXdTZXRbc2hhZGVySWRdID0gc3ViU2V0DQogICAgLy8gICB9DQogICAgICANCiAgICAvLyAgIGNvbnN0IHRyaW1TZXRJZCA9IHdvcmtlclN0YXRlLnN1cmZhY2VEZXRhaWxzW2RldGFpbHNPZmZzZXQgKyA2XQ0KICAgICAgDQogICAgLy8gICBjb25zdCBkcmF3SXRlbUluZGV4SW5Cb2R5ID0gag0KICAgIC8vICAgc3ViU2V0LnB1c2goYm9keUlkKQ0KICAgIC8vICAgc3ViU2V0LnB1c2goZHJhd0l0ZW1JbmRleEluQm9keSkNCiAgICAvLyAgIHN1YlNldC5wdXNoKHN1cmZhY2VJZCkNCiAgICAvLyAgIHN1YlNldC5wdXNoKHRyaW1TZXRJZCkNCiAgICAgIA0KICAgIC8vICAgY29uc3QgZHJhd0l0ZW1JZCA9IGoNCiAgICAvLyAgIHN1YlNldC5wdXNoKHUgKyAoZHJhd0l0ZW1JZCAlIGJvZHlDb3VudFVWWzBdKSAqIHBpeGVsc1BlckRyYXdJdGVtKQ0KICAgIC8vICAgc3ViU2V0LnB1c2godiArIE1hdGguZmxvb3IoZHJhd0l0ZW1JZCAvIGJvZHlDb3VudFVWWzBdKSkNCiAgICAvLyB9DQogICAgDQogICAgLy8gLy8gY29uc29sZS5sb2coImJvZHlEZXNjLmN1cnZlSWRzIDoiLCBib2R5RGVzYy5jdXJ2ZUlkcy5sZW5ndGgpOw0KICAgIC8vIGNvbnN0IGN1cnZlSWRzID0gYm9keURlc2MuY3VydmVJZHMNCiAgICAvLyBmb3IgKGxldCBqID0gMDsgaiA8IGN1cnZlSWRzLmxlbmd0aDsgaisrKSB7DQogICAgLy8gICBjb25zdCBjdXJ2ZUlkID0gY3VydmVJZHNbal0NCg0KICAgIC8vICAgY29uc3QgY3VydmVEZXRhaWwgPSB3b3JrZXJTdGF0ZS5jdXJ2ZURldGFpbHNbY3VydmVJZF0NCiAgICAvLyAgIC8vIGNvbnNvbGUubG9nKCJjdXJ2ZUlkIDoiLCBjdXJ2ZUlkLCAiIGN1cnZlRGV0YWlsOiIsIGN1cnZlRGV0YWlsKTsNCg0KICAgIC8vICAgLy8gSWYgSXRlbXMgd2VyZSBza2lwcGVkIGluIGxheWluZyBvdXQgdGhlIHN1cmZhY2VzLCB3ZSB3aWxsIHNlZSB6ZXJvIGRldGFpbCB2YWx1ZXMgaGVyZS4NCiAgICAvLyAgIGlmIChjdXJ2ZURldGFpbCA9PSAwKSBjb250aW51ZQ0KDQogICAgLy8gICBsZXQgZHJhd1NldCA9IGN1cnZlRHJhd1NldHNfdG1wW2N1cnZlRGV0YWlsXQ0KICAgIC8vICAgaWYgKCFkcmF3U2V0KSB7DQogICAgLy8gICAgIGRyYXdTZXQgPSB7fQ0KICAgIC8vICAgICBjdXJ2ZURyYXdTZXRzX3RtcFtjdXJ2ZURldGFpbF0gPSBkcmF3U2V0DQogICAgLy8gICB9DQogICAgLy8gICAvLyBOb3RlOiBhbGwgY3VydmVzIGFyZSBkcmF3biB3aXRoIHRoZSBzYW1lIHNoYWRlcg0KICAgIC8vICAgbGV0IHN1YlNldCA9IGRyYXdTZXRbMF0NCiAgICAvLyAgIGlmICghc3ViU2V0KSB7DQogICAgLy8gICAgIHN1YlNldCA9IFtdDQogICAgLy8gICAgIGRyYXdTZXRbMF0gPSBzdWJTZXQNCiAgICAvLyAgIH0NCg0KICAgIC8vICAgY29uc3QgZHJhd0l0ZW1JbmRleEluQm9keSA9IHN1cmZhY2VJZHMubGVuZ3RoICsgag0KICAgIC8vICAgc3ViU2V0LnB1c2goYm9keUlkKQ0KICAgIC8vICAgc3ViU2V0LnB1c2goZHJhd0l0ZW1JbmRleEluQm9keSkNCiAgICAvLyAgIHN1YlNldC5wdXNoKGN1cnZlSWQpDQogICAgLy8gICBzdWJTZXQucHVzaCgtMSkNCg0KICAgIC8vICAgY29uc3QgZHJhd0l0ZW1JZCA9IHN1cmZhY2VJZHMubGVuZ3RoICsgag0KICAgIC8vICAgc3ViU2V0LnB1c2godSArIChkcmF3SXRlbUlkICUgYm9keUNvdW50VVZbMF0pICogcGl4ZWxzUGVyRHJhd0l0ZW0pDQogICAgLy8gICBzdWJTZXQucHVzaCh2ICsgTWF0aC5mbG9vcihkcmF3SXRlbUlkIC8gYm9keUNvdW50VVZbMF0pKQ0KICAgIC8vIH0NCiAgLy8gfSkNCg0KICB3b3JrZXJTdGF0ZS5udW1TdXJmYWNlSW5zdGFuY2VzID0gbnVtU3VyZmFjZUluc3RhbmNlczsNCiAgd29ya2VyU3RhdGUubnVtQ3VydmVJbnN0YW5jZXMgPSBudW1DdXJ2ZUluc3RhbmNlczsNCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCg0KICAvLyBOb3cgY29udmVydCBhbGwgdGhlIGRyYXcgc2V0cyB0byB0eXBlZCBhcnJheXMNCiAgY29uc3Qgc3VyZmFjZURyYXdTZXRzID0ge307DQogIGZvciAoY29uc3Qgc3VyZmFjZUtleSBpbiBzdXJmYWNlRHJhd1NldHNfdG1wKSB7DQogICAgaWYgKCFzdXJmYWNlRHJhd1NldHNbc3VyZmFjZUtleV0pIHsNCiAgICAgIHN1cmZhY2VEcmF3U2V0c1tzdXJmYWNlS2V5XSA9IHt9Ow0KICAgIH0NCg0KICAgIGNvbnN0IGRyYXdTZXQgPSBzdXJmYWNlRHJhd1NldHNfdG1wW3N1cmZhY2VLZXldOw0KICAgIGZvciAoY29uc3Qgc3ViU2V0S2V5IGluIGRyYXdTZXQpIHsNCiAgICAgIGNvbnN0IHN1YlNldCA9IGRyYXdTZXRbc3ViU2V0S2V5XTsNCiAgICAgIHN1cmZhY2VEcmF3U2V0c1tzdXJmYWNlS2V5XVtzdWJTZXRLZXldID0gRmxvYXQzMkFycmF5LmZyb20oc3ViU2V0KTsNCiAgICB9DQogIH0NCg0KICBjb25zdCBjdXJ2ZURyYXdTZXRzID0ge307DQogIGZvciAoY29uc3QgY3VydmVLZXkgaW4gY3VydmVEcmF3U2V0c190bXApIHsNCiAgICBpZiAoIWN1cnZlRHJhd1NldHNbY3VydmVLZXldKSB7DQogICAgICBjdXJ2ZURyYXdTZXRzW2N1cnZlS2V5XSA9IHt9Ow0KICAgIH0NCg0KICAgIGNvbnN0IGRyYXdTZXQgPSBjdXJ2ZURyYXdTZXRzX3RtcFtjdXJ2ZUtleV07DQogICAgZm9yIChjb25zdCBzdWJTZXRLZXkgaW4gZHJhd1NldCkgew0KICAgICAgY29uc3Qgc3ViU2V0ID0gZHJhd1NldFtzdWJTZXRLZXldOw0KICAgICAgY3VydmVEcmF3U2V0c1tjdXJ2ZUtleV1bc3ViU2V0S2V5XSA9IEZsb2F0MzJBcnJheS5mcm9tKHN1YlNldCk7DQogICAgfQ0KICB9DQoNCiAgd29ya2VyU3RhdGUuc3VyZmFjZURyYXdTZXRzX3RtcCA9IHN1cmZhY2VEcmF3U2V0c190bXA7DQogIHdvcmtlclN0YXRlLmN1cnZlRHJhd1NldHNfdG1wID0gY3VydmVEcmF3U2V0c190bXA7DQogIA0KICB3b3JrZXJTdGF0ZS5zdXJmYWNlRHJhd1NldHMgPSBzdXJmYWNlRHJhd1NldHM7DQogIHdvcmtlclN0YXRlLmN1cnZlRHJhd1NldHMgPSBjdXJ2ZURyYXdTZXRzOw0KICAvLyB3b3JrZXJTdGF0ZS5ldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzID0gZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlicw0KICAvLyB3b3JrZXJTdGF0ZS5ib2R5SXRlbUxheW91dENvb3JkcyA9IGJvZHlJdGVtTGF5b3V0Q29vcmRzDQoNCiAgLy8gcmV0dXJuIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnMNCiAgcmV0dXJuIHsNCiAgICBzdXJmYWNlRHJhd1NldHMsDQogICAgY3VydmVEcmF3U2V0cy8qLA0KICAgIGJvZHlJdGVtTGF5b3V0Q29vcmRzLA0KICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnMqLw0KICB9DQp9Ow0KDQpjb25zdCBsb2FkQXNzZW1ibHkgPSAoZGF0YSwgb25Eb25lKSA9PiB7DQogIGNvbnN0IHByb2ZpbGluZyA9IHt9Ow0KICBjb25zdCByZXN1bHQgPSB7DQogICAgZXZlbnRUeXBlOiAnbG9hZEFzc2V0RG9uZScsDQogICAgcHJvZmlsaW5nLA0KICB9Ow0KICBjb25zdCB0cmFuc2ZlcmFibGVzID0gW107DQoNCiAgbGV0IHQwID0gcGVyZm9ybWFuY2Uubm93KCk7DQogIGxldCB0MTsNCg0KICAvLyBMZXRzIHRoaXMgZGF0YSBiZSBnYXJiYWdlIGNvbGxlY3RlZC4NCiAgLy8gd29ya2VyU3RhdGUuc2NlbmVCb2R5SXRlbXNEYXRhID0gZGF0YS5zY2VuZUJvZHlJdGVtc0RhdGE7DQoNCiAgLy8gLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8NCiAgLy8gQ3VydmVzDQogIGNvbnN0IGN1cnZlc0RhdGFSZWFkZXIgPSBuZXcgQmluUmVhZGVyKGRhdGEuY3VydmVzRGF0YUJ1ZmZlcik7DQogIHsNCiAgICBjb25zdCBjdXJ2ZUxheW91dERhdGEgPSBsYXlvdXRDdXJ2ZXMoDQogICAgICBjdXJ2ZXNEYXRhUmVhZGVyLA0KICAgICAgZGF0YS5lcnJvclRvbGVyYW5jZSwNCiAgICAgIGRhdGEubWF4VGV4U2l6ZQ0KICAgICk7DQogICAgaWYgKGN1cnZlTGF5b3V0RGF0YSkgew0KICAgICAgcmVzdWx0Lm51bUN1cnZlcyA9IGN1cnZlTGF5b3V0RGF0YS5udW1DdXJ2ZXM7DQogICAgICByZXN1bHQuY3VydmVzQXRsYXNMYXlvdXQgPSBjdXJ2ZUxheW91dERhdGEuY3VydmVzQXRsYXNMYXlvdXQ7DQogICAgICByZXN1bHQuY3VydmVzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSA9DQogICAgICAgIGN1cnZlTGF5b3V0RGF0YS5jdXJ2ZXNBdGxhc0xheW91dFRleHR1cmVTaXplOw0KICAgICAgcmVzdWx0LmN1cnZlc0F0bGFzVGV4dHVyZURpbSA9IFsNCiAgICAgICAgX19jdXJ2ZXNQYWNrZXIucm9vdC53LA0KICAgICAgICBfX2N1cnZlc1BhY2tlci5yb290LmgsDQogICAgICBdOw0KDQogICAgICB0cmFuc2ZlcmFibGVzLnB1c2gocmVzdWx0LmN1cnZlc0F0bGFzTGF5b3V0LmJ1ZmZlcik7DQogICAgICBmb3IgKGNvbnN0IGtleSBpbiByZXN1bHQuY3VydmVEcmF3U2V0cykgew0KICAgICAgICB0cmFuc2ZlcmFibGVzLnB1c2gocmVzdWx0LmN1cnZlRHJhd1NldHNba2V5XS5idWZmZXIpOw0KICAgICAgfQ0KDQogICAgICB0MSA9IHBlcmZvcm1hbmNlLm5vdygpOw0KICAgICAgcHJvZmlsaW5nLm51bUN1cnZlcyA9IGN1cnZlTGF5b3V0RGF0YS5udW1DdXJ2ZXM7DQogICAgICBwcm9maWxpbmcubGF5b3V0Q3VydmVzID0gdDEgLSB0MDsNCiAgICAgIHByb2ZpbGluZy5jdXJ2ZXNBdGxhc1RleHR1cmVEaW0gPSByZXN1bHQuY3VydmVzQXRsYXNUZXh0dXJlRGltOw0KICAgIH0NCiAgfQ0KDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIFN1cmZhY2VzDQogIGNvbnN0IHN1cmZhY2VzRGF0YVJlYWRlciA9IG5ldyBCaW5SZWFkZXIoZGF0YS5zdXJmYWNlc0RhdGFCdWZmZXIpOw0KICB7DQogICAgLy8gcHJvZmlsaW5nLm51bVN1cmZhY2VzID0gc3VyZmFjZXNEYXRhQnVmZmVyLmxvYWRVSW50MzIoKTsNCiAgICBjb25zdCBzdXJmYWNlTGF5b3V0RGF0YSA9IGxheW91dFN1cmZhY2VzKA0KICAgICAgc3VyZmFjZXNEYXRhUmVhZGVyLA0KICAgICAgZGF0YS5lcnJvclRvbGVyYW5jZSwNCiAgICAgIGRhdGEubWF4VGV4U2l6ZSwNCiAgICAgIGRhdGEuc3VyZmFjZUFyZWFUaHJlc2hvbGQsDQogICAgICBkYXRhLmNhZERhdGFWZXJzaW9uDQogICAgKTsNCiAgICBpZiAoc3VyZmFjZUxheW91dERhdGEpIHsNCiAgICAgIHJlc3VsdC5zdXJmYWNlc0V2YWxBdHRycyA9IHN1cmZhY2VMYXlvdXREYXRhLnN1cmZhY2VzRXZhbEF0dHJzOw0KICAgICAgcmVzdWx0LnN1cmZhY2VzQXRsYXNMYXlvdXQgPSBzdXJmYWNlTGF5b3V0RGF0YS5zdXJmYWNlc0F0bGFzTGF5b3V0Ow0KICAgICAgcmVzdWx0LnN1cmZhY2VzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZSA9DQogICAgICAgIHN1cmZhY2VMYXlvdXREYXRhLnN1cmZhY2VzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZTsNCiAgICAgIHJlc3VsdC5zdXJmYWNlc0F0bGFzVGV4dHVyZURpbSA9IFsNCiAgICAgICAgX19zdXJmYWNlUGFja2VyLnJvb3QudywNCiAgICAgICAgX19zdXJmYWNlUGFja2VyLnJvb3QuaCwNCiAgICAgIF07DQoNCiAgICAgIHRyYW5zZmVyYWJsZXMucHVzaChyZXN1bHQuc3VyZmFjZXNBdGxhc0xheW91dC5idWZmZXIpOw0KICAgICAgZm9yIChjb25zdCBrZXkgaW4gcmVzdWx0LnN1cmZhY2VzRXZhbEF0dHJzKQ0KICAgICAgICB0cmFuc2ZlcmFibGVzLnB1c2gocmVzdWx0LnN1cmZhY2VzRXZhbEF0dHJzW2tleV0uYnVmZmVyKTsNCg0KICAgICAgdDEgPSBwZXJmb3JtYW5jZS5ub3coKTsNCiAgICAgIHByb2ZpbGluZy5sYXlvdXRTdXJmYWNlcyA9IHQxIC0gdDA7DQogICAgICBwcm9maWxpbmcubnVtU3VyZmFjZXMgPSBzdXJmYWNlTGF5b3V0RGF0YS5udW1TdXJmYWNlczsNCiAgICAgIHByb2ZpbGluZy5zdXJmYWNlc0F0bGFzVGV4dHVyZURpbSA9IHJlc3VsdC5zdXJmYWNlc0F0bGFzVGV4dHVyZURpbTsNCiAgICB9DQogIH0NCg0KICAvLyAvLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLw0KICAvLyBUcmltIFNldHMNCiAgaWYgKGRhdGEudHJpbVNldHNCdWZmZXIpIHsNCiAgICBjb25zdCB0cmltU2V0c1JlYWRlciA9IG5ldyBCaW5SZWFkZXIoZGF0YS50cmltU2V0c0J1ZmZlcik7DQogICAgY29uc3QgdHJpbVNldExheW91dERhdGEgPSBsYXlvdXRUcmltU2V0cygNCiAgICAgIHRyaW1TZXRzUmVhZGVyLA0KICAgICAgZGF0YS5jYWREYXRhVmVyc2lvbiwNCiAgICAgIHJlc3VsdC5jdXJ2ZXNBdGxhc0xheW91dCwNCiAgICAgIGRhdGEubG9kLA0KICAgICAgZGF0YS50cmltVGV4ZWxTaXplDQogICAgKTsNCiAgICByZXN1bHQudHJpbUN1cnZlRHJhd1NldHMgPSB0cmltU2V0TGF5b3V0RGF0YS50cmltQ3VydmVEcmF3U2V0czsNCiAgICByZXN1bHQudHJpbVNldHNBdGxhc0xheW91dERhdGEgPSB0cmltU2V0TGF5b3V0RGF0YS50cmltU2V0c0F0bGFzTGF5b3V0RGF0YTsNCiAgICByZXN1bHQudHJpbVNldHNBdGxhc0xheW91dFRleHR1cmVTaXplID0NCiAgICAgIHRyaW1TZXRMYXlvdXREYXRhLnRyaW1TZXRzQXRsYXNMYXlvdXRUZXh0dXJlU2l6ZTsNCiAgICByZXN1bHQudHJpbVNldEF0bGFzVGV4dHVyZVNpemUgPSBbDQogICAgICBfX3RyaW1TZXRQYWNrZXIucm9vdC53LA0KICAgICAgX190cmltU2V0UGFja2VyLnJvb3QuaCwNCiAgICBdOw0KDQogICAgdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC50cmltU2V0c0F0bGFzTGF5b3V0RGF0YS5idWZmZXIpOw0KICAgIGZvciAoY29uc3Qga2V5IGluIHJlc3VsdC50cmltQ3VydmVEcmF3U2V0cykgew0KICAgICAgdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC50cmltQ3VydmVEcmF3U2V0c1trZXldLmJ1ZmZlcik7DQogICAgfQ0KDQogICAgdDAgPSBwZXJmb3JtYW5jZS5ub3coKTsNCiAgICBwcm9maWxpbmcubGF5b3V0VHJpbVNldHMgPSB0MCAtIHQxOw0KICAgIHByb2ZpbGluZy50cmltU2V0QXRsYXNUZXh0dXJlU2l6ZSA9IHJlc3VsdC50cmltU2V0QXRsYXNUZXh0dXJlU2l6ZTsNCiAgfQ0KDQogIC8vIC8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vLy8vDQogIC8vIEJvZHkgSXRlbXMNCiAgew0KICAgIGNvbnN0IGJvZHlEZXNjUmVhZGVyID0gbmV3IEJpblJlYWRlcihkYXRhLmJvZHlMaWJyYXJ5QnVmZmVyKTsNCiAgICBjb25zdCBib2R5RGVzY1RvY1JlYWRlciA9IG5ldyBCaW5SZWFkZXIoZGF0YS5ib2R5TGlicmFyeUJ1ZmZlclRvYyk7DQoNCiAgICBwcm9maWxpbmcubnVtQm9kaWVzID0gZGF0YS5zY2VuZUJvZHlJdGVtc0RhdGEubGVuZ3RoIC8gZmxvYXRzUGVyU2NlbmVCb2R5Ow0KDQogICAgY29uc3QgbGF5b3V0UmVzID0gbGF5b3V0Qm9keUl0ZW1zKA0KICAgICAgZGF0YS5zY2VuZUJvZHlJdGVtc0RhdGEsDQogICAgICBib2R5RGVzY1RvY1JlYWRlciwNCiAgICAgIGJvZHlEZXNjUmVhZGVyLA0KICAgICAgZGF0YS5jYWREYXRhVmVyc2lvbik7DQoNCiAgICByZXN1bHQuc3VyZmFjZURyYXdTZXRzID0gbGF5b3V0UmVzLnN1cmZhY2VEcmF3U2V0czsNCiAgICByZXN1bHQuY3VydmVEcmF3U2V0cyA9IGxheW91dFJlcy5jdXJ2ZURyYXdTZXRzOw0KICAgIC8vIHJlc3VsdC5ib2R5SXRlbUxheW91dENvb3JkcyA9IGxheW91dFJlcy5ib2R5SXRlbUxheW91dENvb3Jkcw0KICAgIC8vIHJlc3VsdC5ldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzID0gbGF5b3V0UmVzLmV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnMNCiAgICAvLyByZXN1bHQuYm9keUF0bGFzRGltID0gW19fYm9keUF0bGFzUGFja2VyLnJvb3QudywgX19ib2R5QXRsYXNQYWNrZXIucm9vdC5oXQ0KICAgIA0KICAgIC8vIEtlZXAgdGhpcyBkYXRhIGhlcmUgYmVjYXVzZSB3ZSBuZWVkIGl0IGZvciBoaWdobGlnaHRpbmcuDQogICAgLy8gdHJhbnNmZXJhYmxlcy5wdXNoKHJlc3VsdC5ldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzLmJ1ZmZlcik7DQoNCiAgICBmb3IgKGNvbnN0IHN1cmZhY2VLZXkgaW4gcmVzdWx0LnN1cmZhY2VEcmF3U2V0cykgew0KICAgICAgY29uc3QgZHJhd1NldCA9IHJlc3VsdC5zdXJmYWNlRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgICBmb3IgKGNvbnN0IHNoYWRlcklkIGluIGRyYXdTZXQpIHsNCiAgICAgICAgdHJhbnNmZXJhYmxlcy5wdXNoKGRyYXdTZXRbc2hhZGVySWRdLmJ1ZmZlcik7DQogICAgICB9DQogICAgfQ0KICAgIGZvciAoY29uc3Qgc3VyZmFjZUtleSBpbiByZXN1bHQuY3VydmVEcmF3U2V0cykgew0KICAgICAgY29uc3QgZHJhd1NldCA9IHJlc3VsdC5jdXJ2ZURyYXdTZXRzW3N1cmZhY2VLZXldOw0KICAgICAgZm9yIChjb25zdCBzdWJTZXRLZXkgaW4gZHJhd1NldCkgew0KICAgICAgICB0cmFuc2ZlcmFibGVzLnB1c2goZHJhd1NldFtzdWJTZXRLZXldLmJ1ZmZlcik7DQogICAgICB9DQogICAgfQ0KICAgIHByb2ZpbGluZy5udW1TdXJmYWNlSW5zdGFuY2VzID0gd29ya2VyU3RhdGUubnVtU3VyZmFjZUluc3RhbmNlczsNCiAgICBwcm9maWxpbmcubnVtQ3VydmVJbnN0YW5jZXMgPSB3b3JrZXJTdGF0ZS5udW1DdXJ2ZUluc3RhbmNlczsNCiAgICAvLyBwcm9maWxpbmcubnVtRHJhd1NldHMgPSBPYmplY3Qua2V5cyhyZXN1bHQuc3VyZmFjZURyYXdTZXRzKS5sZW5ndGgNCg0KICAgIHQxID0gcGVyZm9ybWFuY2Uubm93KCk7DQogICAgcHJvZmlsaW5nLmxheW91dEJvZHlJdGVtcyA9IHQxIC0gdDA7DQogICAgcHJvZmlsaW5nLmJvZHlBdGxhc0RpbSA9IHJlc3VsdC5ib2R5QXRsYXNEaW07DQogIH0NCg0KICANCiAgb25Eb25lKHJlc3VsdCwgdHJhbnNmZXJhYmxlcyk7DQoNCiAgLy8gTm93IHByb2Nlc3MgYW55IGhpZ2hsaWdodHMgaWYgdGhleSBleGlzdC4NCiAgaWYgKGRhdGEuaGlnaGxpZ2h0ZWRCb2RpZXMubGVuZ3RoID4gMCkgew0KICAgIGJvZHlIaWdobGlnaHRDaGFuZ2VkKHsNCiAgICAgIGhpZ2hsaWdodGVkQm9keUlkczogZGF0YS5oaWdobGlnaHRlZEJvZGllcywNCiAgICAgIHVuaGlnaGxpZ2h0ZWRCb2R5SWRzOiBbXQ0KICAgIH0sIG9uRG9uZSk7DQogIH0NCn07DQoNCmNvbnN0IGhpZ2hsaWdodGVkRHJhd1NldHMgPSB7fTsNCg0KY29uc3QgYm9keUhpZ2hsaWdodENoYW5nZWQgPSAoZGF0YSwgb25Eb25lKSA9PiB7DQogIGNvbnN0IGhpZ2hsaWdodGVkQm9keUlkcyA9IGRhdGEuaGlnaGxpZ2h0ZWRCb2R5SWRzOw0KICBjb25zdCB1bmhpZ2hsaWdodGVkQm9keUlkcyA9IGRhdGEudW5oaWdobGlnaHRlZEJvZHlJZHM7DQoNCiAgY29uc3QgZWFjaEJvZHlTdXJmYWNlID0gKGJvZHlJZHMsIGNiKSA9PiB7DQogICAgZm9yIChsZXQgaSA9IDA7IGkgPCBib2R5SWRzLmxlbmd0aDsgaSsrKSB7DQogICAgICBjb25zdCBib2R5SWQgPSBib2R5SWRzW2ldOw0KDQogICAgICBjb25zdCBib2R5RGVzY0lkID0gYm9keURlc2NJZHNbYm9keUlkXTsgDQogICAgICAvLyBjb25zdCBib2R5RGVzY0lkID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDBdDQogICAgICAvLyBjb25zdCB1ID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDFdDQogICAgICAvLyBjb25zdCB2ID0gd29ya2VyU3RhdGUuYm9keUl0ZW1MYXlvdXRDb29yZHNbYm9keUlkICogNSArIDJdDQogICAgICAvLyBjb25zdCBjb3VudHUgPSB3b3JrZXJTdGF0ZS5ib2R5SXRlbUxheW91dENvb3Jkc1tib2R5SWQgKiA1ICsgM10NCiAgICAgIC8vIGNvbnN0IGNvdW50diA9IHdvcmtlclN0YXRlLmJvZHlJdGVtTGF5b3V0Q29vcmRzW2JvZHlJZCAqIDUgKyA0XQ0KDQogICAgICBjb25zdCBib2R5RGVzYyA9IGdldEJvZHlEZXNjRGF0YShib2R5RGVzY0lkKTsNCiAgICAgIGNvbnN0IHN1cmZhY2VJZHMgPSBib2R5RGVzYy5zdXJmYWNlSWRzOw0KICAgICAgZm9yIChsZXQgaiA9IDA7IGogPCBzdXJmYWNlSWRzLmxlbmd0aDsgaisrKSB7DQogICAgICAgIGNvbnN0IHN1cmZhY2VJZCA9IHN1cmZhY2VJZHNbal07DQogICAgICAgIGNvbnN0IHN1cmZhY2VJbnN0YW5jZUlkID0gKGJvZHlJZCA8PCAxNikgfCBqOw0KICAgICAgICBjYihib2R5SWQsIHN1cmZhY2VJbnN0YW5jZUlkLCBzdXJmYWNlSWQsIGopOw0KICAgICAgfQ0KICAgIH0NCiAgfTsNCiAgZWFjaEJvZHlTdXJmYWNlKA0KICAgIHVuaGlnaGxpZ2h0ZWRCb2R5SWRzLA0KICAgIChib2R5SWQsIHN1cmZhY2VJbnN0YW5jZUlkLCBzdXJmYWNlSWQsIGRyYXdJdGVtSW5kZXhJbkJvZHkpID0+IHsNCiAgICAgIGNvbnN0IGRldGFpbHNPZmZzZXQgPSBzdXJmYWNlSWQgKiA3Ow0KICAgICAgY29uc3Qgc3VyZmFjZURldGFpbFggPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgNF07DQogICAgICBjb25zdCBzdXJmYWNlRGV0YWlsWSA9IHdvcmtlclN0YXRlLnN1cmZhY2VEZXRhaWxzW2RldGFpbHNPZmZzZXQgKyA1XTsNCiAgICAgIGNvbnN0IHN1cmZhY2VLZXkgPSBzdXJmYWNlRGV0YWlsWCArICd4JyArIHN1cmZhY2VEZXRhaWxZOw0KDQogICAgICBsZXQgZHJhd1NldCA9IGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgICBpZiAoIWRyYXdTZXQpIHsNCiAgICAgICAgZHJhd1NldCA9IHsNCiAgICAgICAgICBzdXJmYWNlRHJhd0Nvb3Jkczoge30sDQogICAgICAgICAgY291bnQ6IDAsDQogICAgICAgIH07DQogICAgICAgIGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV0gPSBkcmF3U2V0Ow0KICAgICAgfQ0KICAgICAgZGVsZXRlIGRyYXdTZXQuc3VyZmFjZURyYXdDb29yZHNbc3VyZmFjZUluc3RhbmNlSWRdOw0KICAgICAgZHJhd1NldC5jb3VudC0tOw0KICAgIH0NCiAgKTsNCiAgZWFjaEJvZHlTdXJmYWNlKA0KICAgIGhpZ2hsaWdodGVkQm9keUlkcywNCiAgICAoYm9keUlkLCBzdXJmYWNlSW5zdGFuY2VJZCwgc3VyZmFjZUlkLCBkcmF3SXRlbUluZGV4SW5Cb2R5KSA9PiB7DQogICAgICBjb25zdCBkZXRhaWxzT2Zmc2V0ID0gc3VyZmFjZUlkICogNzsNCiAgICAgIGNvbnN0IHN1cmZhY2VEZXRhaWxYID0gd29ya2VyU3RhdGUuc3VyZmFjZURldGFpbHNbZGV0YWlsc09mZnNldCArIDRdOw0KICAgICAgY29uc3Qgc3VyZmFjZURldGFpbFkgPSB3b3JrZXJTdGF0ZS5zdXJmYWNlRGV0YWlsc1tkZXRhaWxzT2Zmc2V0ICsgNV07DQogICAgICBjb25zdCBzdXJmYWNlS2V5ID0gc3VyZmFjZURldGFpbFggKyAneCcgKyBzdXJmYWNlRGV0YWlsWTsNCg0KICAgICAgbGV0IGRyYXdTZXQgPSBoaWdobGlnaHRlZERyYXdTZXRzW3N1cmZhY2VLZXldOw0KICAgICAgaWYgKCFkcmF3U2V0KSB7DQogICAgICAgIGRyYXdTZXQgPSB7DQogICAgICAgICAgc3VyZmFjZURyYXdDb29yZHM6IHt9LA0KICAgICAgICAgIGNvdW50OiAwLA0KICAgICAgICB9Ow0KICAgICAgICBoaWdobGlnaHRlZERyYXdTZXRzW3N1cmZhY2VLZXldID0gZHJhd1NldDsNCiAgICAgIH0NCg0KICAgICAgY29uc3QgdHJpbVNldElkID0gd29ya2VyU3RhdGUuc3VyZmFjZURldGFpbHNbZGV0YWlsc09mZnNldCArIDZdOw0KICAgICAgZHJhd1NldC5zdXJmYWNlRHJhd0Nvb3Jkc1tzdXJmYWNlSW5zdGFuY2VJZF0gPSBbDQogICAgICAgIGJvZHlJZCwNCiAgICAgICAgZHJhd0l0ZW1JbmRleEluQm9keSwNCiAgICAgICAgc3VyZmFjZUlkLA0KICAgICAgICB0cmltU2V0SWQvKiwNCiAgICAgICAgdSArIChqICUgY291bnR1KSAqIHBpeGVsc1BlckRyYXdJdGVtLA0KICAgICAgICB2ICsgTWF0aC5mbG9vcihqIC8gY291bnR1KSwqLw0KICAgICAgXTsNCiAgICAgIGRyYXdTZXQuY291bnQrKzsNCiAgICB9DQogICk7DQoNCiAgLy8gTm93IGNvbnZlcnQgYWxsIHRoZSBkcmF3IHNldHMgdG8gdHlwZWQgYXJyYXlzDQogIGNvbnN0IG91dF9zdXJmYWNlRHJhd1NldHMgPSB7fTsNCiAgY29uc3QgdHJhbnNmZXJhYmxlcyA9IFtdOw0KICBmb3IgKGNvbnN0IHN1cmZhY2VLZXkgaW4gaGlnaGxpZ2h0ZWREcmF3U2V0cykgew0KICAgIGNvbnN0IGhpZ2hsaWdodGVkRHJhd1NldCA9IGhpZ2hsaWdodGVkRHJhd1NldHNbc3VyZmFjZUtleV07DQogICAgY29uc3QgZHJhd1NldCA9IG5ldyBGbG9hdDMyQXJyYXkoaGlnaGxpZ2h0ZWREcmF3U2V0LmNvdW50ICogZHJhd1NoYWRlckF0dHJpYnNTdHJpZGUpOw0KICAgIGxldCBvZmZzZXQgPSAwOw0KICAgIGZvciAoY29uc3Qgc3VyZmFjZUluc3RhbmNlSWQgaW4gaGlnaGxpZ2h0ZWREcmF3U2V0c1tzdXJmYWNlS2V5XQ0KICAgICAgLnN1cmZhY2VEcmF3Q29vcmRzKSB7DQogICAgICBjb25zdCBzdXJmYWNlRHJhd0Nvb3JkID0NCiAgICAgICAgaGlnaGxpZ2h0ZWREcmF3U2V0c1tzdXJmYWNlS2V5XS5zdXJmYWNlRHJhd0Nvb3Jkc1tzdXJmYWNlSW5zdGFuY2VJZF07DQogICAgICBkcmF3U2V0LnNldChzdXJmYWNlRHJhd0Nvb3JkLCBvZmZzZXQpOw0KICAgICAgb2Zmc2V0ICs9IGRyYXdTaGFkZXJBdHRyaWJzU3RyaWRlOw0KICAgIH0NCiAgICBvdXRfc3VyZmFjZURyYXdTZXRzW3N1cmZhY2VLZXldID0gZHJhd1NldDsNCiAgICB0cmFuc2ZlcmFibGVzLnB1c2goZHJhd1NldC5idWZmZXIpOw0KICB9DQoNCiAgY29uc3QgcmVzdWx0ID0gew0KICAgIGV2ZW50VHlwZTogJ2hpZ2hsaWdodGVkU3VyZmFjZURyYXdTZXRzQ2hhbmdlZCcsDQogICAgaGlnaGxpZ2h0ZWRTdXJmYWNlRHJhd1NldHM6IG91dF9zdXJmYWNlRHJhd1NldHMsDQogICAgbnVtSGlnaGxpZ2h0ZWQ6IGhpZ2hsaWdodGVkQm9keUlkcy5sZW5ndGgsDQogICAgbnVtVW5oaWdobGlnaHRlZDogdW5oaWdobGlnaHRlZEJvZHlJZHMubGVuZ3RoLA0KICB9Ow0KICBvbkRvbmUocmVzdWx0LCB0cmFuc2ZlcmFibGVzKTsNCn07DQoNCi8vIGNvbnN0IGJvZHlJdGVtQ2hhbmdlZCA9IChkYXRhLCBvbkRvbmUpID0+IHsNCi8vICAgY29uc3QgY2hhbmdlcyA9IGRhdGEuY2hhbmdlcw0KLy8gICBjb25zdCBudW1EaXJ0eUJvZHlJdGVtcyA9IE9iamVjdC5rZXlzKGNoYW5nZXMpLmxlbmd0aA0KLy8gICAvLyBOb3RlOiBXZSBtb2RpZnkgdGhlIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnMgYXJyYXkgaW4gcGxhY2UgYW5kIGNvcHkNCi8vICAgLy8gdGhlIG1vZGlmaWVkIHNlY3Rpb25zIG91dCB0byB1cGxvYWQgdG8gdGhlIEdQVS4NCi8vICAgY29uc3QgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlicyA9IHdvcmtlclN0YXRlLmV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnMNCi8vICAgY29uc3QgbW9kaWZpZWRCb2R5SXRlbXNDb29yZHMgPSBuZXcgRmxvYXQzMkFycmF5KA0KLy8gICAgIG51bURpcnR5Qm9keUl0ZW1zICogZHJhd0l0ZW1TaGFkZXJBdHRyaWJzU3RyaWRlDQovLyAgICkNCi8vICAgbGV0IGkgPSAwDQovLyAgIGZvciAoY29uc3Qga2V5IGluIGNoYW5nZXMpIHsNCi8vICAgICBjb25zdCBib2R5SWQgPSBOdW1iZXIucGFyc2VJbnQoa2V5KQ0KLy8gICAgIGNvbnN0IGJvZHlEYXRhID0gY2hhbmdlc1trZXldDQovLyAgICAgY29uc3Qgb2Zmc2V0ID0gYm9keUlkICogZHJhd0l0ZW1TaGFkZXJBdHRyaWJzU3RyaWRlDQoNCi8vICAgICAvLyBjb25zb2xlLmxvZyhib2R5SWQsICJib2R5SXRlbUNoYW5nZWQ6IiwgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAxXSkNCi8vICAgICBpZiAoYm9keURhdGEuZmxhZ3MgIT0gdW5kZWZpbmVkKQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyXSA9IGJvZHlEYXRhLmZsYWdzDQovLyAgICAgaWYgKGJvZHlEYXRhLm1hdGVyaWFsKSB7DQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDZdID0gYm9keURhdGEubWF0ZXJpYWxbMF0gLy8gc3JjIGdsbWF0ZXJpYWxjb29yZHMueA0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyA3XSA9IGJvZHlEYXRhLm1hdGVyaWFsWzFdIC8vIHNyYyBnbG1hdGVyaWFsY29vcmRzLnkNCi8vICAgICB9DQovLyAgICAgaWYgKGJvZHlEYXRhLnhmbykgew0KLy8gICAgICAgLy8gY29uc29sZS5sb2coYm9keUlkLCAiYm9keUl0ZW1DaGFuZ2VkIHhmbzoiLCBib2R5RGF0YS54Zm8pDQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDhdID0gYm9keURhdGEueGZvWzBdIC8vIHRyLngNCi8vICAgICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbb2Zmc2V0ICsgOV0gPSBib2R5RGF0YS54Zm9bMV0gLy8gdHIueQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAxMF0gPSBib2R5RGF0YS54Zm9bMl0gLy8gdHIueg0KDQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDExXSA9IGJvZHlEYXRhLnhmb1szXSAvLyBvcmkueA0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAxMl0gPSBib2R5RGF0YS54Zm9bNF0gLy8gb3JpLnkNCi8vICAgICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbb2Zmc2V0ICsgMTNdID0gYm9keURhdGEueGZvWzVdIC8vIG9yaS56DQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDE0XSA9IGJvZHlEYXRhLnhmb1s2XSAvLyBvcmkudw0KDQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDE1XSA9IGJvZHlEYXRhLnhmb1s3XSAvLyBzYy53DQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDE2XSA9IGJvZHlEYXRhLnhmb1s4XSAvLyBzYy53DQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDE3XSA9IGJvZHlEYXRhLnhmb1s5XSAvLyBzYy53DQovLyAgICAgfQ0KLy8gICAgIGlmIChib2R5RGF0YS5oaWdobGlnaHQpIHsNCi8vICAgICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbb2Zmc2V0ICsgMjJdID0gYm9keURhdGEuaGlnaGxpZ2h0WzBdDQovLyAgICAgICBldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzW29mZnNldCArIDIzXSA9IGJvZHlEYXRhLmhpZ2hsaWdodFsxXQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyNF0gPSBib2R5RGF0YS5oaWdobGlnaHRbMl0NCi8vICAgICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnNbb2Zmc2V0ICsgMjVdID0gYm9keURhdGEuaGlnaGxpZ2h0WzNdDQovLyAgICAgfQ0KLy8gICAgIGlmIChib2R5RGF0YS5jdXRQbGFuZSkgew0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyNl0gPSBib2R5RGF0YS5jdXRQbGFuZVswXQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyN10gPSBib2R5RGF0YS5jdXRQbGFuZVsxXQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyOF0gPSBib2R5RGF0YS5jdXRQbGFuZVsyXQ0KLy8gICAgICAgZXZhbERyYXdJdGVtU2hhZGVyQXR0cmlic1tvZmZzZXQgKyAyOV0gPSBib2R5RGF0YS5jdXRQbGFuZVszXQ0KLy8gICAgIH0NCg0KLy8gICAgIC8vIFB1bGwgb3V0IGEgY29weSBvZiB0aGUgZGF0YSBhbmQgcHV0IGludG8gb3VyIHNtYWxsZXIgYXJyYXkuDQovLyAgICAgY29uc3QgcHJldkJvZHlJdGVtc0RhdGEgPSB3b3JrZXJTdGF0ZS5ldmFsRHJhd0l0ZW1TaGFkZXJBdHRyaWJzLnN1YmFycmF5KA0KLy8gICAgICAgYm9keUlkICogZHJhd0l0ZW1TaGFkZXJBdHRyaWJzU3RyaWRlLA0KLy8gICAgICAgKGJvZHlJZCArIDEpICogZHJhd0l0ZW1TaGFkZXJBdHRyaWJzU3RyaWRlDQovLyAgICAgKQ0KLy8gICAgIG1vZGlmaWVkQm9keUl0ZW1zQ29vcmRzLnNldChwcmV2Qm9keUl0ZW1zRGF0YSwgaSAqIGRyYXdJdGVtU2hhZGVyQXR0cmlic1N0cmlkZSkNCg0KLy8gICAgIGkrKw0KLy8gICB9DQovLyAgIGNvbnN0IHJlc3VsdCA9IHsNCi8vICAgICBldmVudFR5cGU6ICdib2R5SXRlbUNoYW5nZWQnLA0KLy8gICAgIGV2YWxEcmF3SXRlbVNoYWRlckF0dHJpYnM6IG1vZGlmaWVkQm9keUl0ZW1zQ29vcmRzLA0KLy8gICB9DQovLyAgIG9uRG9uZShyZXN1bHQpDQovLyB9DQoNCi8vIC8vIGxldCBhc3NlbWJseUJCb3g7DQovLyAvLyBsZXQgc3VyZmFjZVJlbmRlclBhcmFtcyA9IFtdOw0KLy8gLy8gY29uc3QgYm9keURyYXdEYXRhcyA9IFtdOw0KDQovLyAvLyBjb25zdCByZW5kZXJEYXRhcyA9IFtdOw0KLy8gLy8gY29uc3QgSEFMRl9QSSA9IE1hdGguUEkgKiAwLjU7DQoNCi8vIC8vIGNvbnN0IG9uVmlld0NoYW5nZWQgPSAodmlld1hmbywgdmlld0Rpciwgb25Eb25lKSA9PiB7DQovLyAvLyAgICAgY29uc3QgYmVjb21pbmdWaXNpYmxlID0gW107DQovLyAvLyAgICAgY29uc3QgYmVjb21pbmdJbnZpc2libGUgPSBbXTsNCi8vIC8vICAgICBjb25zdCBsb2RDaGFuZ2VzID0gW107DQoNCi8vIC8vICAgICBjb25zdCB0ZXN0RnJ1c3R1bSA9IChwb3MsIHNpemUpID0+IHsNCg0KLy8gLy8gICAgICAgICBjb25zdCBkaXIgPSBwb3Muc3VidHJhY3Qodmlld1hmby50cik7DQovLyAvLyAgICAgICAgIGNvbnN0IGRpc3QgPSBkaXIubGVuZ3RoKCk7DQovLyAvLyAgICAgICAgIGRpci5zY2FsZUluUGxhY2UoMS4wIC8gZGlzdCk7DQovLyAvLyAgICAgICAgIGNvbnN0IHZpZXdEb3REaXIgPSBkaXIuZG90KHZpZXdEaXIpOw0KLy8gLy8gICAgICAgICBjb25zdCBhbmdsZSA9IE1hdGguYWNvcyh2aWV3RG90RGlyKTsNCg0KLy8gLy8gICAgICAgICBjb25zdCB2aWV3Q29uZUFuZ2xlID0gMS4yOyAvLyBUaGUgZm92IGRpdmlkZWQgYnkgMjsgKGF0IHRoZSBjb3JuZXIpDQovLyAvLyAgICAgICAgIC8vIGNvbnNvbGUubG9nKGFuZ2xlICsgIjoiICsgTWF0aC5hdGFuKHNpemUgLyBkaXN0KSkNCg0KLy8gLy8gICAgICAgICBsZXQgdmlzID0gMDsNCi8vIC8vICAgICAgICAgaWYgKGRpc3QgPiBzaXplKSB7DQovLyAvLyAgICAgICAgICAgICBpZiAodmlld0RvdERpciA8IDAuMCB8fCBhbmdsZSAtIE1hdGguYXRhbihzaXplIC8gZGlzdCkgPiB2aWV3Q29uZUFuZ2xlKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgLy8gY29uc29sZS5sb2coIkl0ZW0gaXMgY29tcGxldGVseSBvdXRzaWRlIG9mIHRoZSBmcnVzdHVtIikNCi8vIC8vICAgICAgICAgICAgICAgICB2aXMgPSAxOw0KLy8gLy8gICAgICAgICAgICAgfSBlbHNlIHsNCi8vIC8vICAgICAgICAgICAgICAgICBpZiAoYW5nbGUgKyBNYXRoLmF0YW4oc2l6ZSAvIGRpc3QpIDwgdmlld0NvbmVBbmdsZSkgew0KLy8gLy8gICAgICAgICAgICAgICAgICAgICAvLyBjb25zb2xlLmxvZygiSXRlbSBpcyBjb21wbGV0ZWx5IGluc2lkZSAgdGhlIGZydXN0dW0iKQ0KLy8gLy8gICAgICAgICAgICAgICAgICAgICB2aXMgPSAyOw0KLy8gLy8gICAgICAgICAgICAgICAgIH0gZWxzZSB7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgIC8vIGNvbnNvbGUubG9nKCJJdGVtIGlzIGluc2lkZSBvZiB0aGUgZnJ1c3R1bSIpDQovLyAvLyAgICAgICAgICAgICAgICAgICAgIHZpcyA9IDM7DQovLyAvLyAgICAgICAgICAgICAgICAgfQ0KLy8gLy8gICAgICAgICAgICAgfQ0KLy8gLy8gICAgICAgICB9DQovLyAvLyAgICAgICAgIHJldHVybiB7DQovLyAvLyAgICAgICAgICAgICBkaXIsDQovLyAvLyAgICAgICAgICAgICBkaXN0LA0KLy8gLy8gICAgICAgICAgICAgYW5nbGUsDQovLyAvLyAgICAgICAgICAgICB2aXMNCi8vIC8vICAgICAgICAgfTsNCi8vIC8vICAgICB9DQoNCi8vIC8vICAgICBjb25zdCBlYWNoQm9keURhdGEgPSAoYm9keURyYXdEYXRhLCBib2R5SW5kZXgpID0+IHsNCg0KLy8gLy8gICAgICAgICBjb25zdCBib2R5VmlzID0gdGVzdEZydXN0dW0oYm9keURyYXdEYXRhLmJvZHlYZm8udHIsIGJvZHlEcmF3RGF0YS5ib2R5U2l6ZSk7DQoNCi8vIC8vICAgICAgICAgY29uc3QgZHJhd0l0ZW1EYXRhID0gYm9keURyYXdEYXRhLmRyYXdJdGVtRGF0YTsNCi8vIC8vICAgICAgICAgZm9yIChsZXQgc3VyZmFjZUluZGV4ID0gMDsgc3VyZmFjZUluZGV4IDwgYm9keURyYXdEYXRhLm51bVN1cmZhY2VzOyBzdXJmYWNlSW5kZXgrKykgew0KLy8gLy8gICAgICAgICAgICAgY29uc3QgcGl4ZWxzUGVyRHJhd0l0ZW0gPSA0OyAvLyBUaGUgbnVtYmVyIG9mIFJHQkEgcGl4ZWxzIHBlciBkcmF3IGl0ZW0uDQovLyAvLyAgICAgICAgICAgICBjb25zdCBvZmZzZXQgPSAoc3VyZmFjZUluZGV4ICogcGl4ZWxzUGVyRHJhd0l0ZW0gKiA0KTsNCi8vIC8vICAgICAgICAgICAgIGNvbnN0IHBvcyA9IG5ldyBWZWMzKA0KLy8gLy8gICAgICAgICAgICAgICAgIGRyYXdJdGVtRGF0YVtvZmZzZXQgKyAzXSwgZHJhd0l0ZW1EYXRhW29mZnNldCArIDddLCBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgMTFdDQovLyAvLyAgICAgICAgICAgICApDQovLyAvLyAgICAgICAgICAgICBjb25zdCBzdXJmYWNlSWQgPSBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgMTJdOw0KLy8gLy8gICAgICAgICAgICAgY29uc3Qgc2l6ZSA9IHN1cmZhY2VSZW5kZXJQYXJhbXNbc3VyZmFjZUlkICogM107DQoNCi8vIC8vICAgICAgICAgICAgIGxldCB2aXNpYmlsaXR5U3RhdGUgPSAwOyAvLyB2aXNpYmxlDQovLyAvLyAgICAgICAgICAgICBpZiAoYm9keVZpcy52aXMgPT0gMSkgew0KLy8gLy8gICAgICAgICAgICAgICAgIHZpc2liaWxpdHlTdGF0ZSA9IDE7DQovLyAvLyAgICAgICAgICAgICB9IGVsc2UgaWYgKGJvZHlWaXMudmlzID09IDMpIHsNCi8vIC8vICAgICAgICAgICAgICAgICBjb25zdCBzdXJmYWNlVmlzID0gdGVzdEZydXN0dW0ocG9zLCBzaXplKTsNCi8vIC8vICAgICAgICAgICAgICAgICBpZiAoc3VyZmFjZVZpcy52aXMgPT0gMSkNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgdmlzaWJpbGl0eVN0YXRlID0gMTsNCi8vIC8vICAgICAgICAgICAgIH0NCg0KLy8gLy8gICAgICAgICAgICAgLy8gUmVkdWNpbmcgdGhlIG51bWJlciBvZiB2aXNpYmlsaXR5IGNoYW5nZXMuDQovLyAvLyAgICAgICAgICAgICAvLyBpZiAodmlzaWJpbGl0eVN0YXRlID09IDApIHsNCi8vIC8vICAgICAgICAgICAgIC8vICAgICBjb25zdCBjdXJ2YXR1cmUgPSBzdXJmYWNlUmVuZGVyUGFyYW1zWyhzdXJmYWNlSWQgKiAzKSArIDFdOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGNvbnN0IG51cmZhY2VOb3JtYWwgPSBuZXcgVmVjMygNCi8vIC8vICAgICAgICAgICAgIC8vICAgICAgICAgZHJhd0l0ZW1EYXRhW29mZnNldCArIDJdLCBkcmF3SXRlbURhdGFbb2Zmc2V0ICsgNl0sIGRyYXdJdGVtRGF0YVtvZmZzZXQgKyAxMF0NCi8vIC8vICAgICAgICAgICAgIC8vICAgICApOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGNvbnN0IGFuZ2xlID0gbnVyZmFjZU5vcm1hbC5uZWdhdGUoKS5hbmdsZVRvKGJvZHlWaXMuZGlyKQ0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIGlmIChhbmdsZSA8IEhBTEZfUEkgKiAoMS4wIC0gY3VydmF0dXJlKSkgew0KLy8gLy8gICAgICAgICAgICAgLy8gICAgICAgICB2aXNpYmlsaXR5U3RhdGUgPSAxOw0KLy8gLy8gICAgICAgICAgICAgLy8gICAgIH0NCi8vIC8vICAgICAgICAgICAgIC8vIH0NCg0KLy8gLy8gICAgICAgICAgICAgLy8gSWYgaXMgdmlzaWJsZSwgY2hlY2sgZm9yIExPRCBjaGFuZ2VzLg0KLy8gLy8gICAgICAgICAgICAgaWYgKHZpc2liaWxpdHlTdGF0ZSA9PSAwKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgY29uc3QgZGV0YWlsID0gc3VyZmFjZVJlbmRlclBhcmFtc1soc3VyZmFjZUlkICogMykgKyAyXTsNCi8vIC8vICAgICAgICAgICAgICAgICBjb25zdCBsb2QgPSAxICsgTWF0aC5taW4oTWF0aC5yb3VuZChkZXRhaWwgKiBNYXRoLmF0YW4oMS4wIC8gYm9keVZpcy5kaXN0KSksIDUpOw0KLy8gLy8gICAgICAgICAgICAgICAgIGlmIChsb2QgIT0gcmVuZGVyRGF0YXNbYm9keUluZGV4XS5jdXJyTG9kW3N1cmZhY2VJbmRleF0pIHsNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgLy8gV2hlbiBhbiBpdGVtIGNoYW5nZXMgTE9ELCBpdCBpcyBwbGFjZWQgaW4gdGhlIG5ldyBMT0Qgc2V0IHdpdGggdmlzaWJsaXR5ID09IHRydWUNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgbG9kQ2hhbmdlcy5wdXNoKHsNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIGJvZHlJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIHN1cmZhY2VJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgICAgIGxvZA0KLy8gLy8gICAgICAgICAgICAgICAgICAgICB9KQ0KLy8gLy8gICAgICAgICAgICAgICAgICAgICByZW5kZXJEYXRhc1tib2R5SW5kZXhdLmN1cnJMb2Rbc3VyZmFjZUluZGV4XSA9IGxvZDsNCi8vIC8vICAgICAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICAgICAgZWxzZSBpZiAodmlzaWJpbGl0eVN0YXRlICE9IHJlbmRlckRhdGFzW2JvZHlJbmRleF0uY3VyclZpc2liaWxpdHlbc3VyZmFjZUluZGV4XSkgew0KLy8gLy8gICAgICAgICAgICAgICAgICAgICAvLyBJZiBsb2QgZGlkbid0IGNoYW5nZSwgd2UgY2FuIGNoYW5nZSB2aXNpYmlsaXR5Lg0KLy8gLy8gICAgICAgICAgICAgICAgICAgICBiZWNvbWluZ1Zpc2libGUucHVzaCh7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgICAgICBib2R5SW5kZXgsDQovLyAvLyAgICAgICAgICAgICAgICAgICAgICAgICBzdXJmYWNlSW5kZXgNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgfSkNCi8vIC8vICAgICAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICBlbHNlIGlmICh2aXNpYmlsaXR5U3RhdGUgIT0gcmVuZGVyRGF0YXNbYm9keUluZGV4XS5jdXJyVmlzaWJpbGl0eVtzdXJmYWNlSW5kZXhdKSB7DQovLyAvLyAgICAgICAgICAgICAgICAgYmVjb21pbmdJbnZpc2libGUucHVzaCh7DQovLyAvLyAgICAgICAgICAgICAgICAgICAgIGJvZHlJbmRleCwNCi8vIC8vICAgICAgICAgICAgICAgICAgICAgc3VyZmFjZUluZGV4DQovLyAvLyAgICAgICAgICAgICAgICAgfSk7DQovLyAvLyAgICAgICAgICAgICB9DQovLyAvLyAgICAgICAgICAgICByZW5kZXJEYXRhc1tib2R5SW5kZXhdLmN1cnJWaXNpYmlsaXR5W3N1cmZhY2VJbmRleF0gPSB2aXNpYmlsaXR5U3RhdGU7DQovLyAvLyAgICAgICAgIH0NCi8vIC8vICAgICB9DQovLyAvLyAgICAgYm9keURyYXdEYXRhcy5mb3JFYWNoKGVhY2hCb2R5RGF0YSk7DQoNCi8vIC8vICAgICBpZiAoYmVjb21pbmdJbnZpc2libGUubGVuZ3RoID4gMCB8fCBiZWNvbWluZ1Zpc2libGUubGVuZ3RoID4gMCB8fCBsb2RDaGFuZ2VzLmxlbmd0aCA+IDApIHsNCi8vIC8vICAgICAgICAgY29uc3QgcmVzdWx0ID0gew0KLy8gLy8gICAgICAgICAgICAgYmVjb21pbmdJbnZpc2libGUsDQovLyAvLyAgICAgICAgICAgICBiZWNvbWluZ1Zpc2libGUsDQovLyAvLyAgICAgICAgICAgICBsb2RDaGFuZ2VzDQovLyAvLyAgICAgICAgIH07DQovLyAvLyAgICAgICAgIC8vIGNvbnNvbGUubG9nKCJvblZpZXdDaGFuZ2VkOiIgK0pTT04uc3RyaW5naWZ5KHJlc3VsdCkpOw0KLy8gLy8gICAgICAgICBvbkRvbmUocmVzdWx0KTsNCi8vIC8vICAgICB9DQovLyAvLyAgICAgZWxzZSB7DQovLyAvLyAgICAgICAgb25Eb25lKCk7DQovLyAvLyAgICAgfQ0KLy8gLy8gfQ0KDQpjb25zdCBHTENBREFzc2V0V29ya2VyX29ubWVzc2FnZSA9IGZ1bmN0aW9uKGRhdGEsIG9uRG9uZSkgew0KICBzd2l0Y2ggKGRhdGEuZXZlbnRUeXBlKSB7DQogICAgY2FzZSAnbG9hZEFzc2VtYmx5JzoNCiAgICAgIGxvYWRBc3NlbWJseShkYXRhLCBvbkRvbmUpOw0KICAgICAgYnJlYWsNCiAgICBjYXNlICdib2R5SGlnaGxpZ2h0Q2hhbmdlZCc6DQogICAgICBib2R5SGlnaGxpZ2h0Q2hhbmdlZChkYXRhLCBvbkRvbmUpOw0KICAgICAgYnJlYWsNCiAgICAvLyBjYXNlICdib2R5SXRlbUNoYW5nZWQnOg0KICAgIC8vICAgYm9keUl0ZW1DaGFuZ2VkKGRhdGEsIG9uRG9uZSkNCiAgICAvLyAgIGJyZWFrDQogICAgLy8gY2FzZSAnYm9keU1hdGVyaWFsQ2hhbmdlZCc6DQogICAgLy8gICBib2R5TWF0ZXJpYWxDaGFuZ2VkKGRhdGEsIG9uRG9uZSk7DQogICAgLy8gICBicmVhazsNCiAgICAvLyBjYXNlICdib2R5Q29sb3JDaGFuZ2VkJzoNCiAgICAvLyAgIGJvZHlDb2xvckNoYW5nZWQoZGF0YSwgb25Eb25lKTsNCiAgICAvLyAgIGJyZWFrOw0KICAgIC8vIGNhc2UgJ2JvZHlYZm9zQ2hhbmdlZCc6DQogICAgLy8gICBib2R5WGZvc0NoYW5nZWQoZGF0YSwgb25Eb25lKTsNCiAgICAvLyAgIGJyZWFrOw0KICB9DQp9Ow0KDQpzZWxmLm9ubWVzc2FnZSA9IGZ1bmN0aW9uKGV2ZW50KSB7DQogIEdMQ0FEQXNzZXRXb3JrZXJfb25tZXNzYWdlKGV2ZW50LmRhdGEsIChyZXN1bHQsIHRyYW5zZmVyYWJsZXMpID0+IHsNCiAgICBzZWxmLnBvc3RNZXNzYWdlKHJlc3VsdCwgdHJhbnNmZXJhYmxlcyk7DQogIH0pOw0KfTsNCg0KLy8gRW5hYmxlIG1lIGZvciBzaW5nbGUgdGhyZWFkZWQgZGV2Lg0KLy8gZXhwb3J0IHsgR0xDQURBc3NldFdvcmtlcl9vbm1lc3NhZ2UgfQoK', null, false);
 /* eslint-enable */
 
+// [bodyDescId, surfaceId, cadBodyDesc.xy], [glmaterialcoords.xy][tr-xyz], [ori], [sc], [highlight], [cutPlane]
+const pixelsPerCADBody = 7;
 // import {
 //   GLCADAssetWorker_onmessage
 // } from './GLCADAssetWorker.js';
@@ -4913,7 +5212,7 @@ const WorkerFactory = createBase64WorkerFactory('Lyogcm9sbHVwLXBsdWdpbi13ZWItd29
 /**  Class representing a GL CAD asset.
  * @ignore
  */
-class GLCADAsset {
+class GLCADAsset extends zeaEngine.EventEmitter {
   /**
    * Create a GL CAD asset.
    * @param {any} gl - The gl value.
@@ -4922,6 +5221,7 @@ class GLCADAsset {
    * @param {any} cadpassdata - The cadpassdata value.
    */
   constructor(gl, assetId, cadAsset, cadpassdata) {
+    super();
     this.__gl = gl;
     this.__assetId = assetId;
     this.__cadAsset = cadAsset;
@@ -4929,37 +5229,13 @@ class GLCADAsset {
     this.__numBodies = cadAsset.getBodyLibrary().getNumBodies();
     this.__numMaterials = cadAsset.getMaterialLibrary().getNumMaterials();
     this.__numHighlightedGeoms = 0;
+    this.__ready = false;
 
     this.__visible = this.__cadAsset.getVisible();
-    this.visibilityChangedId = this.__cadAsset.visibilityChanged.connect(() => {
+    this.visibilityChangedId = this.__cadAsset.on('visibilityChanged', () => {
       this.__visible = this.__cadAsset.getVisible();
-      this.assetVisibilityChanged.emit();
+      this.emit('assetVisibilityChanged');
     });
-
-    const cutPlaneColorParam = this.__cadAsset.getParameter('CutPlaneColor');
-    this.__cutColor = cutPlaneColorParam.getValue();
-    this.cutPlaneColorChangedId = cutPlaneColorParam.valueChanged.connect(() => {
-      this.__cutColor = cutPlaneColorParam.getValue();
-      this.updated.emit();
-    });
-    const cutPlaneNormalParam = this.__cadAsset.getParameter('CutPlaneNormal');
-    this.__cutNormal = cutPlaneNormalParam.getValue();
-    this.cutPlaneNormalChangedId = cutPlaneNormalParam.valueChanged.connect(() => {
-      this.__cutNormal = cutPlaneNormalParam.getValue();
-      this.updated.emit();
-    });
-    const cutDistParam = this.__cadAsset.getParameter('CutPlaneDist');
-    this.__cutDist = cutDistParam.getValue();
-    this.cutDistParamChangedId = cutDistParam.valueChanged.connect(() => {
-      this.__cutDist = cutDistParam.getValue();
-      this.updated.emit();
-    });
-
-    this.loaded = new zeaEngine.Signal();
-    this.updated = new zeaEngine.Signal();
-    this.assetVisibilityChanged = new zeaEngine.Signal();
-    this.bodyXfoChanged = new zeaEngine.Signal();
-    this.bodyVisibilityChanged = new zeaEngine.Signal();
 
     this.__cadpassdata = cadpassdata;
 
@@ -4992,7 +5268,7 @@ class GLCADAsset {
         .getBinaryBuffer();
       if (bodyLibraryBuffer) {
         const bodyTexSize = Math.sqrt(bodyLibraryBuffer.byteLength / 16); // RGBA32 pixels
-        this.__bodyItemTexture = new zeaEngine.GLTexture2D(gl, {
+        this.__bodyDescTexture = new zeaEngine.GLTexture2D(gl, {
           format: 'RGBA',
           type: 'FLOAT',
           width: bodyTexSize,
@@ -5027,9 +5303,7 @@ class GLCADAsset {
 
     this.__trimCurveDrawSets = {};
     this.__surfaceDrawSets = {};
-    this.__lightmapDrawSet = new GLSurfaceDrawSet(gl, 2, 2);
-    this.__lightmapChannel = -1;
-    this.__lightmapFbos = [];
+    this.__curveDrawSets = {};
 
     // ////////////////////////////////////////////////
 
@@ -5107,6 +5381,19 @@ class GLCADAsset {
     //   numBodyItems = tmp;
     // }
 
+    // Only support power 2 textures. Else we get strange corruption on some GPUs
+    // in some scenes.
+    let cadBodiesTextureSize = Math.nextPow2(Math.round(
+      Math.sqrt(numBodyItems * pixelsPerCADBody) + 0.5
+    ));
+    // Size should be a multiple of pixelsPerCADBody, so each geom item is always contiguous
+    // in memory. (makes updating a lot easier. See __updateItemInstanceData below)
+    if (cadBodiesTextureSize % pixelsPerCADBody != 0)
+      cadBodiesTextureSize += pixelsPerCADBody - (cadBodiesTextureSize % pixelsPerCADBody);
+
+    this.cadBodiesTextureData = new Float32Array(cadBodiesTextureSize * cadBodiesTextureSize * 4); // 4==RGBA pixels.
+
+
     // Calculate the entroid to offset all the Xfo values. 
     // This is to work around an issue on Mobile GPUs where
     // the fragment shader stage only supports Flaot16 operations.
@@ -5130,8 +5417,18 @@ class GLCADAsset {
 
     let index = 0;
     this.__cadBodies = [];
-    const highlightedBodies = [];
 
+    
+
+    this.__dirtyBodyIndices = [];
+    const bodyItemDataChanged = (bodyId) => {
+      if (this.__dirtyBodyIndices.indexOf(bodyId) == -1) {
+        this.__dirtyBodyIndices.push(bodyId);
+        this.emit('updated');
+      }
+    };
+
+    const highlightedBodies = [];
     const highlightChangeBatch = {
       highlightedBodyIds: [],
       unhighlightedBodyIds: [],
@@ -5147,44 +5444,69 @@ class GLCADAsset {
       highlightChangeBatch.unhighlightedBodyIds = [];
       highlightChangeBatch.dirty = false;
     };
-
-    const bodyItemChangeBatch = { changes: {}, dirty: false };
-    let bodyItemChangeBatch_transferables = [];
-    const pushBodyItemChangeBatchToWorker = () => {
-      this.__postMessageToWorker({
-        eventType: 'bodyItemChanged',
-        changes: bodyItemChangeBatch.changes,
-      });
-      bodyItemChangeBatch.changes = {};
-      bodyItemChangeBatch.dirty = false;
-      bodyItemChangeBatch_transferables = [];
-    };
-    const bodyItemDataChanged = (bodyId, key, value) => {
-      if (!bodyItemChangeBatch.changes[bodyId])
-        bodyItemChangeBatch.changes[bodyId] = {};
-      bodyItemChangeBatch.changes[bodyId][key] = value;
-      if (!bodyItemChangeBatch.dirty) {
-        setTimeout(pushBodyItemChangeBatchToWorker, 1);
-        bodyItemChangeBatch.dirty = true;
+    const highlightedChanged = (cadBodyId, highlighted) => {
+      if (!highlightChangeBatch.dirty) {
+        setTimeout(pushhighlightChangeBatchToWorker, 1);
+        highlightChangeBatch.dirty = true;
       }
-      if (value instanceof Float32Array)
-        bodyItemChangeBatch_transferables.push(value.buffer);
+      if (highlighted) {
+        if (highlightedBodies.indexOf(cadBodyId) == -1) {
+          highlightedBodies.push(cadBodyId);
+
+          // Note: filter out highlight/unhighlight in a single update.
+          const indexInSelChangeSet = highlightChangeBatch.unhighlightedBodyIds.indexOf(
+            cadBodyId
+          );
+          if (indexInSelChangeSet != -1) {
+            highlightChangeBatch.unhighlightedBodyIds.splice(
+              indexInSelChangeSet,
+              1
+            );
+          } else {
+            highlightChangeBatch.highlightedBodyIds.push(cadBodyId);
+          }
+        }
+      } else {
+        const index = highlightedBodies.indexOf(cadBodyId);
+        if (index != -1) {
+          highlightedBodies.splice(index, 1);
+
+          // Note: filter out highlight/unhighlight in a single update.
+          const indexInSelChangeSet = highlightChangeBatch.highlightedBodyIds.indexOf(
+            cadBodyId
+          );
+          if (indexInSelChangeSet != -1) {
+            highlightChangeBatch.highlightedBodyIds.splice(
+              indexInSelChangeSet,
+              1
+            );
+          } else {
+            highlightChangeBatch.unhighlightedBodyIds.push(cadBodyId);
+          }
+        }
+      }
     };
 
     const bindCADBody = cadBody => {
       const bodyId = index;
       if (bodyId >= numBodyItems) return
+       
+       // Data passed to the web worker to help setup layout.
+      const sceneBodyItemDataByteOffset = bodyId * floatsPerSceneBody * 4/*bytes/channel*/;
+      const sceneBodyItemData = new Float32Array(sceneBodyItemsData.buffer, sceneBodyItemDataByteOffset, floatsPerSceneBody);
+      
+      const cadBodyTextureDataByteOffset = bodyId * pixelsPerCADBody * 4/*channels/pixel*/ * 4/*bytes/channel*/;
+      const cadBodyTextureData = new Float32Array(this.cadBodiesTextureData.buffer, cadBodyTextureDataByteOffset, pixelsPerCADBody * 4/*channels/pixel*/);
 
-      const glCADBody = new GLCADBody(
-        cadBody,
-        bodyId,
+      const glCADBody = new GLCADBody(cadBody, bodyId);
+      glCADBody.bind(
         this.__cadpassdata,
-        sceneBodyItemsData,
+        sceneBodyItemData,
+        cadBodyTextureData,
         bodyItemDataChanged,
-        highlightedBodies,
-        highlightChangeBatch,
-        pushhighlightChangeBatchToWorker
+        highlightedChanged
       );
+      
       this.__cadBodies.push(glCADBody);
       index++;
     };
@@ -5193,9 +5515,24 @@ class GLCADAsset {
       if (treeItem instanceof CADBody) {
         bindCADBody(treeItem);
         return false
-      } else return true
+      } else {
+        return true
+      }
     });
 
+    ////////////////////////////////////////
+    // Greate the GLTexture.
+    const gl = this.__gl;
+    this.__cadBodiesTexture = new zeaEngine.GLTexture2D(gl, {
+      format: 'RGBA',
+      type: 'FLOAT',
+      width: cadBodiesTextureSize,
+      height: cadBodiesTextureSize,
+      filter: 'NEAREST',
+      wrap: 'CLAMP_TO_EDGE',
+      mipMapped: false,
+      data: this.cadBodiesTextureData
+    });
 
     ////////////////////////////////////////
     // Detail Factor
@@ -5209,7 +5546,7 @@ class GLCADAsset {
 
     //////////////////////
     // Calculate a detail value for a circle enclosing our bbox.
-    const lod = this.__cadAsset.getParameter('LOD').getValue();
+    const lod = this.__cadAsset.lod;
     const detail = 128 * Math.pow(2, lod);
     // Calculate the arc angle for a cricle subdivided to the detail level
     const arcAngle = (Math.PI * 2.0) / detail;
@@ -5225,7 +5562,6 @@ class GLCADAsset {
 
     console.log("assetBBoxRadius:", assetBBoxRadius, " errorTolerance:", errorTolerance, " surfaceAreaThreshold:", surfaceAreaThreshold);
 
-
     ////////////////////////////////////////
     const curvesDataBuffer = this.__cadAsset
       .getSurfaceLibrary()
@@ -5238,7 +5574,6 @@ class GLCADAsset {
     const trimSetsBuffer = this.__cadAsset.getTrimSetLibrary().getBinaryBuffer();
     let trimTexelSize = -1;
     if (trimSetsBuffer) {
-
       const numAssets = this.__cadpassdata.assetCount;
       trimTexelSize = this.__cadAsset
         .getTrimSetLibrary()
@@ -5257,6 +5592,7 @@ class GLCADAsset {
     ];
     if (trimSetsBuffer) transferables.push(trimSetsBuffer);
 
+
     const assemblyData = {
       eventType: 'loadAssembly',
       assetId: this.__assetId,
@@ -5269,13 +5605,43 @@ class GLCADAsset {
       errorTolerance,
       surfaceAreaThreshold,
       trimTexelSize,
-      //enableLightmaps: this.__cadpassdata.enableLightmaps,
-      //lightmapTexelSize: this.__cadAsset.getLightmapTexelSize(),
       sceneBodyItemsData,
       bodyLibraryBufferToc,
       bodyLibraryBuffer,
+      highlightedBodies
     };
     this.__postMessageToWorker(assemblyData, transferables);
+  }
+
+  updateBodyTexture(renderstate) {
+    const gl = this.__gl;
+    
+    const texId = this.__gl.TEXTURE0 + renderstate.boundTextures+1;
+    gl.activeTexture(texId);
+    gl.bindTexture(gl.TEXTURE_2D, this.__cadBodiesTexture.glTex);
+    const size = this.__cadBodiesTexture.width;
+    for (let i = 0; i < this.__dirtyBodyIndices.length; i++) {
+      const bodyId = this.__dirtyBodyIndices[i];
+      const yoffset = Math.floor((bodyId * pixelsPerCADBody) / size);
+      const xoffset = (bodyId * pixelsPerCADBody) % size;
+      
+      const width = pixelsPerCADBody;
+      const height = 1;
+
+      const cadBodyTextureDataByteOffset = bodyId * pixelsPerCADBody * 4/*channels/pixel*/ * 4/*bytes/channel*/;
+      const cadBodyTextureData = new Float32Array(this.cadBodiesTextureData.buffer, cadBodyTextureDataByteOffset, pixelsPerCADBody * 4/*channels/pixel*/);
+      this.__cadBodiesTexture.populate(
+        cadBodyTextureData,
+        width,
+        height,
+        xoffset,
+        yoffset,
+        false
+      );
+    }
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    this.__dirtyBodyIndices = [];
   }
 
   /**
@@ -5341,12 +5707,14 @@ class GLCADAsset {
         // removed.
         const values = {};
 
-        values.surfaceEvalTime = this.__surfaceLibrary.evaluateSurfaces(
-          data.surfacesEvalAttrs,
-          data.surfacesAtlasLayout,
-          data.surfacesAtlasLayoutTextureSize,
-          data.surfacesAtlasTextureDim
-        );
+        if (data.surfacesEvalAttrs) {
+          values.surfaceEvalTime = this.__surfaceLibrary.evaluateSurfaces(
+            data.surfacesEvalAttrs,
+            data.surfacesAtlasLayout,
+            data.surfacesAtlasLayoutTextureSize,
+            data.surfacesAtlasTextureDim
+          );
+        }
 
         if (
           data.trimCurveDrawSets &&
@@ -5365,37 +5733,11 @@ class GLCADAsset {
         // Draw Items
 
         this.__bodyAtlasDim = data.bodyAtlasDim;
-        this.updateDrawItems(data.bodyItemsCoords);
-
-        {
-          values.numTriangles = 10;
-          values.numDrawSets = 10;
-          // eslint-disable-next-line guard-for-in
-          for (const drawSetKey in data.surfaceDrawSets) {
-            let drawSet = this.__surfaceDrawSets[drawSetKey];
-            // Note: on initialization, there are no draw sets, so
-            // we always construct the draw set here.
-            if (!drawSet) {
-              const parts = drawSetKey.split('x');
-              const detailX = parseInt(parts[0]);
-              const detailY = parseInt(parts[1]);
-              drawSet = new GLSurfaceDrawSet(this.__gl, detailX, detailY);
-              this.__surfaceDrawSets[drawSetKey] = drawSet;
-            }
-
-            const drawSetData = data.surfaceDrawSets[drawSetKey];
-            // eslint-disable-next-line guard-for-in
-            for (const subSetKey in drawSetData) {
-              const drawItemsData = drawSetData[subSetKey];
-              values.numTriangles += drawSet.addDrawItems(drawItemsData, subSetKey);
-            }
-
-            values.numDrawSets++;
-          }
-        }
-
+        // this.updateDrawItems(data.evalDrawItemShaderAttribs)
+        this.updateDrawSets(values, data.surfaceDrawSets, data.curveDrawSets);
+        this.__ready = true;
         
-        this.loaded.emit({
+        this.emit('loaded', {
           numSurfaces: data.profiling.numSurfaces,
           numSurfaceInstances: data.profiling.numSurfaceInstances,
           surfaceEvalTime: values.surfaceEvalTime,
@@ -5404,12 +5746,12 @@ class GLCADAsset {
           numTriangles: values.numTriangles,
           numDrawSets: values.numDrawSets,
         });
-        this.updated.emit();
+        this.emit('updated');
         break
-      case 'bodyItemChanged':
-        this.updateDrawItems(data.bodyItemsCoords);
-        this.updated.emit();
-        break
+      // case 'bodyItemChanged':
+      //   // this.updateDrawItems(data.evalDrawItemShaderAttribs)
+      //   this.emit('updated')
+      //   break
       case 'highlightedSurfaceDrawSetsChanged':
         for (const drawSetKey in data.highlightedSurfaceDrawSets) {
           const drawSet = this.__surfaceDrawSets[drawSetKey];
@@ -5421,7 +5763,7 @@ class GLCADAsset {
         }
         this.incHighlightedCount(data.numHighlighted);
         this.decHighlightedCount(data.numUnhighlighted);
-        this.updated.emit();
+        this.emit('updated');
         break
     }
 
@@ -5457,19 +5799,18 @@ class GLCADAsset {
 
   /**
    * The updateDrawItems method.
-   * @param {any} bodyItemsCoords - The bodyItemsCoords param.
-   */
-  updateDrawItems(bodyItemsCoords) {
+   * @param {any} evalDrawItemShaderAttribs - The evalDrawItemShaderAttribs param.
+  updateDrawItems(evalDrawItemShaderAttribs) {
     // if (assemblyData.dirtyBodyDrawItemIndies.length == 0)
     //     continue;
-    const count = bodyItemsCoords.length / bodyItemCoordsStride;
+    const count = evalDrawItemShaderAttribs.length / drawItemShaderAttribsStride
     // console.log("updateDrawItems:" + this.__assetId + ":" + count);
     if (count == 0) return
 
-    const gl = this.__gl;
+    const gl = this.__gl
 
     if (!this.__drawItemsTarget) {
-      this.__drawItemsTarget = new zeaEngine.GLRenderTarget(gl, {
+      this.__drawItemsTarget = new GLRenderTarget(gl, {
         format: 'RGBA',
         type: 'FLOAT',
         width: this.__bodyAtlasDim[0],
@@ -5478,8 +5819,8 @@ class GLCADAsset {
         magFilter: 'NEAREST',
         wrap: 'CLAMP_TO_EDGE',
         numColorChannels: 1,
-      });
-      this.__drawItemsTarget.clear();
+      })
+      this.__drawItemsTarget.clear()
 
       // this.__drawItemsTexture = new GLTexture2D(gl, {
       //   format: 'RGBA',
@@ -5505,174 +5846,309 @@ class GLCADAsset {
         this.__bodyAtlasDim[0],
         this.__bodyAtlasDim[1],
         true
-      );
+      )
+    } else {
+      // this.__drawItemFbo.bind();
     }
 
-    const renderstate = {};
-    this.__drawItemsTarget.bindForWriting(renderstate, false);
-    this.__cadpassdata.updateDrawItemsShader.bind(renderstate);
-    this.__cadpassdata.glplanegeom.bind(renderstate);
+    const renderstate = {}
+    this.__drawItemsTarget.bindForWriting(renderstate, false)
+    this.__cadpassdata.updateDrawItemsShader.bind(renderstate)
+    this.__cadpassdata.glplanegeom.bind(renderstate)
 
-    const unifs = renderstate.unifs;
-    const attrs = renderstate.attrs;
+    const unifs = renderstate.unifs
+    const attrs = renderstate.attrs
 
     gl.uniform2i(
       unifs.vert_drawItemsTextureSize.location,
       this.__bodyAtlasDim[0],
       this.__bodyAtlasDim[1]
-    );
-
-    this.__surfaceLibrary.bindSurfacesData(renderstate);
-
-    if (this.__trimSetLibrary)
-      this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate);
-
-    if (this.__lightmapLayoutTexture) {
-      this.__lightmapLayoutTexture.bindToUniform(
-        renderstate,
-        unifs.lightmapLayoutTexture
-      );
-      gl.uniform2i(
-        unifs.lightmapLayoutTextureSize.location,
-        this.__lightmapLayoutTexture.width,
-        this.__lightmapLayoutTexture.height
-      );
+    )
+    if (unifs.frag_drawItemsTextureSize) {
+      this.__gl.uniform2i(
+        unifs.frag_drawItemsTextureSize.location,
+        this.__bodyAtlasDim[0],
+        this.__bodyAtlasDim[1]
+      )
     }
 
-    this.__bodyItemTexture.bindToUniform(renderstate, unifs.bodyDatasTexture);
+    // if (this.__trimSetLibrary)
+    //   this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate)
+
+    this.__bodyDescTexture.bindToUniform(renderstate, unifs.bodyDescTexture)
     gl.uniform2i(
-      unifs.bodyDatasTextureSize.location,
-      this.__bodyItemTexture.width,
-      this.__bodyItemTexture.height
-    );
+      unifs.bodyDescTextureSize.location,
+      this.__bodyDescTexture.width,
+      this.__bodyDescTexture.height
+    )
+    
+    this.__cadBodiesTexture.bindToUniform(renderstate, unifs.cadBodiesTexture)
+    console.log("cadBodiesTextureSize:", this.__cadBodiesTexture.width, this.__cadBodiesTexture.height)
+    gl.uniform2i(
+      unifs.cadBodiesTextureSize.location,
+      this.__cadBodiesTexture.width,
+      this.__cadBodiesTexture.height
+    )
 
-    const buffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, bodyItemsCoords, gl.STATIC_DRAW);
-
-    this.__bindAttr(
-      attrs.bodyDataCoords.location,
-      4,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      0
-    );
-    this.__bindAttr(
-      attrs.bodyItem_metadata.location,
-      4,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      4 * 4
-    );
-    this.__bindAttr(
-      attrs.bodyItem_tr.location,
-      3,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      8 * 4
-    );
-    this.__bindAttr(
-      attrs.bodyItem_ori.location,
-      4,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      11 * 4
-    );
-    this.__bindAttr(
-      attrs.bodyItem_sc.location,
-      3,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      15 * 4
-    );
+    const buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, evalDrawItemShaderAttribs, gl.STATIC_DRAW)
+    
     this.__bindAttr(
       attrs.patchCoords.location,
       4,
       gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      18 * 4
-    );
+      drawItemShaderAttribsStride * 4,
+      0
+    )
     this.__bindAttr(
-      attrs.bodyColor.location,
+      attrs.bodyData.location,
       4,
       gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      22 * 4
-    );
-    this.__bindAttr(
-      attrs.cutPlane.location,
-      4,
-      gl.FLOAT,
-      bodyItemCoordsStride * 4,
-      26 * 4
-    );
+      drawItemShaderAttribsStride * 4,
+      4 * 4
+    )
 
-    this.__cadpassdata.glplanegeom.drawInstanced(count);
-    this.__drawItemsTarget.unbind();
+    // this.__surfaceLibrary.bindSurfacesData(renderstate) // No longer needed.
+    // this.__curveLibrary.bindCurvesAtlasLayout(renderstate) // No longer needed.
 
-    gl.deleteBuffer(buffer);
+    this.__cadpassdata.glplanegeom.drawInstanced(count)
+    this.__drawItemsTarget.unbind()
+
+    gl.deleteBuffer(buffer)
+
+    const logDrawItem = (bodyId, surfaceIndexInBody = -1, pixelId=-1) => {
+      this.__drawItemsTarget.bindForReading()
+      console.log('----------------------------------')
+      const layout = [
+        evalDrawItemShaderAttribs[bodyId * drawItemShaderAttribsStride + 0],
+        evalDrawItemShaderAttribs[bodyId * drawItemShaderAttribsStride + 1],
+        evalDrawItemShaderAttribs[bodyId * drawItemShaderAttribsStride + 2],
+        evalDrawItemShaderAttribs[bodyId * drawItemShaderAttribsStride + 3],
+      ]
+      const numBodiesU = layout[2] / pixelsPerDrawItem
+      const numBodiesV = layout[3]
+      console.log(
+        'DrawItem ' +
+          bodyId +
+          ':[' +
+          layout[0] +
+          ',' +
+          layout[1] +
+          ']:' +
+          layout[2] +
+          'x' +
+          layout[3]
+      )
+      if (surfaceIndexInBody == -1) {
+        const pixels = new Float32Array(layout[2] * 4)
+        let didx = 0
+        for (let i = 0; i < layout[3]; i++) {
+          gl.readPixels(
+            layout[0],
+            layout[1] + i,
+            layout[2],
+            1,
+            gl.RGBA,
+            gl.FLOAT,
+            pixels
+          )
+          for (let j = 0; j < numBodiesU; j++) {
+            const begin = j * pixelsPerDrawItem * 4
+            const end = ((j + 1) * pixelsPerDrawItem) * 4
+            const drawItemData = pixels.slice(begin, end)
+            // console.log(drawItemData)
+            if (pixelId == -1) {
+              for (let k = 0; k < pixelsPerDrawItem; k++) {
+                console.log(didx, j, " :", k, ":", drawItemData[k*4+0], drawItemData[k*4+1], drawItemData[k*4+2], drawItemData[k*4+3]);
+              }
+            } else {
+              console.log(didx, j, " :", pixelId, ":", drawItemData[pixelId*4+0], drawItemData[pixelId*4+1], drawItemData[pixelId*4+2], drawItemData[pixelId*4+3]);
+            }
+            didx++
+          }
+        }
+      } else {
+        const x = surfaceIndexInBody % numBodiesU
+        const y = Math.floor(surfaceIndexInBody / numBodiesU)
+        const pixels = new Float32Array(pixelsPerDrawItem * 4)
+        gl.readPixels(
+          layout[0] + x * pixelsPerDrawItem,
+          layout[1] + y,
+          pixelsPerDrawItem,
+          1,
+          gl.RGBA,
+          gl.FLOAT,
+          pixels
+        )
+        // console.log(pixels)
+        if (pixelId == -1) {
+          for (let j = 0; j < pixelsPerDrawItem; j++) {
+            console.log(surfaceIndexInBody,":", j,":", pixels[j*4+0], pixels[j*4+1], pixels[j*4+2], pixels[j*4+3]);
+          }
+        } else {
+          console.log(surfaceIndexInBody,":", pixelId,":", pixels[pixelId*4+0], pixels[pixelId*4+1], pixels[pixelId*4+2], pixels[pixelId*4+3]);
+        }
+      }
+      this.__drawItemsTarget.unbind()
+      console.log('----------------------------------')
+    }
     // for(let i=0; i<count; i++) {
-    //   const id = bodyItemsCoords[(i * bodyItemCoordsStride) + 1]
+    //   const id = evalDrawItemShaderAttribs[(i * drawItemShaderAttribsStride) + 1]
     //   logDrawItem(id);
     // }
     // gl.finish();
     // this.__drawItemFbo.bind();
-    // logDrawItem(46, 0);
     // logDrawItem(0);
+    // logDrawItem(0, -1, 2);
+  }
+  */
+
+  /**
+   * The updateDrawItems method.
+   * @param {any} evalDrawItemShaderAttribs - The evalDrawItemShaderAttribs param.
+   */
+  updateDrawSets(values, surfaceDrawSets, curveDrawSets) {
+
+    values.numTriangles = 0;
+    values.numDrawSets = 0;
+
+    if (surfaceDrawSets)
+    {
+      // eslint-disable-next-line guard-for-in
+      for (const drawSetKey in surfaceDrawSets) {
+        let drawSet = this.__surfaceDrawSets[drawSetKey];
+        // Note: on initialization, there are no draw sets, so
+        // we always construct the draw set here.
+        if (!drawSet) {
+          const parts = drawSetKey.split('x');
+          const detailX = parseInt(parts[0]);
+          const detailY = parseInt(parts[1]);
+          drawSet = new GLSurfaceDrawSet(this.__gl, detailX, detailY);
+          this.__surfaceDrawSets[drawSetKey] = drawSet;
+        }
+
+        const drawSetData = surfaceDrawSets[drawSetKey];
+        // eslint-disable-next-line guard-for-in
+        for (const subSetKey in drawSetData) {
+          const drawItemsData = drawSetData[subSetKey];
+          values.numTriangles += drawSet.addDrawItems(drawItemsData, subSetKey);
+        }
+
+        values.numDrawSets++;
+      }
+    }
+    if (curveDrawSets)
+    {
+      // eslint-disable-next-line guard-for-in
+      for (const drawSetKey in curveDrawSets) {
+        let drawSet = this.__curveDrawSets[drawSetKey];
+        // Note: on initialization, there are no draw sets, so
+        // we always construct the draw set here.
+        if (!drawSet) {
+          const detail = parseInt(drawSetKey);
+          drawSet = new GLCurveDrawSet(this.__gl, detail);
+          this.__curveDrawSets[drawSetKey] = drawSet;
+        }
+
+        const drawSetData = curveDrawSets[drawSetKey];
+        // eslint-disable-next-line guard-for-in
+        for (const subSetKey in drawSetData) {
+          const drawItemsData = drawSetData[subSetKey];
+          drawSet.addDrawItems(drawItemsData, subSetKey);
+        }
+
+        values.numDrawSets++;
+      }
+    }
   }
 
   /**
    * The bindDrawItemsAtlas method.
    * @param {any} renderstate - The renderstate param.
    */
+  
   bindDrawItemsAtlas(renderstate) {
     this.__drawItemsTarget.bindColorTexture(
       renderstate,
       renderstate.unifs.drawItemsTexture
     );
     // this.__drawItemsTexture.bindToUniform(renderstate, renderstate.unifs.drawItemsTexture);
-    if (renderstate.unifs.vert_drawItemsTextureSize)
+    if (renderstate.unifs.vert_drawItemsTextureSize) {
       this.__gl.uniform2i(
         renderstate.unifs.vert_drawItemsTextureSize.location,
         this.__bodyAtlasDim[0],
         this.__bodyAtlasDim[1]
       );
-    if (renderstate.unifs.frag_drawItemsTextureSize)
+    }
+    if (renderstate.unifs.frag_drawItemsTextureSize) {
       this.__gl.uniform2i(
         renderstate.unifs.frag_drawItemsTextureSize.location,
         this.__bodyAtlasDim[0],
         this.__bodyAtlasDim[1]
       );
+    }
   }
 
-  /**
-   * The bindLightmap method.
-   * @param {any} camera - The camera param.
-   */
-  setActiveCamera(camera) {
-    // listen to changes in the camera and send updates to the worker.
-  }
+  bind(renderstate) {
+    const gl = this.__gl;
+    const unifs = renderstate.unifs;
 
-  /**
-   * The onViewChanged method.
-   * @param {any} viewXfo - The viewXfo param.
-   * @param {any} viewDir - The viewDir param.
-   */
-  onViewChanged(viewXfo, viewDir) {
-    if (this.__workerWorking) return
-    // this.__workerWorking = true;
-    // this.__worker.postMessage({
-    //     eventType: 'viewChanged',
-    //     viewXfo,
-    //     viewDir
-    // });
-    // GLCADAssetWorker_onmessage({
-    //     eventType: 'viewChanged',
-    //     viewXfo,
-    //     viewDir
-    // }, (result) => {
-    //     this.__onWorkerMessage(result);
-    // });
+    // console.log("bind:", Object.keys(unifs))
+
+    // this.bindDrawItemsAtlas(renderstate)
+    // if (unifs.drawItemsTexture) {
+    //   this.__drawItemsTarget.bindColorTexture(
+    //     renderstate,
+    //     unifs.drawItemsTexture
+    //   )
+    // }
+    
+    if (unifs.vert_drawItemsTextureSize) {
+      this.__gl.uniform2i(
+        unifs.vert_drawItemsTextureSize.location,
+        this.__bodyAtlasDim[0],
+        this.__bodyAtlasDim[1]
+      );
+    }
+    if (unifs.frag_drawItemsTextureSize) {
+      this.__gl.uniform2i(
+        unifs.frag_drawItemsTextureSize.location,
+        this.__bodyAtlasDim[0],
+        this.__bodyAtlasDim[1]
+      );
+    }
+
+    if (unifs.bodyDescTexture) {
+      this.__bodyDescTexture.bindToUniform(renderstate, unifs.bodyDescTexture);
+      gl.uniform2i(
+        unifs.bodyDescTextureSize.location,
+        this.__bodyDescTexture.width,
+        this.__bodyDescTexture.height
+      );
+    }
+
+    if (unifs.cadBodiesTexture) {
+      this.__cadBodiesTexture.bindToUniform(renderstate, unifs.cadBodiesTexture);
+      if (unifs.cadBodiesTextureSize_vert)
+        gl.uniform1i(unifs.cadBodiesTextureSize_vert.location, this.__cadBodiesTexture.width);
+      if (unifs.cadBodiesTextureSize_frag)
+        gl.uniform1i(unifs.cadBodiesTextureSize_frag.location, this.__cadBodiesTexture.width);
+    }
+    
+
+    // if (unifs.cutNormal) {
+    //   gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray())
+    //   gl.uniform1f(unifs.planeDist.location, this.__cutDist)
+    //   if (unifs.cutColor) {
+    //     gl.uniform4fv(unifs.cutColor.location, this.__cutColor.asArray())
+    //   }
+    // }
+
+    if (unifs.assetCentroid) {
+      gl.uniform3fv(unifs.assetCentroid.location, this.__assetCentroid.asArray());
+    }
+    
   }
 
   /**
@@ -5681,26 +6157,26 @@ class GLCADAsset {
    * @return {any} - The return value.
    */
   draw(renderstate) {
-    if (!this.__visible || !this.__drawItemsTarget) return false
+    if (!this.__visible || !this.__ready) return false
 
-    const boundTextures = renderstate['boundTextures'];
-
-    this.__surfaceLibrary.bindSurfacesAtlas(renderstate);
-    if (this.__trimSetLibrary)
-      this.__trimSetLibrary.bindTrimSetAtlas(renderstate);
-    this.bindDrawItemsAtlas(renderstate);
-    // this.bindLightmap(renderstate)
-
-    const gl = this.__gl;
-    const unifs = renderstate.unifs;
-    if (unifs.cutNormal) {
-      gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray());
-      gl.uniform1f(unifs.planeDist.location, this.__cutDist);
-      if (unifs.cutColor) {
-        gl.uniform4fv(unifs.cutColor.location, this.__cutColor.asArray());
-      }
+    const boundTextures = renderstate.boundTextures;
+    
+    if (this.__dirtyBodyIndices.length > 0) {
+      this.updateBodyTexture(renderstate);
     }
-    gl.uniform3fv(unifs.assetCentroid.location, this.__assetCentroid.asArray());
+
+
+    this.bind(renderstate);
+
+    if (!this.__surfaceLibrary.bindSurfacesAtlas(renderstate)) {
+      renderstate.boundTextures = boundTextures;
+      return
+    }
+      
+    if (this.__trimSetLibrary) {
+      this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate);
+      this.__trimSetLibrary.bindTrimSetAtlas(renderstate);
+    }
 
     for (const key in this.__surfaceDrawSets) {
       // console.log("draw:" + key)
@@ -5708,7 +6184,7 @@ class GLCADAsset {
       drawSet.draw(renderstate, renderstate.shaderId);
     }
 
-    renderstate['boundTextures'] = boundTextures;
+    renderstate.boundTextures = boundTextures;
   }
 
   /**
@@ -5719,20 +6195,19 @@ class GLCADAsset {
   drawHighlightedGeoms(renderstate) {
     if (!this.__visible || this.__numHighlightedGeoms == 0) return false
 
-    const boundTextures = renderstate['boundTextures'];
+    const boundTextures = renderstate.boundTextures;
+
+    if (this.__dirtyBodyIndices.length > 0) {
+      this.updateBodyTexture(renderstate);
+    }
+
+    this.bind(renderstate);
 
     this.__surfaceLibrary.bindSurfacesAtlas(renderstate);
-    if (this.__trimSetLibrary)
+    if (this.__trimSetLibrary) {
+      this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate);
       this.__trimSetLibrary.bindTrimSetAtlas(renderstate);
-    this.bindDrawItemsAtlas(renderstate);
-
-    const gl = this.__gl;
-    const unifs = renderstate.unifs;
-    if (unifs.cutNormal) {
-      gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray());
-      gl.uniform1f(unifs.planeDist.location, this.__cutDist);
     }
-    gl.uniform3fv(unifs.assetCentroid.location, this.__assetCentroid.asArray());
 
     // Now draw the highlight outline.
     const highlightOutlineID = 1;
@@ -5742,7 +6217,7 @@ class GLCADAsset {
       drawSet.draw(renderstate, highlightOutlineID);
     }
 
-    renderstate['boundTextures'] = boundTextures;
+    renderstate.boundTextures = boundTextures;
   }
 
   /**
@@ -5752,27 +6227,48 @@ class GLCADAsset {
    * @return {any} - The return value.
    */
   drawNormals(renderstate, shaderKey) {
-    if (!this.__visible || !this.__drawItemsTarget) return false
+    if (!this.__visible || !this.__ready) return false
 
+    const boundTextures = renderstate.boundTextures;
+    this.bind(renderstate);
+    
     this.__surfaceLibrary.bindSurfacesAtlas(renderstate);
-    if (this.__trimSetLibrary)
+    if (this.__trimSetLibrary) {
+      this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate);
       this.__trimSetLibrary.bindTrimSetAtlas(renderstate);
-    this.bindDrawItemsAtlas(renderstate);
-
-    const gl = this.__gl;
-    const unifs = renderstate.unifs;
-    if (unifs.cutNormal) {
-      gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray());
-      gl.uniform1f(unifs.planeDist.location, this.__cutDist);
     }
-    gl.uniform3fv(unifs.assetCentroid.location, this.__assetCentroid.asArray());
 
     for (const key in this.__surfaceDrawSets) {
       const drawSet = this.__surfaceDrawSets[key];
       drawSet.drawNormals(renderstate, shaderKey);
     }
 
-    renderstate['boundTextures'] -= 3;
+    renderstate.boundTextures = boundTextures;
+  }
+
+  /**
+   * The drawEdges method.
+   * @param {any} renderstate - The renderstate param.
+   * @param {any} shaderKey - The shaderKey param.
+   * @return {any} - The return value.
+   */
+  drawEdges(renderstate, shaderKey) {
+    if (!this.__visible || !this.__ready) return false
+
+    const boundTextures = renderstate.boundTextures;
+    if (this.__dirtyBodyIndices.length > 0) {
+      this.updateBodyTexture(renderstate);
+    }
+
+    this.bind(renderstate);
+    this.__curveLibrary.bindCurvesAtlas(renderstate);
+
+    for (const key in this.__curveDrawSets) {
+      const drawSet = this.__curveDrawSets[key];
+      drawSet.draw(renderstate, shaderKey);
+    }
+
+    renderstate.boundTextures = boundTextures;
   }
 
   /**
@@ -5781,28 +6277,23 @@ class GLCADAsset {
    * @return {any} - The return value.
    */
   drawGeomData(renderstate) {
-    if (!this.__visible || !this.__drawItemsTarget) return false
+    if (!this.__visible || !this.__ready) return false
 
-    const boundTextures = renderstate['boundTextures'];
+    const boundTextures = renderstate.boundTextures;
 
+    this.bind(renderstate);
+    
     this.__surfaceLibrary.bindSurfacesAtlas(renderstate);
-    if (this.__trimSetLibrary)
+    if (this.__trimSetLibrary) {
+      this.__trimSetLibrary.bindTrimSetAtlasLayout(renderstate);
       this.__trimSetLibrary.bindTrimSetAtlas(renderstate);
-    this.bindDrawItemsAtlas(renderstate);
+    }
 
     const gl = this.__gl;
-    const unifs = renderstate.unifs;
-
-    const assetIndexUnif = unifs.assetIndex;
+    const assetIndexUnif = renderstate.unifs.assetIndex;
     if (assetIndexUnif) {
       gl.uniform1i(assetIndexUnif.location, this.__assetId);
     }
-
-    if (unifs.cutNormal) {
-      gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray());
-      gl.uniform1f(unifs.planeDist.location, this.__cutDist);
-    }
-    gl.uniform3fv(unifs.assetCentroid.location, this.__assetCentroid.asArray());
 
     for (const key in this.__surfaceDrawSets) {
       // console.log("draw:" + key)
@@ -5810,7 +6301,7 @@ class GLCADAsset {
       drawSet.draw(renderstate, renderstate.shaderId);
     }
 
-    renderstate['boundTextures'] = boundTextures;
+    renderstate.boundTextures = boundTextures;
   }
 
   /**
@@ -5849,48 +6340,12 @@ class GLCADAsset {
   }
 
   /**
-   * The drawLightmap method.
-   * @param {any} renderstate - The renderstate param.
-  drawLightmap(renderstate) {
-    if (this.__trimSetLibrary) this.__trimSetLibrary.drawTrimSets(renderstate)
-  }
-   */
-
-  /**
-   * The drawLightmap method.
-   * @param {any} renderstate - The renderstate param.
-   * @return {any} - The return value.
-  drawLightmap(renderstate) {
-    if (
-      this.__lightmapChannel == -1 ||
-      !this.__cadpassdata.debugTrimSetsShader.bind(renderstate)
-    )
-      return false
-    // this.bindTrimSetAtlas(renderstate);
-    const unifs = renderstate.unifs
-    if (unifs.cutNormal) {
-      gl.uniform3fv(unifs.cutNormal.location, this.__cutNormal.asArray())
-      gl.uniform1f(unifs.planeDist.location, this.__cutDist)
-    }
-
-    this.__lightmapFbos[this.__lightmapChannel]
-      .getColorTexture()
-      .bindToUniform(renderstate, unifs.trimSetAtlasTexture)
-    this.__cadpassdata.glplanegeom.bind(renderstate)
-    this.__cadpassdata.glplanegeom.draw()
-  }
-   */
-
-  /**
    * The destroy method.
    */
   destroy() {
-    this.__cadAsset.visibilityChanged.disconnectId(this.visibilityChangedId);
-    this.__cadAsset.getParameter('CutPlaneColor').valueChanged.disconnectId(this.cutPlaneColorChangedId);
-    this.__cadAsset.getParameter('CutPlaneNormal').valueChanged.disconnectId(this.cutPlaneNormalChangedId);
-    this.__cadAsset.getParameter('CutPlaneDist').valueChanged.disconnectId(this.cutDistParamChangedId);
+    this.__cadAsset.off('visibilityChanged', this.visibilityChangedId);
 
-    this.__bodyItemTexture.destroy();
+    this.__cadBodiesTexture.destroy();
 
     this.__cadBodies.forEach(glCADBody => glCADBody.destroy());
     this.__cadBodies = [];
@@ -5911,12 +6366,13 @@ class GLCADAsset {
 /** Class representing a GL CAD material library.
  * @ignore
  */
-class GLCADMaterialLibrary {
+class GLCADMaterialLibrary extends zeaEngine.EventEmitter {
   /**
    * Create a GL CAD material library.
    * @param {any} gl - The gl value.
    */
   constructor(gl) {
+    super();
     this.__gl = gl;
     this.__materialDatas = [];
     this.__dirtyIndices = [];
@@ -5924,7 +6380,6 @@ class GLCADMaterialLibrary {
     this.__materialPacker = new zeaEngine.GrowingPacker(256, 256);
 
     this.__needsUpload = false;
-    this.updated = new zeaEngine.Signal();
   }
 
   /**
@@ -5946,10 +6401,10 @@ class GLCADMaterialLibrary {
       coords,
     });
 
-    material.parameterValueChanged.connect(() => {
+    material.on('parameterValueChanged', () => {
       // this.__renderer.requestRedraw();
       this.__dirtyIndices.push(materialId);
-      this.updated.emit();
+      this.emit('updated');
     });
 
     material.setMetadata('glmaterialcoords', coords);
@@ -6043,6 +6498,7 @@ class GLCADMaterialLibrary {
     };
     this.__dirtyIndices.forEach(eachMaterial);
     this.__dirtyIndices = [];
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   /**
@@ -6835,7 +7291,6 @@ PosNorm calcRevolutionSurfacePoint(vec2 params, inout GLSLBinReader reader, samp
   } else {
     tangent = cross(pos, axis);
   }
-
   // TODO: Find a conclusive test file that demonstrates this as correct.
   // I think it is the master cylinder sample.
   // vec3 normal = normalize(cross(p_n, tangent));
@@ -7783,8 +8238,8 @@ precision highp float;
 uniform sampler2D curvesAtlasTexture;
 uniform ivec2 curvesAtlasTextureSize;
 uniform sampler2D curveTangentsTexture;
-uniform sampler2D curveAtlasLayoutTexture;
-uniform ivec2 curveAtlasLayoutTextureSize;
+uniform sampler2D curvesAtlasLayoutTexture;
+uniform ivec2 curvesAtlasLayoutTextureSize;
 
 vec3 getCurveVertex(ivec2 curvePatchCoords, int vertexCoord) {
   return fetchTexel(curvesAtlasTexture, curvesAtlasTextureSize, ivec2(curvePatchCoords.x + vertexCoord, curvePatchCoords.y)).rgb;
@@ -7797,8 +8252,8 @@ vec3 getCurveTangent(ivec2 curvePatchCoords, int vertexCoord) {
 PosNorm evalCADCurve3d(int curveId, float u) {
 
   GLSLBinReader curveLayoutDataReader;
-  GLSLBinReader_init(curveLayoutDataReader, curveAtlasLayoutTextureSize, 32);
-  ivec4 curvePatch = ivec4(GLSLBinReader_readVec4(curveLayoutDataReader, curveAtlasLayoutTexture, curveId * 8));
+  GLSLBinReader_init(curveLayoutDataReader, curvesAtlasLayoutTextureSize, 32);
+  ivec4 curvePatch = ivec4(GLSLBinReader_readVec4(curveLayoutDataReader, curvesAtlasLayoutTexture, curveId * 8));
 
   float t = float(curvePatch.z - 1) * u;
   int vertexId0 = min(int(floor(t + 0.5)), curvePatch.z - 1);
@@ -8000,38 +8455,147 @@ zeaEngine.shaderLibrary.setShaderModule(
 
   const int geomLibraryHeaderSize = 4; // 2 pixels at the start of the GeomLibrary and CurveLibrary
 
-
+  // [bodyDescId, surfaceId, cadBodyDesc.xy], [glmaterialcoords.xy][tr-xyz], [ori], [sc], [highlight], [cutPlane]
+  const int pixelsPerCADBody = 7;
 `
 );
 
 zeaEngine.shaderLibrary.setShaderModule(
-  'GLSLCADSurfaceDrawing.vertexShader.glsl',
+  'GLSLCADGeomDrawing.vertexShader.glsl',
   `
-uniform sampler2D surfacesAtlasTexture;
-uniform ivec2 surfacesAtlasTextureSize;
-uniform sampler2D normalsTexture;
+ivec4 ftoi(vec4 v4) {
+  return ivec4(ftoi(v4.x), ftoi(v4.y), ftoi(v4.z), ftoi(v4.w));
+}
+
+ivec2 ftoi(vec2 v2) {
+  return ivec2(ftoi(v2.x), ftoi(v2.y));
+}
+
+uniform sampler2D cadBodiesTexture;
+uniform int cadBodiesTextureSize_vert;
+  
+vec4 getCADBodyPixel(int cadBodyId, int pixelOffset) {
+  int offset = cadBodyId * pixelsPerCADBody;
+  ivec2 start;
+  start.y += offset / cadBodiesTextureSize_vert;
+  start.x = imod(offset, cadBodiesTextureSize_vert);
+  return fetchTexel(cadBodiesTexture, ivec2(cadBodiesTextureSize_vert), ivec2(start.x + pixelOffset, start.y));
+}
+
+<%include file="GLSLMath.glsl"/>
+<%include file="GLSLBinReader.glsl"/>
+
+
+const int pixelsPerDrawItem = 10; // The number of RGBA pixels per draw item.
+const int valuesPerSurfaceTocItem = 9;
+const int bytesPerValue = 4; // 32 bit floats
+
+// Before enabling this, enable the 2nd vertex attribute (drawItemTexAddr)
+// in the Draw shader and in the GLDrawSet, and in the GLCADAssetWorker
+#define CALC_GLOBAL_XFO_DURING_DRAW
+#ifdef CALC_GLOBAL_XFO_DURING_DRAW
+
+mat4 getCADBodyMatrix(int cadBodyId) {
+  vec3 body_tr = getCADBodyPixel(cadBodyId, 2).rgb;
+  vec4 body_ori = normalize(getCADBodyPixel(cadBodyId, 3));
+  vec3 body_sc = getCADBodyPixel(cadBodyId, 4).rgb;
+  Xfo bodyXfo = Xfo(body_tr, body_ori, body_sc);
+  return xfo_toMat4(bodyXfo);
+  // return mat4(1.0);
+}
+
+uniform sampler2D bodyDescTexture;
+uniform ivec2 bodyDescTextureSize;
+
+GLSLBinReader setupBodyDescReader(ivec2 bodyDescAddr) {
+  GLSLBinReader bodyDescReader;
+  ivec4 region = ivec4(0, 0, bodyDescTextureSize.x, bodyDescTextureSize.y);
+  ivec2 start = ivec2(bodyDescAddr.x, bodyDescAddr.y);
+  GLSLBinReader_init(bodyDescReader, bodyDescTextureSize, region, start, 32);
+  return bodyDescReader;
+}
+
+Xfo getDrawItemXfo(ivec2 bodyDescAddr, int drawItemIndexInBody) {
+  GLSLBinReader bodyDescReader = setupBodyDescReader(bodyDescAddr);
+  
+  // Skip over the bbox, numSurfaces and then to the current surface data.  
+  #ifdef ENABLE_BODY_EDGES
+  int offsetOfItemRef = (6/*bbox*/) + (1/*numSurfaces*/) + (1/*numCurves*/) + (drawItemIndexInBody * (1/*id*/ + 10/*xfo*/));
+  #else
+  int offsetOfItemRef = (6/*bbox*/) + (1/*numSurfaces*/) + (drawItemIndexInBody * (1/*id*/ + 10/*xfo*/));
+  #endif
+  #ifdef ENABLE_PER_FACE_COLORS
+  offsetOfItemRef += drawItemIndexInBody * 4/*color*/; // Skip over the color.
+  #endif
+  
+  vec3 surface_tr = vec3(
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+1),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+2),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+3)
+    );
+
+  vec4 surface_ori = normalize(vec4(
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+4),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+5),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+6),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+7)
+    ));
+
+  vec3 surface_sc = vec3(
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+8),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+9),
+    GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+10)
+  );
+
+  Xfo surfaceXfo = Xfo(surface_tr, surface_ori, surface_sc);
+  return surfaceXfo;
+
+}
+mat4 getDrawItemMatrix(ivec2 bodyDescAddr, int drawItemIndexInBody) {
+  return xfo_toMat4(getDrawItemXfo(bodyDescAddr, drawItemIndexInBody));
+  // return mat4(1.0);
+}
+
+#else // CALC_GLOBAL_XFO_DURING_DRAW
+
 uniform sampler2D drawItemsTexture;
 uniform ivec2 vert_drawItemsTextureSize;
 
 // The Draw Items texture is laid out with 8 pixels per draw item.
 vec4 getDrawItemData(int offset) {
-  return fetchTexel(drawItemsTexture, vert_drawItemsTextureSize, ivec2(ftoi(drawCoords.x) + offset, ftoi(drawCoords.y)));
+  return fetchTexel(drawItemsTexture, vert_drawItemsTextureSize, ivec2(ftoi(drawItemTexAddr.x) + offset, ftoi(drawItemTexAddr.y)));
 }
 
 mat4 getModelMatrix() {
   // Unpack 3 x 4 matix columns into a 4 x 4 matrix.
-  vec4 col0 = getDrawItemData(5);
-  vec4 col1 = getDrawItemData(6);
-  vec4 col2 = getDrawItemData(7);
+  vec4 col0 = getDrawItemData(0);
+  vec4 col1 = getDrawItemData(1);
+  vec4 col2 = getDrawItemData(2);
   mat4 result = mat4(col0, col1, col2, vec4(0.0, 0.0, 0.0, 1.0));
   return transpose(result);
 }
 
-int getSurfaceType(vec2 surfacePatchCoords, vec2 vertexCoord) {
-  return int(fetchTexel(surfacesAtlasTexture, surfacesAtlasTextureSize, ivec2(ftoi(surfacePatchCoords.x + vertexCoord.x), ftoi(surfacePatchCoords.y + vertexCoord.y))).a);
-}
-vec3 getSurfaceVertex(vec2 surfacePatchCoords, vec2 vertexCoord) {
-  return fetchTexel(surfacesAtlasTexture, surfacesAtlasTextureSize, ivec2(ftoi(surfacePatchCoords.x + vertexCoord.x), ftoi(surfacePatchCoords.y + vertexCoord.y))).rgb;
+#endif // CALC_GLOBAL_XFO_DURING_DRAW
+
+  `
+);
+zeaEngine.shaderLibrary.setShaderModule(
+  'GLSLCADSurfaceDrawing.vertexShader.glsl',
+  `
+  
+<%include file="GLSLCADGeomDrawing.vertexShader.glsl"/>
+
+
+// GEOM
+uniform sampler2D surfaceAtlasLayoutTexture;
+uniform ivec2 surfaceAtlasLayoutTextureSize;
+
+uniform sampler2D surfacesAtlasTexture;
+uniform ivec2 surfacesAtlasTextureSize;
+uniform sampler2D normalsTexture;
+
+vec4 getSurfaceVertex(vec2 surfacePatchCoords, vec2 vertexCoord) {
+  return fetchTexel(surfacesAtlasTexture, surfacesAtlasTextureSize, ivec2(ftoi(surfacePatchCoords.x + vertexCoord.x), ftoi(surfacePatchCoords.y + vertexCoord.y)));
 }
 
 vec3 getSurfaceNormal(vec2 surfacePatchCoords, vec2 vertexCoord) {
@@ -8042,64 +8606,88 @@ vec3 getSurfaceNormal(vec2 surfacePatchCoords, vec2 vertexCoord) {
 );
 
 zeaEngine.shaderLibrary.setShaderModule(
-  'GLSLCADSurfaceDrawing.fragmentShader.glsl',
+  'GLSLCADGeomDrawing.fragmentShader.glsl',
   `
+  uniform sampler2D cadBodiesTexture;
+  uniform int cadBodiesTextureSize_frag;
+  
+  vec4 getCADBodyPixel(int cadBodyId, int pixelOffset) {
+    
+    int offset = cadBodyId * pixelsPerCADBody;
+    ivec2 start;
+    start.y += offset / cadBodiesTextureSize_frag;
+    start.x = imod(offset, cadBodiesTextureSize_frag);
+  
+    return fetchTexel(cadBodiesTexture, ivec2(cadBodiesTextureSize_frag), ivec2(start.x + pixelOffset, start.y));
+  }
+  
+  // Is this still used?
+  uniform sampler2D drawItemsTexture;
+  uniform ivec2 frag_drawItemsTextureSize;
+  // The Draw Items texture is laid out with 8 pixels per draw item.
+  vec4 getDrawItemData(int offset) {
+    return fetchTexel(drawItemsTexture, frag_drawItemsTextureSize, ivec2(ftoi(v_drawCoords.x) + offset, ftoi(v_drawCoords.y)));
+  }
+  
+  
+
+//////////////////////////////////////////////
+// Cutaways
+
+<%include file="cutaways.glsl"/>
+
+// bool applyCutaway(int cadBodyId, int flags) {
+//   if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
+//     vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+//     vec3 cutNormal = cadBodyPixel6.xyz;
+//     float cutPlaneDist = cadBodyPixel6.w;
+//     if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
+//         discard;
+//     }
+//     return true;
+//   }
+//   return false;
+// }
+
+// int applyCutaway(int flags, bool backFacing, vec3 cutColor, inout vec4 fragColor) {
+//   bool cut = testFlag(flags, BODY_FLAG_CUTAWAY);
+//   if(cut){
+//     if(cutaway(v_worldPos, cutNormal, planeDist)) {
+//       return 1;
+//     }
+//     if(backFacing){
+//       fragColor = vec4(cutColor, 1.0);
+//       return 2;
+//     }
+//   }
+//   return 0;
+// }
+  `
+  );
+zeaEngine.shaderLibrary.setShaderModule(
+  'GLSLCADSurfaceDrawing.fragmentShader.glsl',
+`
+  
+<%include file="GLSLCADGeomDrawing.fragmentShader.glsl"/>
+
 
 uniform sampler2D materialsTexture;
 uniform ivec2 materialsTextureSize;
-uniform sampler2D drawItemsTexture;
-uniform ivec2 frag_drawItemsTextureSize;
 
-// The Draw Items texture is laid out with 8 pixels per draw item.
-vec4 getDrawItemData(int offset) {
-  return fetchTexel(drawItemsTexture, frag_drawItemsTextureSize, ivec2(ftoi(v_drawCoords.x) + offset, ftoi(v_drawCoords.y)));
-}
 vec4 getMaterialValue(vec2 materialCoords, int valueIndex) {
   return fetchTexel(materialsTexture, materialsTextureSize, ivec2(ftoi(materialCoords.x) + valueIndex, ftoi(materialCoords.y)));
 }
 
-#ifdef ENABLE_CUTAWAYS
 
-<%include file="cutaways.glsl"/>
-
-uniform vec3 cutNormal;
-uniform vec4 cutColor;
-uniform float planeDist;
-
-bool applyCutaway(int flags) {
-  bool cut = testFlag(flags, BODY_FLAG_CUTAWAY);
-  if(cut){
-    if(cutaway(v_worldPos, cutNormal, planeDist)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-int applyCutaway(int flags, bool backFacing, vec3 cutColor, inout vec4 fragColor) {
-  bool cut = testFlag(flags, BODY_FLAG_CUTAWAY);
-  if(cut){
-    if(cutaway(v_worldPos, cutNormal, planeDist)) {
-      return 1;
-    }
-    if(backFacing){
-      fragColor = vec4(cutColor, 1.0);
-      return 2;
-    }
-  }
-  return 0;
-}
-#endif
-
-
-#ifdef ENABLE_TRIMMING
+//////////////////////////////////////////////
+// Trimming
+uniform sampler2D trimSetsAtlasLayoutTexture;
+uniform ivec2 trimSetsAtlasLayoutTextureSize;
 
 uniform sampler2D trimSetAtlasTexture;
 uniform ivec2 trimSetAtlasTextureSize;
 
-bool applyTrim(inout vec3 trimPatchCoords, int flags) {
-
-  vec4 trimPatchQuad = getDrawItemData(3);
+bool applyTrim(vec4 trimPatchQuad, inout vec3 trimCoords, int flags) {
   if(trimPatchQuad.z > 0.0 && trimPatchQuad.w > 0.0){
     // Remove cobwebs along borders.
     // Tis appears to eliminate cobwebs along borders of trim sets. 
@@ -8109,9 +8697,9 @@ bool applyTrim(inout vec3 trimPatchCoords, int flags) {
     if (v_textureCoord.x < 0.0 || v_textureCoord.x >= 1.0 || v_textureCoord.y < 0.0 || v_textureCoord.y >= 1.0)
       return true;
 
-    trimPatchCoords.xy = trimPatchQuad.xy + (trimPatchQuad.zw * v_textureCoord);
+    trimCoords.xy = trimPatchQuad.xy + (trimPatchQuad.zw * v_textureCoord);
 
-    vec2 trimUv = (trimPatchCoords.xy) / vec2(trimSetAtlasTextureSize);
+    vec2 trimUv = (trimCoords.xy) / vec2(trimSetAtlasTextureSize);
     vec4 trimTexel = texture2D(trimSetAtlasTexture, trimUv);
 
     // Encode the actual gradient value into the texture. 
@@ -8119,65 +8707,104 @@ bool applyTrim(inout vec3 trimPatchCoords, int flags) {
     //   (trimTexel.g - 0.5) * 2.0, 
     //   (trimTexel.b - 0.5) * -2.0
     // );
-    // vec2 texelOffset = trimPatchCoords.xy - (floor(trimPatchCoords.xy) + 0.5);
-    // trimPatchCoords.z = trimTexel.r + ((gradient.x * texelOffset.x) + (gradient.y * texelOffset.y));
+    // vec2 texelOffset = trimCoords.xy - (floor(trimCoords.xy) + 0.5);
+    // trimCoords.z = trimTexel.r + ((gradient.x * texelOffset.x) + (gradient.y * texelOffset.y));
 
-    trimPatchCoords.z = trimTexel.r;
-    if(trimPatchCoords.z < 0.5){
+    trimCoords.z = trimTexel.r;
+    if(trimCoords.z < 0.5){
       return true;
     }
     return false;
   }
   else {
     // This is a non-trimmed surface, so return false.
-    trimPatchCoords = vec3(-1.0);
+    trimCoords = vec3(-1.0);
     return false;
   }
 }
-#endif
 
-
-
-// #ifdef ENABLE_CAD_LIGHTMAPS
-// uniform sampler2D lightmapAtlasTexturePrev;
-// uniform sampler2D lightmapAtlasTexture;
-// uniform ivec2 lightmapAtlasTextureSize;
-// uniform float lightmapLerp;
-// uniform float lightmapWeight;
-
-
-// vec4 sampleLightmap(sampler2D lightmapAtlasTexture, vec2 uv){
-//   // Note: we have a 1 pixel boundary around each quad in the lightmap. This is so that blinear filtering 
-//   // does not cause bleeding of lightmap data across quads. Here we offset the uvs into that quad by one pixel. 
-//   return texture2D(lightmapAtlasTexture, uv / vec2(lightmapAtlasTextureSize));
-// }
-
-// vec4 sampleLightmaps(vec4 lightmapPatchCoords){
-//   vec2 uv = lightmapPatchCoords.xy + vec2(1.0) + ((lightmapPatchCoords.zw - vec2(2.0)) * v_textureCoord);
-//   vec4 curr = sampleLightmap(lightmapAtlasTexture, uv);
-//   vec4 prev = sampleLightmap(lightmapAtlasTexturePrev, uv);
-//   return mix(prev, curr, lightmapLerp);
-// }
-
-
-// vec3 sampleLightmaps(){
-//   vec4 lightmapPatchCoords = getDrawItemData(4);
-//   vec3 lightmapValue = vec3(1.0);
-//   vec4 lightmapSample = sampleLightmaps(lightmapPatchCoords);
-//   // vec4 lightmapSample = sampleLightmap(lightmapAtlasTexture, lightmapPatchCoords);
-//   if(lightmapSample.a > 0.0)
-//     lightmapValue = lightmapSample.rgb / lightmapSample.a;
-//   else
-//     lightmapValue = vec3(0.0, 0.0, 0.0);
-//   return lightmapValue;
-
-//   // return sampleLightmap(lightmapAtlasTexture, lightmapPatchCoords).rgb;
-// }
-
-// #endif
 
 `
 );
+
+/** Class representing a GL CAD shader.
+ * @extends GLShader
+ * @ignore
+ */
+class GLCADShader extends zeaEngine.GLShader {
+  /**
+   * Create a GL CAD shader.
+   * @param {any} gl - The gl value.
+   */
+  constructor(gl) {
+    super(gl);
+    this.stack = [{}];
+  }
+
+  /**
+   * The setPreprocessorValue method.
+   * @param {any} name - The name param.
+   */
+  setPreprocessorValue(name) {
+    this.getState()[name] = name;
+  }
+
+  /**
+   * The clearPreprocessorValue method.
+   * @param {any} name - The name param.
+   */
+  clearPreprocessorValue(name) {
+    delete this.getState()[name];
+  }
+
+  /**
+   * The getState method.
+   * @return {any} - The return value.
+   */
+  getState() {
+    return this.stack[this.stack.length - 1]
+  }
+
+  /**
+   * The pushState method.
+   */
+  pushState() {
+    this.stack.push(Object.assign({}, this.getState()));
+  }
+
+  /**
+   * The popState method.
+   */
+  popState() {
+    this.stack.pop();
+    this.applyOptions();
+  }
+
+  /**
+   * The applyOptions method.
+   */
+  applyOptions() {
+    const directives = [];
+    const state = this.getState();
+    for (const key in state) {
+      directives.push(state[key]);
+    }
+    const defines = this.__gl.shaderopts.defines + directives.join('\n') + '\n';
+    this.__key = defines;
+    this.compileForTarget(this.__key, {
+      defines,
+    });
+  }
+
+  /**
+   * The bind method.
+   * @param {any} renderstate - The renderstate param.
+   * @return {any} - The return value.
+   */
+  bind(renderstate) {
+    return super.bind(renderstate, this.__key)
+  }
+}
 
 const GLDrawCADSurfaceNormalsShader_VERTEX_SHADER = zeaEngine.shaderLibrary.parseShader(
   'GLDrawCADSurfaceNormalsShader.vertexShader',
@@ -8185,88 +8812,122 @@ const GLDrawCADSurfaceNormalsShader_VERTEX_SHADER = zeaEngine.shaderLibrary.pars
 precision highp float;
 
 attribute vec3 positions;
-instancedattribute vec2 drawCoords;  // (DrawItemData Coords (x, y) 
+instancedattribute vec4 drawCoords;  // (DrawItemData Coords (x, y) 
+// instancedattribute vec2 drawItemTexAddr;  // Address of the data in the draw item texture. (mat4)
 
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
-uniform vec2 quadDetail;
-// uniform int lod;
+uniform ivec2 quadDetail;
+uniform vec3 assetCentroid;
+uniform float normalLength;
 
 <%include file="GLSLUtils.glsl"/>
 <%include file="GLSLCADConstants.glsl"/>
 <%include file="stack-gl/transpose.glsl"/>
 <%include file="stack-gl/inverse.glsl"/>
 
-
-uniform float normalLength;
-uniform vec3 assetCentroid;
-
 <%include file="GLSLCADSurfaceDrawing.vertexShader.glsl"/>
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
+varying vec3 v_viewPos;
+varying vec3 v_worldPos;
+varying vec3 v_viewNormal;
 varying vec2 v_textureCoord;
 
 void main(void) {
-    v_drawCoords = drawCoords;
+    int cadBodyId = ftoi(drawCoords.r);
+    int drawItemIndexInBody = ftoi(drawCoords.g);
+    int surfaceId = ftoi(drawCoords.b);
+    int trimSetId = ftoi(drawCoords.a);
+
     vec2 texCoords = positions.xy + 0.5;
-    mat4 modelMatrix = getModelMatrix();
-    vec4 surfaceCoords = getDrawItemData(2);
+    
+    v_drawCoords = drawCoords;
 
-    vec4 metadata = getDrawItemData(0);
-    int flags = int(floor(metadata.a + 0.5));
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    vec4 cadBodyPixel1 = getCADBodyPixel(cadBodyId, 1);
 
+    // int bodyDescId = ftoi(cadBodyPixel0.r);
+    int cadBodyFlags = ftoi(cadBodyPixel0.g);
+    
     //////////////////////////////////////////////
     // Visiblity
-    if(testFlag(flags, BODY_FLAG_INVISIBLE)) {
+    if(testFlag(cadBodyFlags, BODY_FLAG_INVISIBLE)) {
         gl_Position = vec4(-3.0, -3.0, -3.0, 1.0);;
         return;
     }
 
     //////////////////////////////////////////////
     // Transforms
-    mat4 modelViewMatrix = viewMatrix * modelMatrix;
-    mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
-    
+#ifdef DEBUG_SURFACES
+    mat4 modelMatrix = mat4(1.0);
+    // if(v_surfaceType == SURFACE_TYPE_NURBS_SURFACE) {
+    //     // int drawItemIndexInBody = int(metadata.b+0.5);
+    //     int sideLen = int(ceil(sqrt(float(numSurfacesInLibrary))));
+    //     int x = drawItemIndexInBody % sideLen;
+    //     int y = drawItemIndexInBody / sideLen;
+    //     modelMatrix = mat4(1.0, 0.0, 0.0, 0.0, 
+    //                     0.0, 1.0, 0.0, 0.0, 
+    //                     0.0, 0.0, 1.0, 0.0,  
+    //                     float(x), float(y), 0.0, 1.0);
+    // }
+#else
+
+#ifdef CALC_GLOBAL_XFO_DURING_DRAW
+    mat4 bodyMat = getCADBodyMatrix(cadBodyId);
+    ivec2 bodyDescAddr = ftoi(cadBodyPixel0.ba);
+    mat4 surfaceMat = getDrawItemMatrix(bodyDescAddr, drawItemIndexInBody);
+    mat4 modelMatrix = bodyMat * surfaceMat;
+#else
+    mat4 modelMatrix = getModelMatrix();
     // Note: on mobile GPUs, we get only FP16 math in the
     // fragment shader, causing inaccuracies in modelMatrix
     // calculation. By offsetting the data to the origin
     // we calculate a modelMatrix in the asset space, and
     //  then add it back on during final drawing.
-    modelMatrix[3][0] += assetCentroid.x;
-    modelMatrix[3][1] += assetCentroid.y;
-    modelMatrix[3][2] += assetCentroid.z;
-
-    // if(matValue0.a < 0.001)
-    //     gl_Position = vec4(-3.0, -3.0, -3.0, 1.0);
+    // modelMatrix[3][0] += assetCentroid.x;
+    // modelMatrix[3][1] += assetCentroid.y;
+    // modelMatrix[3][2] += assetCentroid.z;
+#endif
+#endif
+    // modelMatrix = mat4(1.0);
+    mat4 modelViewMatrix = viewMatrix * modelMatrix;
+    mat4 viewProjectionMatrix = projectionMatrix * viewMatrix;
 
     //////////////////////////////////////////////
     // Vertex Attributes
-
-    v_textureCoord = texCoords;
-    if(testFlag(flags, SURFACE_FLAG_FLIPPED_UV))
-        v_textureCoord = vec2(v_textureCoord.y, v_textureCoord.x);
-
-    // v_textureCoord.y = 1.0 - v_textureCoord.y; // Flip y
     
-    vec2 vertexCoords = texCoords * quadDetail;
+    GLSLBinReader surfaceLayoutDataReader;
+    GLSLBinReader_init(surfaceLayoutDataReader, surfaceAtlasLayoutTextureSize, 16);
+    vec4 surfaceDataAddr = GLSLBinReader_readVec4(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, surfaceId * 8);
+    int surfaceFlags = GLSLBinReader_readInt(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, surfaceId * 8 + 6);
 
-    vec3 normal = getSurfaceNormal(surfaceCoords.xy, vertexCoords);
-    vec4 pos = vec4(getSurfaceVertex(surfaceCoords.xy, vertexCoords), 1.0);
+    bool isFan = int(quadDetail.y) == 0;
+    vec2 vertexCoords = texCoords * (isFan ? vec2(quadDetail) + vec2(1.0, 1.0) : vec2(quadDetail));
 
-    bool flippedNormal = testFlag(flags, SURFACE_FLAG_FLIPPED_NORMAL);
+    vec3 normal = getSurfaceNormal(surfaceDataAddr.xy, vertexCoords);
+    vec4 pos = vec4(getSurfaceVertex(surfaceDataAddr.xy, vertexCoords).rgb, 1.0);
+
+    bool flippedNormal = testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
     if(flippedNormal){
         normal = -normal;
     }
-    bool isFan = int(quadDetail.y) == 0;
-
+  
     vec4 worldPos = modelMatrix * pos;
     vec3 worldNormal = normalize(mat3(modelMatrix) * normal);
 
+    // if (positions.z > 0.5)
+    //   worldPos = vec4(vec3(0.0), 1.0);
     worldPos += vec4(worldNormal * positions.z * normalLength, 0.0);
     
     gl_Position = viewProjectionMatrix * worldPos;
 
-    mat3 normalMatrix = mat3(transpose(inverse(modelViewMatrix)));
+    
+    v_textureCoord = texCoords;
+    if(testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_UV))
+        v_textureCoord = vec2(v_textureCoord.y, v_textureCoord.x);
+
+    // v_textureCoord.y = 1.0 - v_textureCoord.y; // Flip y
 }`
 );
 
@@ -8279,44 +8940,19 @@ precision highp float;
 <%include file="GLSLUtils.glsl"/>
 <%include file="stack-gl/gamma.glsl"/>
 <%include file="materialparams.glsl"/>
+<%include file="GLSLBinReader.glsl"/>
 
 uniform color BaseColor;
 
 uniform mat4 cameraMatrix;
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
+varying vec3 v_viewPos;
+varying vec3 v_worldPos;
+varying vec3 v_viewNormal;
 varying vec2 v_textureCoord;
 
 <%include file="GLSLCADSurfaceDrawing.fragmentShader.glsl"/>
-
-vec4 getDebugMaterialColor(int id){
-    int sel = int(round(mod(float(id), 12.0)));
-    if(sel==0)
-        return vec4(1.0, 1.0, 1.0, 1.0);
-    else if (sel==1)
-        return vec4(0.0, 1.0, 0.0, 1.0);
-    else if (sel==2)
-        return vec4(0.0, 0.0, 1.0, 1.0);
-    else if (sel==3)
-        return vec4(0.75, 0.75, 0.0, 1.0);
-    else if (sel==4)
-        return vec4(0.0, 0.75, 0.75, 1.0);
-    else if (sel==5)
-        return vec4(0.75, 0.0, 0.75, 1.0);
-    else if (sel==6)
-        return vec4(0.45, 0.95, 0.0, 1.0);
-    else if (sel==7)
-        return vec4(0.0, 0.45, 0.95, 1.0);
-    else if (sel==8)
-        return vec4(0.95, 0.0, 0.45, 1.0);
-    else if (sel==9)
-        return vec4(0.95, 0.45, 0.0, 1.0);
-    else if (sel==10)
-        return vec4(0.0, 0.95, 0.45, 1.0);
-    else if (sel==11)
-        return vec4(0.45, 0.0, 0.95, 1.0);
-}
-
 
 #ifdef ENABLE_ES3
 out vec4 fragColor;
@@ -8328,30 +8964,41 @@ void main(void) {
     vec4 fragColor;
 #endif
 
-    vec4 metadata = getDrawItemData(0);
-    int flags = int(floor(metadata.a + 0.5));
+    int cadBodyId = int(floor(v_drawCoords.r + 0.5));
+    int drawItemIndexInBody = int(floor(v_drawCoords.g + 0.5));
+    int surfaceId = int(floor(v_drawCoords.b + 0.5));
+    int trimSetId = int(floor(v_drawCoords.a + 0.5));
+
+    // TODO: pass as varying from pixel shader.
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    int flags = int(floor(cadBodyPixel0.g + 0.5));
+            
 
     //////////////////////////////////////////////
     // Cutaways
-#ifdef ENABLE_CUTAWAYS
-#ifndef ENABLE_ES3
-    if(applyCutaway(flags, cutColor, gl_FragColor)) {
-#else
-    if(applyCutaway(flags, cutColor, fragColor)) {
-#endif
-        discard;
-        return;
+    if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
+        vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+        vec3 cutNormal = cadBodyPixel6.xyz;
+        float cutPlaneDist = cadBodyPixel6.w;
+        if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
+            discard;
+        }
     }
-#endif
 
     //////////////////////////////////////////////
     // Trimming
+    vec4 trimPatchQuad;
+    vec3 trimCoords;
+    if(trimSetId >= 0) {
+        GLSLBinReader trimsetLayoutDataReader;
+        GLSLBinReader_init(trimsetLayoutDataReader, trimSetsAtlasLayoutTextureSize, 16);
+        trimPatchQuad = GLSLBinReader_readVec4(trimsetLayoutDataReader, trimSetsAtlasLayoutTexture, trimSetId*4);
 
-#ifdef ENABLE_TRIMMING
-    vec3 trimPatchCoords;
-    if(applyTrim(trimPatchCoords, flags))
-        return;
-#endif
+        if(applyTrim(trimPatchQuad, trimCoords, flags)){
+            discard;
+            return;
+        }
+    }
 
     vec4 baseColor      = vec4(1.0,0.0,0.0,1.0);
 
@@ -8364,10 +9011,10 @@ void main(void) {
 );
 
 /** Class representing a GL draw CAD surface normals shader.
- * @extends GLShader
+ * @extends GLCADShader
  * @ignore
  */
-class GLDrawCADSurfaceNormalsShader extends zeaEngine.GLShader {
+class GLDrawCADSurfaceNormalsShader extends GLCADShader {
   /**
    * Create a GL draw CAD surface normals shader.
    * @param {any} gl - The gl value.
@@ -8963,130 +9610,29 @@ zeaEngine.sgFactory.registerClass(
   GLDebugTrimSetsShader
 );
 
-/** Class representing a GL CAD shader.
- * @extends GLShader
- * @ignore
- */
-class GLCADShader extends zeaEngine.GLShader {
-  /**
-   * Create a GL CAD shader.
-   * @param {any} gl - The gl value.
-   */
-  constructor(gl) {
-    super(gl);
-    this.stack = [{}];
-  }
-
-  /**
-   * The setPreprocessorValue method.
-   * @param {any} name - The name param.
-   */
-  setPreprocessorValue(name) {
-    this.getState()[name] = name;
-  }
-
-  /**
-   * The clearPreprocessorValue method.
-   * @param {any} name - The name param.
-   */
-  clearPreprocessorValue(name) {
-    delete this.getState()[name];
-  }
-
-  /**
-   * The getState method.
-   * @return {any} - The return value.
-   */
-  getState() {
-    return this.stack[this.stack.length - 1]
-  }
-
-  /**
-   * The pushState method.
-   */
-  pushState() {
-    this.stack.push(Object.assign({}, this.getState()));
-  }
-
-  /**
-   * The popState method.
-   */
-  popState() {
-    this.stack.pop();
-    this.applyOptions();
-  }
-
-  /**
-   * The applyOptions method.
-   */
-  applyOptions() {
-    const directives = [];
-    const state = this.getState();
-    for (const key in state) {
-      directives.push(state[key]);
-    }
-    const defines = this.__gl.shaderopts.defines + directives.join('\n') + '\n';
-    this.__key = defines;
-    this.compileForTarget(this.__key, {
-      defines,
-    });
-  }
-
-  /**
-   * The bind method.
-   * @param {any} renderstate - The renderstate param.
-   * @return {any} - The return value.
-   */
-  bind(renderstate) {
-    return super.bind(renderstate, this.__key)
-  }
-}
-
 const vertexShaderGLSL = `
 precision highp float;
 
 attribute vec3 positions;
 
-attribute vec4 bodyDataCoords;      // where the data will come from in the source texture + material coords
-attribute vec4 bodyItem_metadata;   // where the values will be written to in the target texture.
-attribute vec3 bodyItem_tr;      // the tr + single sc value of the Body global xfo
-attribute vec4 bodyItem_ori;        // the ori value of the Body global xfo
-attribute vec3 bodyItem_sc;        // the ori value of the Body global xfo
-
-attribute vec4 patchCoords;         // where the values will be written to in the target texture.
-attribute vec4 bodyColor;         // where the values will be written to in the target texture.
-attribute vec4 cutPlane;         // where the values will be written to in the target texture.
+attribute vec4 patchCoords;   // the coordinates of the quad which will be rasterized
+attribute vec4 bodyData;      // where the data will come from in the source texture + material coords
 
 uniform ivec2 vert_drawItemsTextureSize;
 
 /* VS Outputs */
 varying vec2 v_patchSize;
 varying vec2 v_vertexCoord;
-
-varying vec4 v_bodyDataCoords;
-varying vec4 v_bodyItem_metadata;
-varying vec3 v_bodyItem_tr;
-varying vec4 v_bodyItem_ori;
-varying vec3 v_bodyItem_sc;
-varying vec4 v_bodyItem_color;
-varying vec4 v_bodyItem_cutPlane;
-
+varying vec4 v_bodyData;
 
 void main(void) {
   v_patchSize = patchCoords.zw;
   v_vertexCoord = (positions.xy + 0.5) * v_patchSize;
 
   vec2 pos = (patchCoords.xy + v_vertexCoord + 0.25) / vec2(vert_drawItemsTextureSize);
-  gl_Position =  vec4((pos - 0.5) * 2.0, 0.0, 1.0);
+  gl_Position = vec4((pos - 0.5) * 2.0, 0.0, 1.0);
 
-  v_bodyDataCoords = bodyDataCoords;
-  v_bodyItem_metadata = bodyItem_metadata;
-  v_bodyItem_tr = bodyItem_tr;
-  v_bodyItem_ori = bodyItem_ori;
-  v_bodyItem_sc = bodyItem_sc;
-
-  v_bodyItem_color = bodyColor;
-  v_bodyItem_cutPlane = cutPlane;
+  v_bodyData = bodyData;
 }
 `;
 
@@ -9096,14 +9642,7 @@ precision highp float;
 /* VS Outputs */
 varying vec2 v_patchSize;
 varying vec2 v_vertexCoord;
-
-varying vec4 v_bodyDataCoords;
-varying vec4 v_bodyItem_metadata;
-varying vec3 v_bodyItem_tr;
-varying vec4 v_bodyItem_ori;
-varying vec3 v_bodyItem_sc;
-varying vec4 v_bodyItem_color;
-varying vec4 v_bodyItem_cutPlane;
+varying vec4 v_bodyData;
 
 uniform sampler2D surfaceDataTexture;
 uniform ivec2 surfaceDataTextureSize;
@@ -9111,17 +9650,18 @@ uniform ivec2 surfaceDataTextureSize;
 // GEOM
 uniform sampler2D surfaceAtlasLayoutTexture;
 uniform ivec2 surfaceAtlasLayoutTextureSize;
+uniform sampler2D curvesAtlasLayoutTexture;
+uniform ivec2 curvesAtlasLayoutTextureSize;
 
 // TRIMTEX
-uniform sampler2D trimSetsAtlasLayoutTexture;
-uniform ivec2 trimSetsAtlasLayoutTextureSize;
+// uniform sampler2D trimSetsAtlasLayoutTexture;
+// uniform ivec2 trimSetsAtlasLayoutTextureSize;
 
-// LIGHTMAP
-uniform sampler2D lightmapLayoutTexture;
-uniform ivec2 lightmapLayoutTextureSize;
+uniform sampler2D bodyDescTexture;
+uniform ivec2 bodyDescTextureSize;
 
-uniform sampler2D bodyDatasTexture;
-uniform ivec2 bodyDatasTextureSize;
+uniform sampler2D cadBodiesTexture;
+uniform ivec2 cadBodiesTextureSize;
 
 <%include file="GLSLUtils.glsl"/>
 <%include file="GLSLCADConstants.glsl"/>
@@ -9129,18 +9669,36 @@ uniform ivec2 bodyDatasTextureSize;
 <%include file="GLSLBinReader.glsl"/>
 
 
-const int pixelsPerDrawItem = 10; // The number of RGBA pixels per draw item.
+// const int pixelsPerDrawItem = 10; // The number of RGBA pixels per draw item.
+const int pixelsPerDrawItem = 3; // tr, ori, sc: number of RGBA pixels per draw item.
 const int valuesPerSurfaceTocItem = 9;
 
-GLSLBinReader setupBodyDataReader() {
-  ivec4 region = ivec4(0, 0, bodyDatasTextureSize.x, bodyDatasTextureSize.y);
-  // Skip the bbox and numBodySurfaces
-  ivec2 start = ivec2(floor(v_bodyItem_metadata.xy+0.5));
-  GLSLBinReader bodyDataReader;
-  GLSLBinReader_init(bodyDataReader, bodyDatasTextureSize, region, start, 16);
-  return bodyDataReader;
+
+vec4 MytexelFetch(sampler2D sampler, in ivec2 address, int lod) {
+  return texelFetch(sampler, ivec2(address.x,address.y), lod);
+}
+vec4 Mytexture2D(sampler2D sampler, in ivec2 textureSize, in ivec2 address) {
+  vec2 ftextureSize = vec2(textureSize);
+  return texture2D(sampler, (vec2(address) + 0.5) / ftextureSize);
 }
 
+GLSLBinReader setupBodyDescReader() {
+  ivec4 region = ivec4(0, 0, bodyDescTextureSize.x, bodyDescTextureSize.y);
+  
+  // Skip the bbox and numBodySurfaces
+  ivec2 start = ivec2(floor(v_bodyData.xy+0.5));
+  GLSLBinReader bodyDescReader;
+  GLSLBinReader_init(bodyDescReader, bodyDescTextureSize, region, start, 16);
+  return bodyDescReader;
+}
+
+vec4 getCADBodyPixel(int cadBodyId, int pixelOffset) {
+  int offset = cadBodyId * pixelsPerCADBody;
+  ivec2 start;
+  start.y += offset / cadBodiesTextureSize.x;
+  start.x = imod(offset, cadBodiesTextureSize.x);
+  return fetchTexel(cadBodiesTexture, ivec2(cadBodiesTextureSize.x), ivec2(start.x + pixelOffset, start.y));
+}
 
 #ifdef ENABLE_ES3
 out vec4 fragColor;
@@ -9157,74 +9715,99 @@ void main(void) {
   int id = x + y * int(v_patchSize.x);
   int slot = imod(id, pixelsPerDrawItem);
 
-  int surfaceIndexInBody = id / pixelsPerDrawItem;
+  int cadBodyId = int(v_bodyData.z);
+  int drawItemIndexInBody = id / pixelsPerDrawItem;
 
-  GLSLBinReader bodyDataReader = setupBodyDataReader();
+  GLSLBinReader bodyDescReader = setupBodyDescReader();
 
-  int numSurfaces = GLSLBinReader_readInt(bodyDataReader, bodyDatasTexture, (6/*bbox*/));
-
-  // Skip over the bbox, numSurfaces and then to the current surface data.
-  int offsetOfSurfaceRef = (6/*bbox*/) + (1/*numSurfaces*/) + (surfaceIndexInBody * (1/*id*/ + 10/*xfo*/));
-  #ifdef ENABLE_PER_FACE_COLORS
-  offsetOfSurfaceRef += surfaceIndexInBody * 4/*color*/; // Skip over the color.
+  int numSurfaces = GLSLBinReader_readInt(bodyDescReader, bodyDescTexture, (6/*bbox*/));
+  #ifdef ENABLE_BODY_EDGES
+  int numCurves = GLSLBinReader_readInt(bodyDescReader, bodyDescTexture, (6/*bbox*/)+1);
+  #else
+  int numCurves = 0;
   #endif
 
-  int surfaceId = GLSLBinReader_readInt(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+0); // look up the surface id
+  fragColor = vec4(-1.0);// Init all values to -1 before continuing.
+  if (drawItemIndexInBody >= numSurfaces + numCurves) {
+    return;
+  }
 
+  // Skip over the bbox, numSurfaces and then to the current surface data.
+  #ifdef ENABLE_BODY_EDGES
+  int offsetOfItemRef = (6/*bbox*/) + (1/*numSurfaces*/) + (1/*numCurves*/) + (drawItemIndexInBody * (1/*id*/ + 10/*xfo*/));
+  #else
+  int offsetOfItemRef = (6/*bbox*/) + (1/*numSurfaces*/) + (drawItemIndexInBody * (1/*id*/ + 10/*xfo*/));
+  #endif
+  
+  #ifdef ENABLE_PER_FACE_COLORS
+  offsetOfItemRef += drawItemIndexInBody * 4/*color*/; // Skip over the color.
+  #endif
+
+  int drawItemId = GLSLBinReader_readInt(bodyDescReader, bodyDescTexture, offsetOfItemRef+0); // look up the surface id
+
+  // fragColor = vec4(float(drawItemIndexInBody), float(drawItemId), float(numSurfaces), float(numCurves));
+  // return;
+
+  // GLSLBinReader bodyDataReader = setupBodyDataReader(cadBodyId);
+
+  /*
   if(slot == 0) {
-    int assetId = int(v_bodyDataCoords.x); // Note: not needed now.
-    int bodyId = int(v_bodyDataCoords.y);
-    int bodyFlags = int(v_bodyDataCoords.z);
+    int bodyFlags = int(GLSLBinReader_readFloat(bodyDescReader, cadBodiesTexture, 1));
 
-    fragColor.r = float(assetId); // Asset Id; // Note: not needed now.
-    fragColor.g = float(bodyId);
+    fragColor.r = float(drawItemId);
+    fragColor.g = float(cadBodyId);
 
-    bool debugSurfaceId = false;
-    if (debugSurfaceId) {
+    bool debugDrawItemId = true;
+    if (debugDrawItemId) {
       // Note: soon we will have the body structure in the
-      // the Draw shader, and we can then extract the surfaceId
+      // the Draw shader, and we can then extract the drawItemId
       // from the body. (instead of providing it here in line 136.)
-      fragColor.b = float(surfaceId);
+      fragColor.b = float(drawItemId);
     }
     else {
-      // By default we want to see the surfaceIndexInBody
+      // By default we want to see the drawItemIndexInBody
       // because with this we can retrieve the surface data.
-      fragColor.b = float(surfaceIndexInBody);
+      fragColor.b = float(drawItemIndexInBody);
     }
+    
+    int drawItemFlags = bodyFlags;
+    if (drawItemIndexInBody < numSurfaces) {
+      //  with the drawItemId lookup the surface flags
+      GLSLBinReader surfaceDataReader;
+      GLSLBinReader_init(surfaceDataReader, surfaceDataTextureSize, ivec4(0, 0, surfaceDataTextureSize.x, surfaceDataTextureSize.y), ivec2(0,0), 16);
+      int surfaceFlags = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (drawItemId*valuesPerSurfaceTocItem) + 6);
+      // int surfaceFlags GLSLBinReader_readInt(bodyDataReader, bodyDatasTexture, offsetOfItemRef+1); // look up the surface id
 
-    //  with the surfaceId lookup the surface flags
-    GLSLBinReader surfaceDataReader;
-    GLSLBinReader_init(surfaceDataReader, surfaceDataTextureSize, ivec4(0, 0, surfaceDataTextureSize.x, surfaceDataTextureSize.y), ivec2(0,0), 16);
-    int surfaceFlags = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 6);
-    // int surfaceFlags GLSLBinReader_readInt(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+1); // look up the surface id
+      float costU = GLSLBinReader_readFloat(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (drawItemId*valuesPerSurfaceTocItem) + 2);
+      float costV = GLSLBinReader_readFloat(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (drawItemId*valuesPerSurfaceTocItem) + 3);
+      if(costU < costV) {
+        setFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_UV);
+      }
 
-    float costU = GLSLBinReader_readFloat(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 2);
-    float costV = GLSLBinReader_readFloat(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 3);
-    if(costU < costV) {
-      setFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_UV);
-    }
-
-    // Note: this flipping seems to have a negative impact on the 
-    // surface normal. When a surface is scaled negatively, so is
-    // the normal. So we should not do anything here.
-    // vec3 surface_sc = vec3(
-    //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+8),
-    //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+9),
-    //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+10)
-    // );
-    //int flipCount = (surface_sc.x < 0.0 ? 1 : 0) + (surface_sc.y < 0.0 ? 1 : 0) + (surface_sc.z < 0.0 ? 1 : 0);
-    // if(imod(flipCount, 2)==1) {
-    //   if(testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL))
-    //     clearFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
-    //   else
-    //     setFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
-    // }
+      // Note: this flipping seems to have a negative impact on the 
+      // surface normal. When a surface is scaled negatively, so is
+      // the normal. So we should not do anything here.
+      // vec3 surface_sc = vec3(
+      //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfItemRef+8),
+      //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfItemRef+9),
+      //   GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfItemRef+10)
+      // );
+      //int flipCount = (surface_sc.x < 0.0 ? 1 : 0) + (surface_sc.y < 0.0 ? 1 : 0) + (surface_sc.z < 0.0 ? 1 : 0);
+      // if(imod(flipCount, 2)==1) {
+      //   if(testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL))
+      //     clearFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
+      //   else
+      //     setFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
+      // }
     
 #ifndef ENABLE_ES3
-    fragColor.a = float(bodyFlags | surfaceFlags);
+      drawItemFlags |= surfaceFlags;
 #else
-    fragColor.a = float(bodyFlags + surfaceFlags);
+      drawItemFlags += surfaceFlags;
 #endif
+    }
+    
+    fragColor.a = float(drawItemFlags);
   }
   else if(slot == 1) {
     fragColor.r = v_bodyItem_metadata.z; // material coords x
@@ -9233,22 +9816,31 @@ void main(void) {
     fragColor.a = -1.0;
   }
   else if(slot == 2) {
-    // geom patch
-    GLSLBinReader surfaceLayoutDataReader;
-    GLSLBinReader_init(surfaceLayoutDataReader, surfaceAtlasLayoutTextureSize, 16);
-    fragColor = GLSLBinReader_readVec4(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, surfaceId * 8);
+    if (drawItemIndexInBody < numSurfaces) {
+      // geom patch
+      GLSLBinReader surfaceLayoutDataReader;
+      GLSLBinReader_init(surfaceLayoutDataReader, surfaceAtlasLayoutTextureSize, 16);
+      fragColor = GLSLBinReader_readVec4(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, drawItemId * 8);
+    } else {
+      // curve patch
+      GLSLBinReader curveLayoutDataReader;
+      GLSLBinReader_init(curveLayoutDataReader, curvesAtlasLayoutTextureSize, 16);
+      fragColor = GLSLBinReader_readVec4(curveLayoutDataReader, curvesAtlasLayoutTexture, drawItemId * 8);
+    }
   }
   else if(slot == 3) {
+    fragColor = vec4(-1.0);
+    if (drawItemIndexInBody < numSurfaces) {
 
-    //  with the surfaceId lookup the trimSet id.
+    //  with the drawItemId lookup the trimSet id.
     GLSLBinReader surfaceDataReader;
     GLSLBinReader_init(surfaceDataReader, surfaceDataTextureSize, ivec4(0, 0, surfaceDataTextureSize.x, surfaceDataTextureSize.y), ivec2(0,0), 16);
     // Note: the begining of the surface data texture is the TOC, which includes the trimSetId, 
     // We should prboably move the trim set Id to the actual surface data.
     // Note: the trim set value can easily be outside the range of a single 16 bit float, so here
     // we use 2 floats and compbine them to get the correct value.
-    int partA = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 7);
-    int partB = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 8);
+    int partA = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (drawItemId*valuesPerSurfaceTocItem) + 7);
+    int partB = GLSLBinReader_readInt(surfaceDataReader, surfaceDataTexture, geomLibraryHeaderSize + (drawItemId*valuesPerSurfaceTocItem) + 8);
   
 #ifdef INTS_PACKED_AS_2FLOAT16
     int trimSetId = partA + (partB * 2048);
@@ -9263,76 +9855,107 @@ void main(void) {
     else {
       fragColor = vec4(-1.0);
     }
+    
+    // ivec2 address = surfaceDataReader.region.xy + GLSLBinReader_getAddress(surfaceDataReader, geomLibraryHeaderSize + (surfaceId*valuesPerSurfaceTocItem) + 6);
+    // vec4 buffer = GLSLBinReader_texelFetch2D(surfaceDataTexture, surfaceDataTextureSize, address);
+    // vec4 buffer = MytexelFetch(surfaceDataTexture, address, 0);
+    // vec4 buffer = Mytexture2D(surfaceDataTexture, surfaceDataTextureSize, address);
+    // vec4 buffer = texelFetch(surfaceDataTexture, address, 0);
+    // vec2 ftextureSize = vec2(surfaceDataTextureSize);
+    // vec4 buffer =  texture2D(surfaceDataTexture, (vec2(address) + 0.5) / ftextureSize);
+    
+    // fragColor = buffer;
+  }
   }
   else if(slot == 4) {
   #ifdef ENABLE_PER_FACE_COLORS
     // Store the per-face color here.
     fragColor = vec4(
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+11),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+12),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+13),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+14)
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+11),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+12),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+13),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+14)
       );
   #else 
     fragColor = vec4(0.0, 0.0, 0.0, 0.0);
   #endif
   }
-  else if(slot >= 5 && slot <= 7) {
+  else if(slot >= 5 && slot <= 7) 
+  */
+  {
+    const int off = 8;
+    vec3 body_tr = getCADBodyPixel(cadBodyId, 2).rgb;
+    vec4 body_ori = normalize(getCADBodyPixel(cadBodyId, 3));
+    vec3 body_sc = getCADBodyPixel(cadBodyId, 4).rgb;
+
+    Xfo bodyXfo = Xfo(body_tr, body_ori, body_sc);
 
     vec3 surface_tr = vec3(
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+1),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+2),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+3)
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+1),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+2),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+3)
       );
 
     vec4 surface_ori = normalize(vec4(
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+4),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+5),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+6),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+7)
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+4),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+5),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+6),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+7)
       ));
 
     vec3 surface_sc = vec3(
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+8),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+9),
-      GLSLBinReader_readFloat(bodyDataReader, bodyDatasTexture, offsetOfSurfaceRef+10)
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+8),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+9),
+      GLSLBinReader_readFloat(bodyDescReader, bodyDescTexture, offsetOfItemRef+10)
     );
 
-    Xfo bodyXfo = Xfo(v_bodyItem_tr, normalize(v_bodyItem_ori), v_bodyItem_sc);
     Xfo surfaceXfo = Xfo(surface_tr, surface_ori, surface_sc);
     
     // Convert each mat 
     mat4 geomMat = transpose(xfo_toMat4(bodyXfo) * xfo_toMat4(surfaceXfo));
-    // mat4 geomMat = transpose(xfo_toMat4(xfo));
+    // mat4 geomMat = transpose(xfo_toMat4(bodyXfo));
     // mat4 geomMat = mat4(1.0);
 
-    if(slot == 5) {
+    if(slot == 0) {
       vec4 col0 = geomMat[0];
       fragColor.r = col0.x;
       fragColor.g = col0.y;
       fragColor.b = col0.z;
       fragColor.a = col0.w;
     }
-    else if(slot == 6) {
+    else if(slot == 1) {
       vec4 col1 = geomMat[1];
       fragColor.r = col1.x;
       fragColor.g = col1.y;
       fragColor.b = col1.z;
       fragColor.a = col1.w;
     }
-    else if(slot == 7) {
+    else if(slot == 2) {
       vec4 col2 = geomMat[2];
       fragColor.r = col2.x;
       fragColor.g = col2.y;
       fragColor.b = col2.z;
       fragColor.a = col2.w;
     }
-  }
-  else if(slot == 8) {
-    fragColor = v_bodyItem_color;
-  }
-  else if(slot == 9) {
-    fragColor = v_bodyItem_cutPlane;
+    // if(slot == 0) {
+    //   fragColor = vec4(body_tr, -1.0);
+    // }
+    // else if(slot == 1) {
+    //   fragColor = body_ori;
+    // }
+    // else if(slot == 2) {
+    //   fragColor = vec4(body_sc, -1.0);
+    // }
+    // if(slot == 0) {
+    //   fragColor = vec4(surface_tr, -1.0);
+    // }
+    // else if(slot == 1) {
+    //   fragColor = surface_ori;
+    // }
+    // else if(slot == 2) {
+    //   fragColor = vec4(surface_sc, -1.0);
+    // }
+    // fragColor = vec4(float(slot+1));
   }
 
 #ifndef ENABLE_ES3
@@ -9547,14 +10170,14 @@ precision highp float;
 <%include file="stack-gl/inverse.glsl"/>
 
 attribute vec3 positions;
-instancedattribute vec2 drawCoords;  // (DrawItemData Coords (x, y) 
+instancedattribute vec4 drawCoords;  // body ID, Surface index in Body, Surface Id, TrimSet Id
+// instancedattribute vec2 drawItemTexAddr;  // Address of the data in the draw item texture. (mat4)
 
 uniform mat4 viewMatrix;
 uniform mat4 cameraMatrix;
 uniform mat4 projectionMatrix;
-uniform vec2 quadDetail;
+uniform ivec2 quadDetail;
 uniform vec3 assetCentroid;
-
 
 // #define DEBUG_SURFACES
 uniform int numSurfacesInLibrary;
@@ -9562,7 +10185,7 @@ uniform int numSurfacesInLibrary;
 
 <%include file="GLSLCADSurfaceDrawing.vertexShader.glsl"/>
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
 varying vec3 v_viewPos;
 varying vec3 v_worldPos;
 varying vec3 v_viewNormal;
@@ -9571,15 +10194,24 @@ varying float v_surfaceType;
 varying vec2 v_quadDetail;
 
 void main(void) {
-    v_drawCoords = drawCoords;
-    vec2 texCoords = positions.xy + 0.5;
-    vec4 metadata = getDrawItemData(0);
-    vec4 surfaceCoords = getDrawItemData(2);
-    int flags = int(floor(metadata.a + 0.5));
+    int cadBodyId = ftoi(drawCoords.r);
+    int drawItemIndexInBody = ftoi(drawCoords.g);
+    int surfaceId = ftoi(drawCoords.b);
+    int trimSetId = ftoi(drawCoords.a);
 
+    vec2 texCoords = positions.xy + 0.5;
+    
+    v_drawCoords = drawCoords;
+
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    vec4 cadBodyPixel1 = getCADBodyPixel(cadBodyId, 1);
+
+    // int bodyDescId = ftoi(cadBodyPixel0.r);
+    int cadBodyFlags = ftoi(cadBodyPixel0.g);
+    
     //////////////////////////////////////////////
     // Visiblity
-    if(testFlag(flags, BODY_FLAG_INVISIBLE)) {
+    if(testFlag(cadBodyFlags, BODY_FLAG_INVISIBLE)) {
         gl_Position = vec4(-3.0, -3.0, -3.0, 1.0);;
         return;
     }
@@ -9587,45 +10219,56 @@ void main(void) {
     //////////////////////////////////////////////
     // Transforms
 #ifdef DEBUG_SURFACES
-    mat4 modelMatrix;
-    int surfaceType = int(v_surfaceType+0.5);
-    if(surfaceType == SURFACE_TYPE_NURBS_SURFACE) {
-        int surfaceIndexInBody = int(metadata.b+0.5);
-        int sideLen = int(ceil(sqrt(float(numSurfacesInLibrary))));
-        int x = surfaceIndexInBody % sideLen;
-        int y = surfaceIndexInBody / sideLen;
-        modelMatrix = mat4(1.0, 0.0, 0.0, 0.0, 
-                        0.0, 1.0, 0.0, 0.0, 
-                        0.0, 0.0, 1.0, 0.0,  
-                        float(x), float(y), 0.0, 1.0);
-    }
+    mat4 modelMatrix = mat4(1.0);
+    // if(v_surfaceType == SURFACE_TYPE_NURBS_SURFACE) {
+    //     // int drawItemIndexInBody = int(metadata.b+0.5);
+    //     int sideLen = int(ceil(sqrt(float(numSurfacesInLibrary))));
+    //     int x = drawItemIndexInBody % sideLen;
+    //     int y = drawItemIndexInBody / sideLen;
+    //     modelMatrix = mat4(1.0, 0.0, 0.0, 0.0, 
+    //                     0.0, 1.0, 0.0, 0.0, 
+    //                     0.0, 0.0, 1.0, 0.0,  
+    //                     float(x), float(y), 0.0, 1.0);
+    // }
+#else
+
+#ifdef CALC_GLOBAL_XFO_DURING_DRAW
+    mat4 bodyMat = getCADBodyMatrix(cadBodyId);
+    ivec2 bodyDescAddr = ftoi(cadBodyPixel0.ba);
+    mat4 surfaceMat = getDrawItemMatrix(bodyDescAddr, drawItemIndexInBody);
+    mat4 modelMatrix = bodyMat * surfaceMat;
 #else
     mat4 modelMatrix = getModelMatrix();
-    
-    // mat4 modelMatrix = mat4(1.0);
-    
     // Note: on mobile GPUs, we get only FP16 math in the
     // fragment shader, causing inaccuracies in modelMatrix
     // calculation. By offsetting the data to the origin
     // we calculate a modelMatrix in the asset space, and
     //  then add it back on during final drawing.
-    modelMatrix[3][0] += assetCentroid.x;
-    modelMatrix[3][1] += assetCentroid.y;
-    modelMatrix[3][2] += assetCentroid.z;
+    // modelMatrix[3][0] += assetCentroid.x;
+    // modelMatrix[3][1] += assetCentroid.y;
+    // modelMatrix[3][2] += assetCentroid.z;
 #endif
+#endif
+    // modelMatrix = mat4(1.0);
     mat4 modelViewMatrix = viewMatrix * modelMatrix;
     mat3 normalMatrix = mat3(transpose(inverse(modelViewMatrix)));
 
     //////////////////////////////////////////////
     // Vertex Attributes
+    
+    GLSLBinReader surfaceLayoutDataReader;
+    GLSLBinReader_init(surfaceLayoutDataReader, surfaceAtlasLayoutTextureSize, 16);
+    vec4 surfaceDataAddr = GLSLBinReader_readVec4(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, surfaceId * 8);
+    int surfaceFlags = GLSLBinReader_readInt(surfaceLayoutDataReader, surfaceAtlasLayoutTexture, surfaceId * 8 + 6);
 
     bool isFan = int(quadDetail.y) == 0;
-    vec2 vertexCoords = texCoords * (isFan ? quadDetail + vec2(1.0, 1.0) : quadDetail);
-    v_surfaceType = float(getSurfaceType(surfaceCoords.xy, vertexCoords));
-    vec3 normal  = getSurfaceNormal(surfaceCoords.xy, vertexCoords);
-    vec4 pos     = vec4(getSurfaceVertex(surfaceCoords.xy, vertexCoords), 1.0);
+    vec2 vertexCoords = texCoords * (isFan ? vec2(quadDetail) + vec2(1.0, 1.0) : vec2(quadDetail));
+    vec4 surfaceVertex = getSurfaceVertex(surfaceDataAddr.xy, vertexCoords);
+    v_surfaceType = surfaceVertex.a;
+    vec3 normal  = getSurfaceNormal(surfaceDataAddr.xy, vertexCoords);
+    vec4 pos     = vec4(surfaceVertex.rgb, 1.0);
     
-    bool flippedNormal = testFlag(flags, SURFACE_FLAG_FLIPPED_NORMAL);
+    bool flippedNormal = testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_NORMAL);
     if(flippedNormal)
         normal = -normal;
 
@@ -9635,7 +10278,7 @@ void main(void) {
     gl_Position  = projectionMatrix * viewPos;
     v_viewNormal = normalMatrix * normal;
 
-    v_quadDetail = quadDetail;
+    v_quadDetail = vec2(quadDetail);
 
     {
         // Pull back facing vertices towards us ever so slightly...
@@ -9658,7 +10301,7 @@ void main(void) {
     }
     else {
         v_textureCoord = texCoords;
-        if(testFlag(flags, SURFACE_FLAG_FLIPPED_UV)) {
+        if(testFlag(surfaceFlags, SURFACE_FLAG_FLIPPED_UV)) {
             v_textureCoord = vec2(v_textureCoord.y, v_textureCoord.x);
             v_quadDetail = vec2(v_quadDetail.y, v_quadDetail.x);
         }
@@ -9681,6 +10324,7 @@ precision highp float;
 <%include file="PBRSurfaceRadiance.glsl"/>
 
 <%include file="GLSLCADConstants.glsl"/>
+<%include file="GLSLBinReader.glsl"/>
 
 uniform mat4 cameraMatrix;
 
@@ -9694,7 +10338,7 @@ uniform float exposure;
 uniform float gamma;
 #endif
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
 varying vec3 v_viewPos;
 varying vec3 v_worldPos;
 varying vec3 v_viewNormal;
@@ -9755,21 +10399,33 @@ void main(void) {
 #ifndef ENABLE_ES3
     vec4 fragColor;
 #endif
+    
+    int cadBodyId = int(floor(v_drawCoords.r + 0.5));
+    int drawItemIndexInBody = int(floor(v_drawCoords.g + 0.5));
+    int surfaceId = int(floor(v_drawCoords.b + 0.5));
+    int trimSetId = int(floor(v_drawCoords.a + 0.5));
 
-    vec4 metadata = getDrawItemData(0);
-    int flags = int(floor(metadata.a + 0.5));
 
+    // TODO: pass as varying from pixel shader.
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    vec4 cadBodyPixel1 = getCADBodyPixel(cadBodyId, 1);
 
+    int flags = int(floor(cadBodyPixel0.g + 0.5));
+    vec2 materialCoords = cadBodyPixel1.xy;
     //////////////////////////////////////////////
     // Trimming
+    vec4 trimPatchQuad;
+    vec3 trimCoords;
+    if(trimSetId >= 0) {
+        GLSLBinReader trimsetLayoutDataReader;
+        GLSLBinReader_init(trimsetLayoutDataReader, trimSetsAtlasLayoutTextureSize, 16);
+        trimPatchQuad = GLSLBinReader_readVec4(trimsetLayoutDataReader, trimSetsAtlasLayoutTexture, trimSetId*4);
 
-#ifdef ENABLE_TRIMMING
-    vec3 trimPatchCoords;
-    if(applyTrim(trimPatchCoords, flags)){
-        discard;
-        return;
+        if(applyTrim(trimPatchQuad, trimCoords, flags)){
+            discard;
+            return;
+        }
     }
-#endif
 
     ///////////////////////////////////////////
     // Normal
@@ -9786,8 +10442,8 @@ void main(void) {
 
     //////////////////////////////////////////////
     // Material
-    vec4 materialCoords = getDrawItemData(1);
-    vec4 matValue0 = getMaterialValue(materialCoords.xy, 0);
+
+    vec4 matValue0 = getMaterialValue(materialCoords, 0);
 
     MaterialParams material;
 
@@ -9800,17 +10456,25 @@ void main(void) {
     
     /////////////////
     // Face color
-    vec4 faceColor = getDrawItemData(4);
-    material.baseColor = mix(material.baseColor, faceColor.rgb, faceColor.a);
+    // vec4 faceColor = getDrawItemData(4);
+    // material.baseColor = mix(material.baseColor, faceColor.rgb, faceColor.a);
 
     float opacity               = matValue0.a;
         
+
     //////////////////////////////////////////////
     // Cutaways
-#ifdef ENABLE_CUTAWAYS
+    // if (applyCutaway(cadBodyId, flags)) {
+    //     discard;
+    //     return;
+    // }
     if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
-        if (cutaway(v_worldPos, cutNormal, planeDist)) {
+        vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+        vec3 cutNormal = normalize(cadBodyPixel6.xyz);
+        float cutPlaneDist = cadBodyPixel6.w;
+        if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
             discard;
+            return;
         }
         // If we are not cutaway, but we can see a back facing face
         // then set the normal to the cut plane do the lighting is flat.
@@ -9818,10 +10482,9 @@ void main(void) {
             normal = cutNormal;
         }
     }
-#endif
 
     vec3 irradiance ;
-#ifdef ENABLE_PBR
+#ifdef __ENABLE_PBR
     if (envMapPyramid_desc.x > 0.0) {
         if (headLighting) {
             irradiance = sampleEnvMap(viewNormal, 1.0);
@@ -9832,9 +10495,15 @@ void main(void) {
 #endif
         float ndotv = dot(normal, viewVector);
         irradiance = vec3(ndotv);
-#ifdef ENABLE_PBR
+#ifdef __ENABLE_PBR
     }
 #endif
+
+    /////////////////
+    // Debug backFacing
+    // if(backFacing) {
+    //     material.baseColor = mix(material.baseColor, vec3(1.0, 0.0, 0.0), 0.5);
+    // }
 
     /////////////////
     // Debug materialId
@@ -9848,17 +10517,15 @@ void main(void) {
     // Debug bodyId
 #ifdef DEBUG_BODYID
     {
-        int bodyId = int(metadata.g+0.5);
-        material.baseColor       = getDebugColor(bodyId);
+        material.baseColor       = getDebugColor(cadBodyId);
     }
 #endif
 
     /////////////////
-    // Debug surfaceIndexInBody
+    // Debug drawItemIndexInBody
 #ifdef DEBUG_SURFACEID
     {
-        int surfaceIndexInBody = int(metadata.b+0.5);
-        material.baseColor       = getDebugColor(surfaceIndexInBody);
+        material.baseColor       = getDebugColor(drawItemIndexInBody);
     }
 #endif
 
@@ -9866,8 +10533,7 @@ void main(void) {
     // Debug surface Type
 #ifdef DEBUG_SURFACETYPE
     {
-        int surfaceType = int(v_surfaceType+0.5);
-        material.baseColor       = getDebugColor(surfaceType);
+        material.baseColor       = getDebugColor(v_surfaceType);
     }
 #endif
 
@@ -9903,36 +10569,33 @@ void main(void) {
     
     /////////////////
     // Debug trim texture.
-#ifdef ENABLE_TRIMMING
 #ifdef DEBUG_TRIMTEXELS
-    if(trimPatchCoords.x >= 0.0) {
-        vec4 trimPatchQuad = getDrawItemData(3);
-        // trimPatchCoords = (trimPatchQuad.xy + 0.5) + ((trimPatchQuad.zw - 0.5) * v_textureCoord);
-        trimPatchCoords.xy = trimPatchQuad.xy + (trimPatchQuad.zw * v_textureCoord);
-        vec2 trimUv = (trimPatchCoords.xy) / vec2(trimSetAtlasTextureSize);
+    if(trimCoords.x >= 0.0) {
+        // trimCoords = (trimPatchQuad.xy + 0.5) + ((trimPatchQuad.zw - 0.5) * v_textureCoord);
+        trimCoords.xy = trimPatchQuad.xy + (trimPatchQuad.zw * v_textureCoord);
+        vec2 trimUv = (trimCoords.xy) / vec2(trimSetAtlasTextureSize);
         vec4 trimTexel = texture2D(trimSetAtlasTexture, trimUv);
 
-        vec2 texelOffset = trimPatchCoords.xy - (floor(trimPatchCoords.xy) + 0.5);
+        vec2 texelOffset = trimCoords.xy - (floor(trimCoords.xy) + 0.5);
         float texelDist = length(texelOffset);
         
         material.baseColor = trimTexel.rgb * texelDist;
         // material.baseColor = mix(material.baseColor, vec3(0,0,0), texelDist);
-        // material.baseColor = mix(material.baseColor, vec3(0,0,0), trimPatchCoords.z);
-        // material.baseColor = mix(material.baseColor, vec3(0,0,0), (trimPatchCoords.z < 0.5) ? 1.0 : 0.0);
+        // material.baseColor = mix(material.baseColor, vec3(0,0,0), trimCoords.z);
+        // material.baseColor = mix(material.baseColor, vec3(0,0,0), (trimCoords.z < 0.5) ? 1.0 : 0.0);
 
-        // if(trimPatchCoords.z < 0.5) {
+        // if(trimCoords.z < 0.5) {
         //     material.baseColor = mix(material.baseColor, vec3(0,0,0), 0.1);
         // }
         // else{
-        //     float total = floor(trimPatchCoords.x) +
-        //                   floor(trimPatchCoords.y);
+        //     float total = floor(trimCoords.x) +
+        //                   floor(trimCoords.y);
         //     if(mod(total,2.0)==0.0)
         //         material.baseColor = mix(material.baseColor, vec3(0,0,0), 0.25);
         //     else
         //         material.baseColor = mix(material.baseColor, vec3(1,1,1), 0.25);
         // }
     }
-#endif
 #endif
 
 
@@ -9954,14 +10617,14 @@ void main(void) {
     if(clayRendering)
         matValue1          = vec4(0.0, 1.0, 0.0, 0.0);
     else
-        matValue1          = getMaterialValue(materialCoords.xy, 1);
+        matValue1          = getMaterialValue(materialCoords, 1);
 
     material.metallic       = matValue1.r;
     material.roughness      = matValue1.g;
     material.reflectance    = matValue1.b;
     float emissive          = matValue1.a;
 
-#ifdef ENABLE_PBR
+#ifdef __ENABLE_PBR
     if (envMapPyramid_desc.x > 0.0) {
         if (headLighting) {
             // Calculate PBR Reflection based on a screen space vecotr for both the noramal and the view vector.
@@ -9977,7 +10640,7 @@ void main(void) {
 #endif
         // Simple diffuse lighting.
         radiance = irradiance * material.baseColor;
-#ifdef ENABLE_PBR
+#ifdef __ENABLE_PBR
     }
 #endif
 
@@ -9985,15 +10648,13 @@ void main(void) {
 
     /////////////////////////////
     // fragColor = vec4(irradiance * material.baseColor, 1.0);
-    // fragColor = vec4(lightmapValue, 1.0);
-    // fragColor = vec4(lightmapValue * material.baseColor, 1.0);
     // fragColor = vec4(material.baseColor, 1.0);
     // fragColor = vec4( normalize(viewNormal), 1.0);
     // fragColor = vec4( normalize(normal), 1.0);
 
     // fragColor = vec4(sampleEnvMap(viewNormal, material.roughness), 1.0);;
     
-    //////////////////////
+    ////////////////////
     {
         // vec4 wireColor = vec4(0.1, 0.1, 0.1, 1.0);
         //vec4 wireColor = vec4(0.6, 0.6, 0.6, 1.0);
@@ -10018,41 +10679,39 @@ void main(void) {
             }
         }
 
-    #ifdef ENABLE_TRIMMING
-        vec2 tcD = fwidth(v_textureCoord);
-        vec2 tcW = fract(v_textureCoord);
-        vec2 tpD = fwidth(trimPatchCoords.xy);
-        if(displayEdges) {   
-            if (isFan) {
+    //     vec2 tcD = fwidth(v_textureCoord);
+    //     vec2 tcW = fract(v_textureCoord);
+    //     vec2 tpD = fwidth(trimPatchQuad.xy);
+    //     if(displayEdges) {   
+    //         if (isFan) {
 
-            } else {
-                if(trimPatchCoords.x >= 0.0) {
-                    if (trimPatchCoords.z < 1.0) {
-                        float stripBoundaryH = 0.5;
-                        float stripWidth = 2.0;
+    //         } else {
+    //             if(trimPatchQuad.x >= 0.0) {
+    //                 if (trimPatchQuad.z < 1.0) {
+    //                     float stripBoundaryH = 0.5;
+    //                     float stripWidth = 2.0;
 
-                        float pixelWidth = ((tpD.x + tpD.y) * 0.5) / stripWidth;
-                        float minLimit = stripBoundaryH + pixelWidth * 0.5;
-                        float maxLimit = stripBoundaryH + pixelWidth * 0.75;
+    //                     float pixelWidth = ((tpD.x + tpD.y) * 0.5) / stripWidth;
+    //                     float minLimit = stripBoundaryH + pixelWidth * 0.5;
+    //                     float maxLimit = stripBoundaryH + pixelWidth * 0.75;
                         
-                        float lerpVal;
-                        if (maxLimit < 1.0) {
-                            lerpVal = smoothstep(maxLimit, minLimit, trimPatchCoords.z);
-                        } else {
-                            // If the strip width is less then one screen pixel, then 
-                            // we just interpollate over the width of the strip. 
-                            lerpVal = 1.0 - smoothstep(0.75, 1.0, trimPatchCoords.z);
-                        }
-                        fragColor = mix(fragColor, wireColor, lerpVal);
-                    }
-                } 
-                else {
-                    float lerpVal = smoothstep(0.0, tcD.x, tcW.x) * smoothstep(1.0, 1.0 - tcD.x, tcW.x) * smoothstep(0.0, tcD.y, tcW.y) * smoothstep(1.0, 1.0 - tcD.y, tcW.y);
-                    fragColor = mix(fragColor, wireColor, 1.0 - lerpVal);
-                }
-            }
-        }
-    #endif
+    //                     float lerpVal;
+    //                     if (maxLimit < 1.0) {
+    //                         lerpVal = smoothstep(maxLimit, minLimit, trimPatchQuad.z);
+    //                     } else {
+    //                         // If the strip width is less then one screen pixel, then 
+    //                         // we just interpollate over the width of the strip. 
+    //                         lerpVal = 1.0 - smoothstep(0.75, 1.0, trimPatchQuad.z);
+    //                     }
+    //                     fragColor = mix(fragColor, wireColor, lerpVal);
+    //                 }
+    //             } 
+    //             else {
+    //                 float lerpVal = smoothstep(0.0, tcD.x, tcW.x) * smoothstep(1.0, 1.0 - tcD.x, tcW.x) * smoothstep(0.0, tcD.y, tcW.y) * smoothstep(1.0, 1.0 - tcD.y, tcW.y);
+    //                 fragColor = mix(fragColor, wireColor, 1.0 - lerpVal);
+    //             }
+    //         }
+    //     }
     }
 
 #ifdef ENABLE_INLINE_GAMMACORRECTION
@@ -10165,17 +10824,18 @@ precision highp float;
 <%include file="stack-gl/gamma.glsl"/>
 <%include file="GLSLCADConstants.glsl"/>
 <%include file="GLSLUtils.glsl"/>
+<%include file="GLSLBinReader.glsl"/>
 
 uniform int passIndex;
 uniform int assetIndex;
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
 varying vec3 v_viewPos;
 varying vec3 v_worldPos;
 varying vec3 v_viewNormal;
 varying vec2 v_textureCoord;
-varying vec2 v_vertexCoords;
 varying float v_surfaceType;
+varying vec2 v_quadDetail;
 
 <%include file="GLSLCADSurfaceDrawing.fragmentShader.glsl"/>
 
@@ -10189,39 +10849,50 @@ void main(void) {
     vec4 fragColor;
 #endif
 
-    vec4 metadata = getDrawItemData(0);
-    int flags = int(floor(metadata.a + 0.5));
-    int surfaceIndexInBody = int(metadata.b + 0.5);
+    int cadBodyId = int(floor(v_drawCoords.r + 0.5));
+    int surfaceIndexInBody = int(floor(v_drawCoords.g + 0.5));
+    int surfaceId = int(floor(v_drawCoords.b + 0.5));
+    int trimSetId = int(floor(v_drawCoords.a + 0.5));
+
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    int flags = int(floor(cadBodyPixel0.g + 0.5));
 
     //////////////////////////////////////////////
     // Cutaways
-#ifdef ENABLE_CUTAWAYS
-    if(applyCutaway(flags)){
-        discard;
-        return;
+    if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
+        vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+        vec3 cutNormal = cadBodyPixel6.xyz;
+        float cutPlaneDist = cadBodyPixel6.w;
+        if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
+            discard;
+        }
     }
-#endif
 
     //////////////////////////////////////////////
     // Trimming
-#ifdef ENABLE_TRIMMING
-    vec3 trimPatchCoords;
-    if(applyTrim(trimPatchCoords, flags)){
-        discard;
-        return;
+    vec4 trimPatchQuad;
+    vec3 trimCoords;
+    if(trimSetId >= 0) {
+        GLSLBinReader trimsetLayoutDataReader;
+        GLSLBinReader_init(trimsetLayoutDataReader, trimSetsAtlasLayoutTextureSize, 16);
+        trimPatchQuad = GLSLBinReader_readVec4(trimsetLayoutDataReader, trimSetsAtlasLayoutTexture, trimSetId*4);
+
+        if(applyTrim(trimPatchQuad, trimCoords, flags)){
+            discard;
+            return;
+        }
     }
-#endif
 
     float dist = length(v_viewPos);
 
     int passAndAssetIndex = passIndex + (assetIndex * 64);
 
     fragColor.r = float(passAndAssetIndex);
-    fragColor.g = metadata.g; // Body Id;
-    fragColor.b = float(surfaceIndexInBody); // Surface Id; // Note: we subtract 1 in the GLCADPAss.getGeomItemAndDist
+    fragColor.g = float(cadBodyId);
+    fragColor.b = float(surfaceIndexInBody);
     fragColor.a = dist;
     
-    // fragColor.b = v_surfaceType;
+    // fragColor.b = float(v_surfaceType);
 
 #ifndef ENABLE_ES3
     gl_FragColor = fragColor;
@@ -10264,13 +10935,15 @@ precision highp float;
 <%include file="stack-gl/gamma.glsl"/>
 <%include file="GLSLCADConstants.glsl"/>
 <%include file="GLSLUtils.glsl"/>
+<%include file="GLSLBinReader.glsl"/>
 
-varying vec2 v_drawCoords;
+varying vec4 v_drawCoords;
 varying vec3 v_viewPos;
 varying vec3 v_worldPos;
 varying vec3 v_viewNormal;
 varying vec2 v_textureCoord;
-varying vec2 v_vertexCoords;
+varying float v_surfaceType;
+varying vec2 v_quadDetail;
 
 <%include file="GLSLCADSurfaceDrawing.fragmentShader.glsl"/>
 
@@ -10283,30 +10956,44 @@ void main(void) {
 #ifndef ENABLE_ES3
     vec4 fragColor;
 #endif
+    
+    int cadBodyId = int(floor(v_drawCoords.r + 0.5));
+    int surfaceIndexInBody = int(floor(v_drawCoords.g + 0.5));
+    int surfaceId = int(floor(v_drawCoords.b + 0.5));
+    int trimSetId = int(floor(v_drawCoords.a + 0.5));
 
-    vec4 metadata = getDrawItemData(0);
-    int flags = int(floor(metadata.a + 0.5));
+    // TODO: pass as varying from pixel shader.
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    int flags = int(floor(cadBodyPixel0.g + 0.5));
+            
 
     //////////////////////////////////////////////
     // Cutaways
-#ifdef ENABLE_CUTAWAYS
-    if(applyCutaway(flags)){
-        discard;
-        return;
+    if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
+        vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+        vec3 cutNormal = cadBodyPixel6.xyz;
+        float cutPlaneDist = cadBodyPixel6.w;
+        if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
+            discard;
+        }
     }
-#endif
 
     //////////////////////////////////////////////
     // Trimming
-#ifdef ENABLE_TRIMMING
-    vec3 trimPatchCoords;
-    if(applyTrim(trimPatchCoords, flags)){
-        discard;
-        return;
+    vec4 trimPatchQuad;
+    vec3 trimCoords;
+    if(trimSetId >= 0) {
+        GLSLBinReader trimsetLayoutDataReader;
+        GLSLBinReader_init(trimsetLayoutDataReader, trimSetsAtlasLayoutTextureSize, 16);
+        trimPatchQuad = GLSLBinReader_readVec4(trimsetLayoutDataReader, trimSetsAtlasLayoutTexture, trimSetId*4);
+
+        if(applyTrim(trimPatchQuad, trimCoords, flags)){
+            discard;
+            return;
+        }
     }
-#endif
     
-    vec4 highlightColor = getDrawItemData(8);
+    vec4 highlightColor = getCADBodyPixel(cadBodyId, 5);
     fragColor = highlightColor;
 
 #ifndef ENABLE_ES3
@@ -10342,8 +11029,329 @@ zeaEngine.sgFactory.registerClass(
   GLDrawSelectedCADSurfaceShader
 );
 
-// import { GLLightmapper } from './GLLightmapper.js'
+const GLDrawCADCurveShader_VERTEX_SHADER = zeaEngine.shaderLibrary.parseShader(
+  'GLDrawCADCurveShader.vertexShader',
+  `
+precision highp float;
 
+<%include file="GLSLUtils.glsl"/>
+<%include file="GLSLCADConstants.glsl"/>
+<%include file="stack-gl/transpose.glsl"/>
+<%include file="stack-gl/inverse.glsl"/>
+
+attribute vec3 positions;
+instancedattribute vec4 drawCoords;  // body ID, Surface index in Body, Surface Id, TrimSet Id
+// instancedattribute vec2 drawItemTexAddr;  // Address of the data in the draw item texture. (mat4)
+
+uniform mat4 viewMatrix;
+uniform mat4 cameraMatrix;
+uniform mat4 projectionMatrix;
+uniform int edgeDetail;
+uniform vec3 assetCentroid;
+
+
+// #define DEBUG_SURFACES
+uniform int numCurvesInLibrary;
+
+
+<%include file="GLSLCADGeomDrawing.vertexShader.glsl"/>
+
+// GEOM
+uniform sampler2D curvesAtlasLayoutTexture;
+uniform ivec2 curvesAtlasLayoutTextureSize;
+
+
+uniform sampler2D curvesAtlasTexture;
+uniform ivec2 curvesAtlasTextureSize;
+// uniform sampler2D normalsTexture;
+
+vec3 getCurveVertex(ivec2 addr, int vertexId) {
+  return fetchTexel(curvesAtlasTexture, curvesAtlasTextureSize, ivec2(addr.x + vertexId, addr.y)).rgb;
+}
+
+// vec3 getCurveTangent(vec2 surfacePatchCoords, vec2 vertexCoord) {
+//   return fetchTexel(normalsTexture, curvesAtlasTextureSize, ivec2(ftoi(surfacePatchCoords.x + vertexCoord.x), ftoi(surfacePatchCoords.y + vertexCoord.y))).rgb;
+// }
+
+varying vec4 v_drawCoords;
+varying vec3 v_viewPos;
+varying vec3 v_worldPos;
+varying vec3 v_sc;
+
+void main(void) {
+    int cadBodyId = ftoi(drawCoords.r);
+    int drawItemIndexInBody = ftoi(drawCoords.g);
+    int curveId = ftoi(drawCoords.b);
+    int trimSetId = ftoi(drawCoords.a);
+    v_drawCoords = drawCoords;
+
+    vec2 texCoords = positions.xy;
+
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    vec4 cadBodyPixel1 = getCADBodyPixel(cadBodyId, 1);
+
+    // int bodyDescId = ftoi(cadBodyPixel0.r);
+    int flags = ftoi(cadBodyPixel0.g);
+
+    // vec4 metadata = getDrawItemData(0);
+    // ivec4 curveAtlasCoords = ftoi(getDrawItemData(2));
+    // int flags = int(floor(metadata.a + 0.5));
+
+    //////////////////////////////////////////////
+    // Visiblity
+    if(testFlag(flags, BODY_FLAG_INVISIBLE)) {
+        gl_Position = vec4(-3.0, -3.0, -3.0, 1.0);;
+        return;
+    }
+
+    //////////////////////////////////////////////
+    // Transforms
+#ifdef DEBUG_SURFACES
+    mat4 modelMatrix = mat4(1.0);
+    int numCurvesInLibrary = 15;
+    // int sideLen = int(ceil(sqrt(float(numCurvesInLibrary))));
+    // int x = curveId % sideLen;
+    // int y = curveId / sideLen;
+    modelMatrix = mat4(1.0, 0.0, 0.0, 0.0, 
+                    0.0, 1.0, 0.0, 0.0, 
+                    0.0, 0.0, 1.0, 0.0,  
+                    float(curveId), float(0), 0.0, 1.0);
+#else
+
+#ifdef CALC_GLOBAL_XFO_DURING_DRAW
+    mat4 bodyMat = getCADBodyMatrix(cadBodyId);
+    ivec2 bodyDescAddr = ftoi(cadBodyPixel0.ba);
+    Xfo surfaceXfo = getDrawItemXfo(bodyDescAddr, drawItemIndexInBody);
+    mat4 modelMatrix = bodyMat * xfo_toMat4(surfaceXfo);
+
+    v_sc = surfaceXfo.sc;
+    
+    //if (v_sc.z > 0.0) {
+    //  gl_Position = vec4(-3.0, -3.0, -3.0, 1.0);;
+    //  return;
+    //}
+#else
+    mat4 modelMatrix = getModelMatrix();
+    // Note: on mobile GPUs, we get only FP16 math in the
+    // fragment shader, causing inaccuracies in modelMatrix
+    // calculation. By offsetting the data to the origin
+    // we calculate a modelMatrix in the asset space, and
+    //  then add it back on during final drawing.
+    // modelMatrix[3][0] += assetCentroid.x;
+    // modelMatrix[3][1] += assetCentroid.y;
+    // modelMatrix[3][2] += assetCentroid.z;
+#endif
+#endif
+    // modelMatrix = mat4(0.001, 0.0, 0.0, 0.0, 
+    //   0.0, 0.001, 0.0, 0.0, 
+    //   0.0, 0.0, 0.001, 0.0,  
+    //   0.0, 0.0, 0.0, 1.0);
+    mat4 modelViewMatrix = viewMatrix * modelMatrix;
+
+    //////////////////////////////////////////////
+    // Vertex Attributes
+    
+    GLSLBinReader curvesLayoutDataReader;
+    GLSLBinReader_init(curvesLayoutDataReader, curvesAtlasLayoutTextureSize, 16);
+    vec4 curveDataAddr = GLSLBinReader_readVec4(curvesLayoutDataReader, curvesAtlasLayoutTexture, curveId * 8);
+
+    int vertexId = int(positions.x * float(edgeDetail));
+    vec4 pos     = vec4(getCurveVertex(ftoi(curveDataAddr.xy), vertexId), 1.0);
+    // vec4 pos     = vec4(positions * float(edgeDetail), 1.0);
+
+    // if (vertexId == 0)
+    //   pos = vec4(vec3(0.0), 1.0);
+
+    vec4 viewPos = modelViewMatrix * pos;
+    v_viewPos    = viewPos.xyz;
+    v_worldPos   = (modelMatrix * pos).xyz;
+    gl_Position  = projectionMatrix * viewPos;
+
+    {
+        // Pull edge vertices towards us ever so slightly...
+        gl_Position.z -= 0.00001;
+    }
+}`
+);
+
+const GLDrawCADCurveShader_FRAGMENT_SHADER = zeaEngine.shaderLibrary.parseShader(
+  'GLDrawCADCurveShader.fragmentShader',
+  `
+precision highp float;
+
+<%include file="math/constants.glsl"/>
+<%include file="GLSLUtils.glsl"/>
+<%include file="stack-gl/gamma.glsl"/>
+<%include file="materialparams.glsl"/>
+<%include file="GGX_Specular.glsl"/>
+<%include file="PBRSurfaceRadiance.glsl"/>
+
+<%include file="GLSLCADConstants.glsl"/>
+
+uniform mat4 cameraMatrix;
+
+uniform bool headLighting;
+uniform bool displayWireframes;
+uniform bool displayEdges;
+uniform vec4 edgeColor;
+
+#ifdef ENABLE_INLINE_GAMMACORRECTION
+uniform float exposure;
+uniform float gamma;
+#endif
+
+varying vec4 v_drawCoords;
+varying vec3 v_viewPos;
+varying vec3 v_worldPos;
+varying vec3 v_sc;
+
+<%include file="GLSLCADGeomDrawing.fragmentShader.glsl"/>
+
+#ifdef ENABLE_ES3
+out vec4 fragColor;
+#endif
+
+void main(void) {
+
+#ifndef ENABLE_ES3
+    vec4 fragColor;
+#endif
+
+    int cadBodyId = int(floor(v_drawCoords.r + 0.5));
+    int drawItemIndexInBody = int(floor(v_drawCoords.g + 0.5));
+    int curveId = int(floor(v_drawCoords.b + 0.5));
+
+    // TODO: pass as varying from pixel shader.
+    vec4 cadBodyPixel0 = getCADBodyPixel(cadBodyId, 0);
+    int flags = int(floor(cadBodyPixel0.g + 0.5));
+            
+
+    //////////////////////////////////////////////
+    // Cutaways
+    if (testFlag(flags, BODY_FLAG_CUTAWAY)) {
+        vec4 cadBodyPixel6 = getCADBodyPixel(cadBodyId, 6);
+        vec3 cutNormal = cadBodyPixel6.xyz;
+        float cutPlaneDist = cadBodyPixel6.w;
+        if (cutaway(v_worldPos, cutNormal, cutPlaneDist)) {
+            discard;
+            return;
+        }
+    }
+
+    fragColor = edgeColor;
+
+    // fragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    // if (v_sc.x < 0.0) {
+    //   fragColor.r = 1.0;
+    // }
+    // if (v_sc.y < 0.0) {
+    //   fragColor.g = 1.0;
+    // }
+    // if (v_sc.z < 0.0) {
+    //   fragColor.b = 1.0;
+    // }
+
+#ifdef ENABLE_INLINE_GAMMACORRECTION
+    fragColor.rgb = toGamma(fragColor.rgb * exposure, gamma);
+#endif
+
+#ifndef ENABLE_ES3
+    gl_FragColor = fragColor;
+#endif
+}
+`
+);
+
+/** Class representing a GL draw CAD surface shader.
+ * @extends GLCADShader
+ * @ignore
+ */
+class GLDrawCADCurveShader extends GLCADShader {
+  /*
+   * Create a GL draw CAD surface shader.
+   * @param {any} gl - The gl value.
+   */
+  constructor(gl) {
+    super(gl);
+
+    this.__shaderStages['VERTEX_SHADER'] = GLDrawCADCurveShader_VERTEX_SHADER;
+    this.__shaderStages[
+      'FRAGMENT_SHADER'
+    ] = GLDrawCADCurveShader_FRAGMENT_SHADER;
+
+    this.finalize();
+  }
+
+  /**
+   * The getParamDeclarations method.
+   * @return {any} - The return value.
+   */
+  static getParamDeclarations() {
+    const paramDescs = super.getParamDeclarations();
+    paramDescs.push({
+      name: 'BaseColor',
+      defaultValue: new zeaEngine.Color(1.0, 1.0, 0.5),
+    });
+    paramDescs.push({
+      name: 'EmissiveStrength',
+      defaultValue: 0.0,
+    });
+    paramDescs.push({
+      name: 'Metallic',
+      defaultValue: 0.0,
+    });
+    paramDescs.push({
+      name: 'Roughness',
+      defaultValue: 0.25,
+    });
+    paramDescs.push({
+      name: 'Normal',
+      defaultValue: new zeaEngine.Color(0.0, 0.0, 0.0),
+    });
+    paramDescs.push({
+      name: 'TexCoordScale',
+      defaultValue: 1.0,
+      texturable: false,
+    });
+    // F0 = reflectance and is a physical property of materials
+    // It also has direct relation to IOR so we need to dial one or the other
+    // For simplicity sake, we don't need to touch this value as metalic can dictate it
+    // such that non metallic is mostly around (0.01-0.025) and metallic around (0.7-0.85)
+    paramDescs.push({
+      name: 'Reflectance',
+      defaultValue: 0.025,
+    });
+    return paramDescs
+  }
+
+  /**
+   * The getPackedMaterialData method.
+   * @param {any} material - The material param.
+   * @return {any} - The return value.
+   */
+  static getPackedMaterialData(material) {
+    const matData = new Float32Array(8);
+    const baseColor = material.getParameter('BaseColor').getValue();
+    matData[0] = baseColor.r;
+    matData[1] = baseColor.g;
+    matData[2] = baseColor.b;
+    matData[3] = baseColor.a;
+    if (material.getParameter('EmissiveStrength')) {
+      matData[4] = material.getParameter('Metallic').getValue();
+      matData[5] = material.getParameter('Roughness').getValue();
+      matData[6] = material.getParameter('Reflectance').getValue();
+      matData[7] = material.getParameter('EmissiveStrength').getValue();
+    } else {
+      matData[5] = 1.0;
+    }
+    return matData
+  }
+}
+
+zeaEngine.sgFactory.registerClass(
+  'GLDrawCADCurveShader',
+  GLDrawCADCurveShader
+);
 
 /** Class representing a GL CAD pass.
  * @extends GLPass
@@ -10358,18 +11366,14 @@ class GLCADPass extends zeaEngine.GLPass {
     this.debugMode = debugMode;
     this.headLighting = false;
     this.displayWireframes = false;
-    this.displayEdges = false;
+    this.displaySurfaces = true;
+    this.displayEdges = true;
     this.displayNormals = false;
     this.normalLength = 0.002; // 2cm
     this.debugTrimTex = false;
     this.debugSurfaceAtlas = false;
     this.debugAssetId =  0;
 
-    // Lightmaps should not be considered a default feature. 
-    // They still fail on some assets(due to the new fans)
-    // anmd in many cases are not desirable. (e.g. construciton data)
-    // Note: ENABLE_PBR is also disabled now by default.
-    this.__enableLightmaps = false;
     this.__numHighlightedGeoms = 0;
 
     this.__geomDatas = [];
@@ -10390,7 +11394,6 @@ class GLCADPass extends zeaEngine.GLPass {
       numTriangles: 0,
       numDrawSets: 0,
     };
-
   }
 
   /**
@@ -10406,17 +11409,7 @@ class GLCADPass extends zeaEngine.GLPass {
     const gl = renderer.gl;
 
     const materialLibrary = new GLCADMaterialLibrary(gl);
-    materialLibrary.updated.connect(this.updated.emit);
-
-    const applyOptsToShader = shader => {
-      if (shader.setPreprocessorValue) {
-        // Initialise the shaders.
-        const opts = this.getShaderState();
-        for (const key in opts) shader.setPreprocessorValue(key);
-        shader.applyOptions();
-      }
-      return shader
-    };
+    materialLibrary.on('updated', () => this.emit('updated'));
 
     const evaluateSurfaceShaders = [
       new GLEvaluateSimpleCADSurfaceShader(gl),
@@ -10450,25 +11443,16 @@ class GLCADPass extends zeaEngine.GLPass {
     this.setShaderPreprocessorValue('#define ENABLE_INLINE_GAMMACORRECTION');
     if (zeaEngine.SystemDesc.deviceCategory == 'High') ;
 
-    this.__drawSelectedCADSurfaceShader = applyOptsToShader(
-      new GLDrawSelectedCADSurfaceShader(gl)
-    );
-    this.__drawCADSurfaceNormalsShader = applyOptsToShader(
-      new GLDrawCADSurfaceNormalsShader(gl)
-    );
-    this.__drawCADSurfaceGeomDataShader = applyOptsToShader(
-      new GLDrawCADSurfaceGeomDataShader(gl)
-    );
-    this.__updateDrawItemsShader = applyOptsToShader(
+    this.__updateDrawItemsShader = this.applyOptsToShader(
       new GLEvaluateDrawItemsShader(gl)
     );
+    
 
     this.__cadpassdata = {
       debugMode: this.debugMode,
       convertTo8BitTextures,
       assetCount: 0,
       materialLibrary,
-      // enableLightmaps: this.__enableLightmaps,
       evaluateCurveShader: new GLEvaluateCADCurveShader(gl),
       evaluateSurfaceShaders: evaluateSurfaceShaders,
       trimCurveFansShader: new GLDrawTrimCurveFansShader(gl),
@@ -10491,7 +11475,7 @@ class GLCADPass extends zeaEngine.GLPass {
           if (!shaderClass || !shaderClass.getPackedMaterialData) {
             return this.__cadpassdata.genShaderID('GLDrawCADSurfaceShader')
           }
-          const shader = applyOptsToShader(
+          const shader = this.applyOptsToShader(
             zeaEngine.sgFactory.constructClass(shaderName, gl)
           );
 
@@ -10525,36 +11509,9 @@ class GLCADPass extends zeaEngine.GLPass {
         this.__profiling.numTriangles = this.__profiling.numTriangles / 1000000;
         console.log(this.__profiling);
 
-        if (this.__lightmapper && this.__enableLightmaps) {
-          const scene = this.__renderer.getScene();
-          this.__lightmapper.computeLightmaps(scene.getRoot().getBoundingBox());
-        } else {
-          this.updated.emit();
-        }
+        this.emit('updated');
       }
     };
-
-    // this.__lightmapper = new GLLightmapper(
-    //   gl,
-    //   this.drawScene.bind(this),
-    //   this.clearLightmaps.bind(this),
-    //   this.renderToLightmaps.bind(this),
-    //   this.updated.emit,
-    //   this.__cadpassdata
-    // )
-
-    // this.__renderer.envMapAssigned.connect(glEnvMap => {
-    //   this.__loadQueue++
-    //   glEnvMap.loaded.connect(() => {
-    //     this.__lightmapper.setGLEnvMap(glEnvMap)
-    //     this.__decrementLoadQueue()
-    //   })
-    // })
-
-    // this.__worker = new GLCADPassWorker();
-    // this.__worker.onmessage = event => {
-    //   this.__onWorkerMessage(event.data); // loading done...
-    // };
 
     this.__renderer.registerPass(
       (treeItem, rargs) => {
@@ -10563,14 +11520,14 @@ class GLCADPass extends zeaEngine.GLPass {
           this.__loadQueue++;
           this.__cadpassdata.assetCount++;
 
-          if (cadAsset.loaded.isToggled()) {
+          if (cadAsset.isLoaded()) {
             if (cadAsset.getNumBodyItems() > 0) {
               this.addCADAsset(cadAsset);
             } else {
               this.__decrementLoadQueue();
             }
           } else {
-            cadAsset.loaded.connect(() => {
+            cadAsset.once('loaded', () => {
               if (cadAsset.getNumBodyItems() > 0) this.addCADAsset(cadAsset);
               else {
                 this.__decrementLoadQueue();
@@ -10590,58 +11547,7 @@ class GLCADPass extends zeaEngine.GLPass {
         return false
       }
     );
-
-    // collector.registerSceneItemFilter((treeItem, rargs) => {
-    //   if (treeItem instanceof CADAsset) {
-    //     this.__loadQueue++;
-    //     const cadAsset = treeItem;
-    //     cadAsset.loaded.connect(() => {
-    //       this.addCADAsset(treeItem);
-    //     });
-    //     rargs.continueInSubTree = true;
-    //     return true;
-    //   }
-    // });
   }
-
-  /**
-   * The enableLightmaps method.
-   * @param {any} state - The state param.
-  enableLightmaps(state) {
-    if (this.__enableLightmaps == state) return
-
-    this.__enableLightmaps = state
-    if (this.__cadpassdata)
-      this.__cadpassdata.enableLightmaps = this.__enableLightmaps
-    if (this.__enableLightmaps) {
-      this.setShaderPreprocessorValue('#define ENABLE_CAD_LIGHTMAPS')
-    } else {
-      this.clearShaderPreprocessorValue('#define ENABLE_CAD_LIGHTMAPS')
-    }
-    if (this.__loadQueue == 0) {
-      if (this.__lightmapper && this.__enableLightmaps) {
-        const scene = this.__renderer.getScene()
-        this.__lightmapper.computeLightmaps(scene.getRoot().getBoundingBox())
-      } else {
-        this.updated.emit()
-      }
-    }
-  }
-   */
-
-  /**
-   * The enableShadows method.
-  enableShadows() {
-    this.enableLightmaps(true)
-  }
-   */
-
-  /**
-   * The disableShadows method.
-  disableShadows() {
-    this.enableLightmaps(false)
-  }
-   */
 
   /**
    * The getShaderPreprocessorValue method.
@@ -10683,8 +11589,7 @@ class GLCADPass extends zeaEngine.GLPass {
       this.__updateDrawItemsShader.setPreprocessorValue(name);
       if (apply) this.__updateDrawItemsShader.applyOptions();
     }
-    if (this.__renderer)
-      this.__renderer.requestRedraw();
+    if (this.__renderer) this.__renderer.requestRedraw();
   }
 
   /**
@@ -10703,8 +11608,17 @@ class GLCADPass extends zeaEngine.GLPass {
         if (apply) shaderReg.shader.applyOptions();
       }
     }
-    if (this.__renderer)
-      this.__renderer.requestRedraw();
+    if (this.__renderer) this.__renderer.requestRedraw();
+  }
+
+  applyOptsToShader(shader) {
+    if (shader.setPreprocessorValue) {
+      // Initialise the shaders.
+      const opts = this.getShaderState();
+      for (const key in opts) shader.setPreprocessorValue(key);
+      shader.applyOptions();
+    }
+    return shader
   }
 
   /**
@@ -10759,30 +11673,6 @@ class GLCADPass extends zeaEngine.GLPass {
   }
 
   /**
-   * The getCutPlaneNormalParam method.
-   * @return {any} - The return value.
-   */
-  getCutPlaneNormalParam() {
-    return this.__cutPlaneNormalParam
-  }
-
-  /**
-   * The getCutPlaneDistParam method.
-   * @return {any} - The return value.
-   */
-  getCutPlaneDistParam() {
-    return this.__cutDistParam
-  }
-
-  /**
-   * The getCutPlaneColorParam method.
-   * @return {any} - The return value.
-   */
-  getCutPlaneColorParam() {
-    return this.__cutPlaneColorParam
-  }
-
-  /**
    * The incHighlightedCount method.
    * @param {any} count - The count param.
    */
@@ -10817,6 +11707,9 @@ class GLCADPass extends zeaEngine.GLPass {
     if (cadAsset.getVersion().greaterOrEqualThan([0, 0, 29])) {
       this.setShaderPreprocessorValue('#define ENABLE_PER_FACE_COLORS');
     }
+    if (cadAsset.getVersion().compare([1, 0, 5]) >= 0) {
+      this.setShaderPreprocessorValue('#define ENABLE_BODY_EDGES');
+    }
 
     const glcadAsset = new GLCADAsset(
       this.__gl,
@@ -10825,7 +11718,7 @@ class GLCADPass extends zeaEngine.GLPass {
       this.__cadpassdata
     );
 
-    glcadAsset.loaded.connect(assetStats => {
+    glcadAsset.once('loaded', assetStats => {
       this.__profiling.numSurfaces += assetStats.numSurfaces;
       this.__profiling.numSurfaceInstances += assetStats.numSurfaceInstances;
       this.__profiling.surfaceEvalTime += assetStats.surfaceEvalTime;
@@ -10836,24 +11729,8 @@ class GLCADPass extends zeaEngine.GLPass {
 
       this.__decrementLoadQueue();
     });
-    // glcadAsset.assetVisibilityChanged.connect(() => {
-    //   if (
-    //     this.__loadQueue == 0 &&
-    //     this.__lightmapper &&
-    //     this.__enableLightmaps
-    //   ) {
-    //     // Note: visibility changes also cause rendering.
-    //     // We get a context loss sometimes if the lightmapper kicks in
-    //     // immedietly.
-    //     setTimeout(() => {
-    //       const scene = this.__renderer.getScene()
-    //       this.__lightmapper.computeLightmaps(scene.getRoot().getBoundingBox())
-    //     }, 100)
-    //     this.updated.emit()
-    //   }
-    // })
 
-    glcadAsset.updated.connect(this.updated.emit);
+    glcadAsset.on('updated', () => this.emit('updated'));
 
     this.__assets.push(glcadAsset);
   }
@@ -10870,7 +11747,7 @@ class GLCADPass extends zeaEngine.GLPass {
       }
       return true
     });
-    this.updated.emit();
+    this.emit('updated');
   }
 
   /**
@@ -10908,38 +11785,17 @@ class GLCADPass extends zeaEngine.GLPass {
     }
   }
 
-  /**
-   * The drawScene method.
-   * Note: this function is called by the lightmapper.
-   * Only the basic scene data is bound here.
-   * @param {any} renderstate - The renderstate param.
-   */
-  drawScene(renderstate) {
-    for (const shaderKey in this.__shaderKeys) {
-      renderstate.shaderId = this.__shaderKeys[shaderKey].id;
-      for (const asset of this.__assets) {
-        asset.draw(renderstate);
-      }
+  drawTrimTex(assetId = 0) {
+    if (this.__assets.length > assetId) {
+      const renderstate = {};
+      this.__assets[assetId].drawTrimSets(renderstate);
     }
   }
 
-  /**
-   * The clearLightmaps method.
-   * @param {any} channel - The channel param.
-   */
-  clearLightmaps(channel) {
-    for (const asset of this.__assets) {
-      asset.clearLightmap(channel);
-    }
-  }
-
-  /**
-   * The renderToLightmaps method.
-   * @param {any} renderstate - The renderstate param.
-   */
-  renderToLightmaps(renderstate) {
-    for (const asset of this.__assets) {
-      asset.renderToLightmap(renderstate);
+  drawSurfaceAtlas(assetId = 0) {
+    if (this.__assets.length > assetId) {
+      const renderstate = {};
+      this.__assets[assetId].drawSurfaceAtlas(renderstate);
     }
   }
 
@@ -10951,70 +11807,89 @@ class GLCADPass extends zeaEngine.GLPass {
   draw(renderstate) {
     const gl = this.__gl;
 
-    // Note: we will bind to the camera so we can support dynamic LOD.
-    // this.__updateViewXfo(renderstate.viewXfo)
-
     if (this.debugTrimTex) {
-      if (this.__assets.length > this.debugAssetId)
-        this.__assets[this.debugAssetId].drawTrimSets(renderstate);
+      return this.drawTrimTex(this.debugAssetId)
     }
     if (this.debugSurfaceAtlas) {
-      if (this.__assets.length > this.debugAssetId)
-        this.__assets[this.debugAssetId].drawSurfaceAtlas(renderstate);
-      return
+      return this.drawSurfaceAtlas(this.debugAssetId)
     }
+    
+    if (this.displaySurfaces) {
+      if (this.__cadpassdata.materialLibrary.needsUpload())
+        this.__cadpassdata.materialLibrary.uploadMaterials();
 
-    if (this.__cadpassdata.materialLibrary.needsUpload())
-      this.__cadpassdata.materialLibrary.uploadMaterials();
+      for (const shaderKey in this.__shaderKeys) {
+        const shaderReg = this.__shaderKeys[shaderKey];
+        shaderReg.shader.bind(renderstate);
+        renderstate.shaderId = shaderReg.id;
 
-    for (const shaderKey in this.__shaderKeys) {
-      const shaderReg = this.__shaderKeys[shaderKey];
-      shaderReg.shader.bind(renderstate);
-      renderstate.shaderId = shaderReg.id;
+        if (!this.__cadpassdata.materialLibrary.bind(renderstate)) {
+          return false
+        }
 
-      if (!this.__cadpassdata.materialLibrary.bind(renderstate)) {
-        return false
+        if (renderstate.unifs.headLighting) {
+          gl.uniform1i(
+            renderstate.unifs.headLighting.location,
+            this.headLighting
+          );
+        }
+        if (renderstate.unifs.displayWireframes) {
+          gl.uniform1i(
+            renderstate.unifs.displayWireframes.location,
+            this.displayWireframes
+          );
+        }
+        if (renderstate.unifs.displayEdges) {
+          // gl.uniform1i(renderstate.unifs.displayEdges.location, this.displayEdges)
+          gl.uniform1i(renderstate.unifs.displayEdges.location, false);
+        }
+
+        const boundTextures = renderstate.boundTextures;
+        for (const asset of this.__assets) {
+          asset.draw(renderstate);
+          renderstate.boundTextures = boundTextures;
+        }
+
+        shaderReg.shader.unbind(renderstate);
       }
-
-      if (this.__lightmapper) {
-        this.__lightmapper.bind(renderstate);
-      }
-
-      if (renderstate.unifs.headLighting) {
-        gl.uniform1i(
-          renderstate.unifs.headLighting.location,
-          this.headLighting
-        );
-      }
-      if (renderstate.unifs.displayWireframes) {
-        gl.uniform1i(
-          renderstate.unifs.displayWireframes.location,
-          this.displayWireframes
-        );
-      }
-      if (renderstate.unifs.displayEdges)
-        gl.uniform1i(renderstate.unifs.displayEdges.location, this.displayEdges);
-
-      for (const asset of this.__assets) {
-        asset.draw(renderstate);
-      }
-
-      shaderReg.shader.unbind(renderstate);
     }
 
     if (this.displayNormals) {
+      if (!this.__drawCADSurfaceNormalsShader) {
+        this.__drawCADSurfaceNormalsShader = this.applyOptsToShader(
+          new GLDrawCADSurfaceNormalsShader(gl)
+        );
+      }
       if (!this.__drawCADSurfaceNormalsShader.bind(renderstate)) return false
 
       gl.uniform1f(renderstate.unifs.normalLength.location, this.normalLength);
+      const id = this.__shaderKeys.GLDrawCADSurfaceShader.id;
+      const boundTextures = renderstate.boundTextures;
       for (const asset of this.__assets) {
-        asset.drawNormals(
-          renderstate,
-          this.__shaderKeys.GLDrawCADSurfaceShader.id
-        );
+        asset.drawNormals(renderstate, id);
+        renderstate.boundTextures = boundTextures;
       }
     }
 
-    // this.drawHighlightedGeoms(renderstate);
+    if (this.displayEdges) {
+      if (!this.__drawCADCurvesShader) {
+        this.__drawCADCurvesShader = this.applyOptsToShader(
+          new GLDrawCADCurveShader(gl)
+        );
+      }
+      if (!this.__drawCADCurvesShader.bind(renderstate)) return false
+
+      gl.uniform4f(renderstate.unifs.edgeColor.location, 0.1, 0.1, 0.1, 1);
+      const boundTextures = renderstate.boundTextures;
+      for (const asset of this.__assets) {
+        asset.drawEdges(renderstate, 0);
+        renderstate.boundTextures = boundTextures;
+      }
+    }
+    
+    // To debug the highlight buffer, enable this line.
+    // It will draw the highlight buffer directly to the screen.
+    // this.drawHighlightedGeoms(renderstate)
   }
 
   /**
@@ -11024,20 +11899,18 @@ class GLCADPass extends zeaEngine.GLPass {
    */
   drawHighlightedGeoms(renderstate) {
     if (this.__numHighlightedGeoms == 0) return false
-    if (
-      !this.__drawSelectedCADSurfaceShader ||
-      !this.__drawSelectedCADSurfaceShader.bind(renderstate)
-    )
-      return false
-
     const gl = this.__gl;
-    gl.disable(gl.DEPTH_TEST);
-
+    if (!this.__drawSelectedCADSurfaceShader) {
+      this.__drawSelectedCADSurfaceShader = this.applyOptsToShader(
+        new GLDrawSelectedCADSurfaceShader(gl)
+      );
+    }
+    if (!this.__drawSelectedCADSurfaceShader.bind(renderstate)) {
+      return false
+    }
     for (const asset of this.__assets) {
       asset.drawHighlightedGeoms(renderstate);
     }
-
-    gl.enable(gl.DEPTH_TEST);
   }
 
   /**
@@ -11047,17 +11920,20 @@ class GLCADPass extends zeaEngine.GLPass {
    */
   drawGeomData(renderstate) {
     const gl = this.__gl;
+    if (!this.__drawCADSurfaceGeomDataShader) {
+      this.__drawCADSurfaceGeomDataShader = this.applyOptsToShader(
+        new GLDrawCADSurfaceGeomDataShader(gl)
+      );
+    }
+    if (!this.__drawCADSurfaceGeomDataShader.bind(renderstate)) {
+      return false
+    }
+
     gl.disable(gl.BLEND);
     gl.disable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
     gl.depthFunc(gl.LESS);
     gl.depthMask(true);
-
-    if (
-      !this.__drawCADSurfaceGeomDataShader ||
-      !this.__drawCADSurfaceGeomDataShader.bind(renderstate)
-    )
-      return false
 
     const passIndexUnif = renderstate.unifs.passIndex;
     if (passIndexUnif) {
@@ -11095,211 +11971,23 @@ class GLCADPass extends zeaEngine.GLPass {
   }
 }
 
-const FRAGMENT_SHADER$3 = zeaEngine.shaderLibrary.parseShader(
-  'GLDrawCADSurfaceDropShadowShader.fragmentShader',
-  `
-precision highp float;
-
-<%include file="math/constants.glsl"/>
-<%include file="GLSLUtils.glsl"/>
-<%include file="stack-gl/gamma.glsl"/>
-<%include file="GLSLCADConstants.glsl"/>
-
-#ifdef ENABLE_INLINE_GAMMACORRECTION
-uniform float exposure;
-#endif
-
-
-#ifndef ENABLE_ES3
-varying vec2 v_drawCoords;
-varying vec3 v_viewPos;
-varying vec3 v_worldPos;
-varying vec3 v_viewNormal;
-varying vec2 v_textureCoord;
-varying vec2 v_vertexCoords;
-#else
-in vec2 v_drawCoords;
-in vec3 v_viewPos;
-in vec3 v_worldPos;
-in vec3 v_viewNormal;
-in vec2 v_textureCoord;
-in vec2 v_vertexCoords;
-#endif
-
-<%include file="GLSLCADSurfaceDrawing.fragmentShader.glsl"/>
-
-
-float luminanceFromRGB(vec3 color) {
-    return 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
-}
-
-float remap(float value, float start1, float end1, float start2, float end2) {
-  return start2 + (value - start1) * (end2 - start2) / (end1 - start1);
-}
-
-#ifdef ENABLE_ES3
-out vec4 fragColor;
-#endif
-
-void main(void) {
-
-#ifndef ENABLE_ES3
-    vec4 fragColor;
-#endif
-
-    ///////////////////////////////////////////
-    // Lightmaps
-#ifdef ENABLE_CAD_LIGHTMAPS
-
-    vec4 lightmapPatchCoords = getDrawItemData(4);
-    vec3 lightmapValue = vec3(1.0);
-    vec4 lightmapSample = sampleLightmaps(lightmapPatchCoords);
-    // vec4 lightmapSample = sampleLightmap(lightmapAtlasTexture, lightmapPatchCoords);
-    if(lightmapSample.a > 0.0) {
-        lightmapValue = lightmapSample.rgb / lightmapSample.a;
-        vec4 materialCoords = getDrawItemData(1);
-        vec4 matValue0 = getMaterialValue(materialCoords.xy, 0);
-        float remapMin = matValue0.r;
-        float remapMax = matValue0.g;
-        float borderSize = matValue0.b;
-
-        // Mix from fully illumnated(no shadow) to shadowed...
-        vec3 irradiance = mix(vec3(1.0), lightmapValue, lightmapWeight);
-
-        float shadow = remap(luminanceFromRGB(irradiance), remapMin, remapMax, 0.0, 1.0);
-
-        // Create a circular mask.
-        // The value ranges from 0.0 at the edge of the circular region
-        // and goes to 1.0 at the center of the quad.
-        float distToCenter = length(abs(v_textureCoord - 0.5) * 2.0);
-
-        float centerSize = 1.0 - borderSize;
-        if(distToCenter > centerSize) {
-          shadow = mix(shadow, 1.0, smoothstep(0.0, 1.0, (distToCenter - centerSize) / borderSize));
-        }
-
-        fragColor.rgb = vec3(shadow);
-        fragColor.a = 1.0;
-    }
-    else {
-      discard;
-      return;
-    }
-
-#else
-  discard;
-  return;
-#endif
-
-
-#ifdef ENABLE_INLINE_GAMMACORRECTION
-    fragColor.rgb = toGamma(fragColor.rgb * exposure);
-#endif
-
-#ifndef ENABLE_ES3
-    gl_FragColor = fragColor;
-#endif
-}
-`
-);
-
-/** Class representing a GL draw CAD surface drop shadow shader.
- * @extends GLCADShader
- * @ignore
- */
-class GLDrawCADSurfaceDropShadowShader extends GLCADShader {
-  /**
-   * Create a GL draw CAD surface drop shadow shader.
-   * @param {any} gl - The gl value.
-   */
-  constructor(gl) {
-    super(gl);
-
-    this.__shaderStages['VERTEX_SHADER'] = GLDrawCADSurfaceShader_VERTEX_SHADER;
-
-    this.__shaderStages['FRAGMENT_SHADER'] = FRAGMENT_SHADER$3;
-
-    this.nonSelectable = true;
-    this.finalize();
-  }
-
-  /**
-   * The bind method.
-   * @param {any} renderstate - The renderstate param.
-   * @param {any} key - The key param.
-   */
-  bind(renderstate, key) {
-    super.bind(renderstate, key);
-    const gl = this.__gl;
-
-    gl.enable(gl.BLEND);
-    gl.blendEquation(gl.FUNC_ADD);
-    gl.blendFunc(gl.DST_COLOR, gl.ZERO); // For multiply, select this.
-  }
-
-  /**
-   * The unbind method.
-   * @param {any} renderstate - The renderstate param.
-   * @return {boolean} - The return value.
-   */
-  unbind(renderstate) {
-    const gl = this.__gl;
-    gl.disable(gl.BLEND);
-    return true
-  }
-
-  /**
-   * The getParamDeclarations method.
-   * @return {any} - The return value.
-   */
-  static getParamDeclarations() {
-    const paramDescs = super.getParamDeclarations();
-    paramDescs.push({ name: 'Remap', defaultValue: new zeaEngine.Vec2(0, 1) });
-    paramDescs.push({ name: 'BorderSize', defaultValue: 0.35 });
-    return paramDescs
-  }
-
-  /**
-   * The getPackedMaterialData method.
-   * @param {any} material - The material param.
-   * @return {any} - The return value.
-   */
-  static getPackedMaterialData(material) {
-    const matData = new Float32Array(8);
-    const remap = material.getParameter('Remap').getValue();
-    matData[0] = remap.x;
-    matData[1] = remap.y;
-    matData[2] = material.getParameter('BorderSize').getValue();
-    return matData
-  }
-}
-
-zeaEngine.sgFactory.registerClass(
-  'GLDrawCADSurfaceDropShadowShader',
-  GLDrawCADSurfaceDropShadowShader
-);
-
 exports.BODY_FLAG_CUTAWAY = BODY_FLAG_CUTAWAY;
 exports.BODY_FLAG_INVISIBLE = BODY_FLAG_INVISIBLE;
 exports.CADAssembly = CADAssembly;
 exports.CADAsset = CADAsset;
 exports.CADBody = CADBody;
 exports.CADCurveTypes = CADCurveTypes;
-exports.CADSurfaceLibrary = CADSurfaceLibrary;
 exports.CADSurfaceTypes = CADSurfaceTypes;
 exports.CURVE_FLAG_COST_IS_DETAIL = CURVE_FLAG_COST_IS_DETAIL;
 exports.GLCADPass = GLCADPass;
-exports.GLDrawCADSurfaceDropShadowShader = GLDrawCADSurfaceDropShadowShader;
-exports.GLDrawCADSurfaceShader = GLDrawCADSurfaceShader;
-exports.GLDrawCADSurfaceShader_FRAGMENT_SHADER = GLDrawCADSurfaceShader_FRAGMENT_SHADER;
-exports.GLDrawCADSurfaceShader_VERTEX_SHADER = GLDrawCADSurfaceShader_VERTEX_SHADER;
 exports.SURFACE_FLAG_COST_IS_DETAIL_U = SURFACE_FLAG_COST_IS_DETAIL_U;
 exports.SURFACE_FLAG_COST_IS_DETAIL_V = SURFACE_FLAG_COST_IS_DETAIL_V;
 exports.SURFACE_FLAG_FLIPPED_NORMAL = SURFACE_FLAG_FLIPPED_NORMAL;
 exports.SURFACE_FLAG_FLIPPED_UV = SURFACE_FLAG_FLIPPED_UV;
 exports.SURFACE_FLAG_PERIODIC_U = SURFACE_FLAG_PERIODIC_U;
 exports.SURFACE_FLAG_PERIODIC_V = SURFACE_FLAG_PERIODIC_V;
-exports.bodyItemCoordsStride = bodyItemCoordsStride;
+exports.drawItemShaderAttribsStride = drawItemShaderAttribsStride;
+exports.drawShaderAttribsStride = drawShaderAttribsStride;
 exports.floatsPerSceneBody = floatsPerSceneBody;
 exports.geomLibraryHeaderSize = geomLibraryHeaderSize;
 exports.getCurveTypeName = getCurveTypeName;

@@ -52,7 +52,7 @@ export declare class ZeaParamWidgetCode {
     componentDidRender(): void;
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     private onValueChanged;
     /**

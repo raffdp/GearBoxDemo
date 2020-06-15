@@ -18,12 +18,14 @@ export class ZeaParamWidgetXfo {
      * Run when component loads
      */
     componentDidLoad() {
-        this.setUpInputs();
-        this.updateDisplayedValue(ValueSetMode.USER_SETVALUE);
+        if (this.parameter) {
+            this.setUpInputs();
+            this.updateDisplayedValue(ValueSetMode.USER_SETVALUE);
+        }
     }
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     updateDisplayedValue(mode) {
         if (!this.settingValue) {
@@ -53,8 +55,8 @@ export class ZeaParamWidgetXfo {
      * Set the inputs up
      */
     setUpInputs() {
-        this.parameter.valueChanged.connect((mode) => {
-            this.updateDisplayedValue(mode);
+        this.parameter.on('valueChanged', (event) => {
+            this.updateDisplayedValue(event.mode);
         });
     }
     /**

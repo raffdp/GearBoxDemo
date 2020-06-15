@@ -1436,7 +1436,9 @@ exports.generateECPolynomial = function generateECPolynomial (degree) {
 };
 });
 
-var Buffer$1 = bufferEs6.bufferEs6.Buffer;
+const require$$0 = global.getCjsExportFromNamespace(bufferEs6.bufferEs6);
+
+var Buffer$1 = require$$0.Buffer;
 
 function ReedSolomonEncoder (degree) {
   this.genPoly = undefined;

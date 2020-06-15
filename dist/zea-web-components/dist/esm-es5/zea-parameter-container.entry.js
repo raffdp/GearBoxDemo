@@ -1,20 +1,19 @@
 import { r as registerInstance, h } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import './zea-ux.esm-7961f302.js';
-import { u as uxFactory } from './UxFactory-ec90b28e.js';
-import './zea-param-widget-bbox-aba372e4.js';
-import './zea-param-widget-boolean-2ce076ed.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './buffer-es6-d7e2ddd2.js';
+import './index.esm-f69112c9.js';
+import { u as uxFactory } from './UxFactory-caff4fc5.js';
+import './zea-param-widget-bbox-04fad3bd.js';
+import './zea-param-widget-boolean-b8495bae.js';
 import './iro.es-02ba6fa3.js';
-import './zea-param-widget-color-586f27d2.js';
-import './zea-param-widget-number-570cd9c3.js';
-import './zea-param-widget-string-c0e7277f.js';
-import './zea-param-widget-vec2-26700d4c.js';
-import './zea-param-widget-vec3-bda0866b.js';
-import './zea-param-widget-vec4-a109d12b.js';
-import './zea-param-widget-xfo-6491fa7f.js';
+import './zea-param-widget-color-968d92e0.js';
+import './zea-param-widget-number-2c599c17.js';
+import './zea-param-widget-string-5cff8a89.js';
+import './zea-param-widget-vec2-893ace78.js';
+import './zea-param-widget-vec3-7e4d5e89.js';
+import './zea-param-widget-vec4-c6a4dabf.js';
+import './zea-param-widget-xfo-837a5474.js';
 var zeaParameterContainerCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-parameter-container{color:var(--color-foreground-1);background-color:var(--color-background-2);padding:0.5em}.zea-param-widget-wrap{margin-bottom:1.2em}.zea-param-widget-boolean-wrap{display:-ms-flexbox;display:flex;-ms-flex-direction:row-reverse;flex-direction:row-reverse;-ms-flex-pack:end;justify-content:flex-end;-ms-flex-align:center;align-items:center}label{font-size:0.8em;padding-bottom:0.4em;padding:0.5em 0 0.5em;display:block}";
 var ZeaParameterContainer = /** @class */ (function () {
     function ZeaParameterContainer(hostRef) {

@@ -4,11 +4,10 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 const index = require('./index-81865576.js');
 require('./global-ad93eec5.js');
-require('./index-53734ab7.js');
-require('./events-0d0d5b33.js');
+require('./index-7e350ca9.js');
 require('./buffer-es6-40c1bb4d.js');
-const zeaUx_esm = require('./zea-ux.esm-aa49a158.js');
-const UxFactory = require('./UxFactory-16a95afe.js');
+const index_esm = require('./index.esm-7e77262a.js');
+const UxFactory = require('./UxFactory-c2d7fcf7.js');
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Distributed under the BSD license:
@@ -20154,7 +20153,7 @@ const ZeaParamWidgetCode = class {
      */
     componentDidLoad() {
         this.setUpInputs();
-        this.onValueChanged(zeaUx_esm.E.USER_SETVALUE);
+        this.onValueChanged(index_esm.E.USER_SETVALUE);
     }
     /**
      * Set up ACE code input
@@ -20167,8 +20166,8 @@ const ZeaParamWidgetCode = class {
         this.editor.setTheme('ace/theme/chrome');
         await new Promise(function (resolve) { resolve(require('./javascript-f32d6f8e.js')); });
         this.editor.session.setMode('ace/mode/javascript');
-        this.parameter.valueChanged.connect((mode) => {
-            this.onValueChanged(mode);
+        this.parameter.on('valueChanged', (event) => {
+            this.onValueChanged(event.mode);
         });
     }
     /**
@@ -20177,7 +20176,7 @@ const ZeaParamWidgetCode = class {
     onInput() {
         const value = this.editor.getValue();
         if (!this.change) {
-            this.change = new zeaUx_esm.de(this.parameter, value);
+            this.change = new index_esm.N(this.parameter, value);
             this.appData.undoRedoManager.addChange(this.change);
         }
         else {
@@ -20211,12 +20210,12 @@ const ZeaParamWidgetCode = class {
     }
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     onValueChanged(mode) {
         if (!this.change) {
             this.editor.session.setValue(this.parameter.getValue());
-            if (mode == zeaUx_esm.E.REMOTEUSER_SETVALUE) {
+            if (mode == index_esm.E.REMOTEUSER_SETVALUE) {
                 this.container.classList.add('user-edited');
                 if (this.remoteUserEditedHighlightId)
                     clearTimeout(this.remoteUserEditedHighlightId);
@@ -20237,7 +20236,7 @@ const ZeaParamWidgetCode = class {
         return (index.h("div", { class: "zea-param-widget-code", ref: (el) => (this.container = el) }, index.h("div", { style: { height: `${this.editorHeight}px` }, class: "editor-container", ref: (el) => (this.editorContainer = el) })));
     }
 };
-UxFactory.uxFactory.registerWidget('zea-param-widget-code', (p) => p.constructor.name == zeaUx_esm.Fe.name);
+UxFactory.uxFactory.registerWidget('zea-param-widget-code', (p) => p.constructor.name == index_esm.ve.name);
 ZeaParamWidgetCode.style = zeaParamWidgetCodeCss;
 
 exports.zea_param_widget_code = ZeaParamWidgetCode;

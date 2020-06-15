@@ -2,9 +2,10 @@ export declare class ZeaTreeItemElement {
     updateSelectedId: any;
     updateVisibilityId: any;
     visibilityIcon: any;
-    childAddedId: any;
     updateHighlightId: any;
     nameChangedId: BigInteger;
+    childAddedId: any;
+    childRemovedId: any;
     itemContainer: any;
     label: string;
     isRoot: boolean;

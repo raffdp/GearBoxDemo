@@ -16,9 +16,12 @@ var ZeaDropdownMenu = /** @class */ (function () {
     ZeaDropdownMenu.prototype.componentDidLoad = function () {
         var _this = this;
         // subscribe to the actionAdded signal
-        this.appData.actionRegistry.actionAdded.connect(function () {
-            _this.makeMenuTree();
-        });
+        // Note: the action registry is deprecated.
+        if (this.appData && this.appData.actionRegistry) {
+            this.appData.actionRegistry.on('actionAdded', function () {
+                _this.makeMenuTree();
+            });
+        }
         this.makeMenuTree();
     };
     /**

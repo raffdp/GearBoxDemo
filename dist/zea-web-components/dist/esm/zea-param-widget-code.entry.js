@@ -1,10 +1,9 @@
 import { r as registerInstance, h } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import { E, d as de, F as Fe } from './zea-ux.esm-7961f302.js';
-import { u as uxFactory } from './UxFactory-ec90b28e.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './buffer-es6-d7e2ddd2.js';
+import { E, N, a as ve } from './index.esm-f69112c9.js';
+import { u as uxFactory } from './UxFactory-caff4fc5.js';
 
 /* ***** BEGIN LICENSE BLOCK *****
  * Distributed under the BSD license:
@@ -20163,8 +20162,8 @@ const ZeaParamWidgetCode = class {
         this.editor.setTheme('ace/theme/chrome');
         await import('./javascript-e1f84142.js');
         this.editor.session.setMode('ace/mode/javascript');
-        this.parameter.valueChanged.connect((mode) => {
-            this.onValueChanged(mode);
+        this.parameter.on('valueChanged', (event) => {
+            this.onValueChanged(event.mode);
         });
     }
     /**
@@ -20173,7 +20172,7 @@ const ZeaParamWidgetCode = class {
     onInput() {
         const value = this.editor.getValue();
         if (!this.change) {
-            this.change = new de(this.parameter, value);
+            this.change = new N(this.parameter, value);
             this.appData.undoRedoManager.addChange(this.change);
         }
         else {
@@ -20207,7 +20206,7 @@ const ZeaParamWidgetCode = class {
     }
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     onValueChanged(mode) {
         if (!this.change) {
@@ -20233,7 +20232,7 @@ const ZeaParamWidgetCode = class {
         return (h("div", { class: "zea-param-widget-code", ref: (el) => (this.container = el) }, h("div", { style: { height: `${this.editorHeight}px` }, class: "editor-container", ref: (el) => (this.editorContainer = el) })));
     }
 };
-uxFactory.registerWidget('zea-param-widget-code', (p) => p.constructor.name == Fe.name);
+uxFactory.registerWidget('zea-param-widget-code', (p) => p.constructor.name == ve.name);
 ZeaParamWidgetCode.style = zeaParamWidgetCodeCss;
 
 export { ZeaParamWidgetCode as zea_param_widget_code };

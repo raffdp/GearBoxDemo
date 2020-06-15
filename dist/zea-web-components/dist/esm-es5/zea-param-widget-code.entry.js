@@ -35,12 +35,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 import { r as registerInstance, h } from './index-12ee0265.js';
-import './global-eddac5e6.js';
-import './index-ee0e95b8.js';
-import './events-a71dfb91.js';
-import './buffer-es6-4f6a9935.js';
-import { E, d as de, F as Fe } from './zea-ux.esm-7961f302.js';
-import { u as uxFactory } from './UxFactory-ec90b28e.js';
+import './global-6e332181.js';
+import './index-27446e12.js';
+import './buffer-es6-d7e2ddd2.js';
+import { E, N, a as ve } from './index.esm-f69112c9.js';
+import { u as uxFactory } from './UxFactory-caff4fc5.js';
 /* ***** BEGIN LICENSE BLOCK *****
  * Distributed under the BSD license:
  *
@@ -18052,8 +18051,8 @@ var ZeaParamWidgetCode = /** @class */ (function () {
                     case 2:
                         _a.sent();
                         this.editor.session.setMode('ace/mode/javascript');
-                        this.parameter.valueChanged.connect(function (mode) {
-                            _this.onValueChanged(mode);
+                        this.parameter.on('valueChanged', function (event) {
+                            _this.onValueChanged(event.mode);
                         });
                         return [2 /*return*/];
                 }
@@ -18066,7 +18065,7 @@ var ZeaParamWidgetCode = /** @class */ (function () {
     class_1.prototype.onInput = function () {
         var value = this.editor.getValue();
         if (!this.change) {
-            this.change = new de(this.parameter, value);
+            this.change = new N(this.parameter, value);
             this.appData.undoRedoManager.addChange(this.change);
         }
         else {
@@ -18100,7 +18099,7 @@ var ZeaParamWidgetCode = /** @class */ (function () {
     };
     /**
      * Value change handler
-     * @param {any} mode The value set mode
+     * @param {object} event The event object with details about the change.
      */
     class_1.prototype.onValueChanged = function (mode) {
         var _this = this;
@@ -18129,6 +18128,6 @@ var ZeaParamWidgetCode = /** @class */ (function () {
     };
     return class_1;
 }());
-uxFactory.registerWidget('zea-param-widget-code', function (p) { return p.constructor.name == Fe.name; });
+uxFactory.registerWidget('zea-param-widget-code', function (p) { return p.constructor.name == ve.name; });
 ZeaParamWidgetCode.style = zeaParamWidgetCodeCss;
 export { ZeaParamWidgetCode as zea_param_widget_code };
