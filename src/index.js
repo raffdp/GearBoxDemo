@@ -11,7 +11,7 @@ import setupStates from "./6-setupStates.js"
 const domElement = document.getElementById("renderer");
 
 const scene = new Scene();
-scene.setupGrid(1.0, 10);
+// scene.setupGrid(1.0, 10);
 
 const renderer = new GLRenderer( domElement, {
   webglOptions: {
