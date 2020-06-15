@@ -1,0 +1,66 @@
+.zea-form-drawing-setup {
+  color: var(--color-foreground-1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.discipline-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+.discipline-row:hover {
+  background-color: var(--color-grey-2);
+}
+
+.discipline-name {
+  flex-grow: 1;
+}
+
+.discipline-abbreviation {
+  text-transform: uppercase;
+  padding: 8px;
+  width: 15px;
+  height: 15px;
+  line-height: 15px;
+  text-align: center;
+  border-radius: 20px;
+  margin: 5px 10px 5px 5px;
+  white-space: nowrap;
+  display: flex;
+  justify-content: center;
+}
+
+.input-container {
+  margin-bottom: 1em;
+}
+
+zea-input-select-item:hover {
+  background-color: var(--color-grey-2);
+}
+
+.scale-row {
+  padding: 5px;
+}
+
+.inputs {
+  flex-grow: 1;
+  padding: 1em;
+}
+
+.buttons {
+  display: flex;
+  padding: 1em;
+}
+
+.buttons zea-button {
+  margin: 5px;
+}
+
+.buttons div:nth-child(1) {
+  flex-grow: 1;
+}

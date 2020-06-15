@@ -1,0 +1,18 @@
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+:root {
+  --toolbar-active-color: var(--color-primary-2);
+}
+
+.zea-toolbar {
+  color: var(--color-foreground-1);
+  background-color: var(--color-background-2);
+  position: fixed;
+  border-radius: 30px;
+}

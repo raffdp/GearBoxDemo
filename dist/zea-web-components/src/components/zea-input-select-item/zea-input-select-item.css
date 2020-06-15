@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.zea-input-select-item {
+  color: var(--color-freground-1);
+}
+
+::slotted(.select-item-wrap) {
+  padding: 5px;
+}

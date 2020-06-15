@@ -1,0 +1,16 @@
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.zea-param-widget-code {
+  color: var(--color-foreground-1);
+}
+
+.editor-container {
+  min-width: 150px;
+  min-height: 100px;
+}

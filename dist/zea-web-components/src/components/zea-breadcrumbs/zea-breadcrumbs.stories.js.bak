@@ -1,0 +1,6 @@
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { storiesOf } from '@storybook/html'
+
+storiesOf('Components/zea-breadcrumbs', module)
+  .add('Default', () => `<zea-breadcrumbs></zea-breadcrumbs>`)
+  .add('With Input', () => `<zea-breadcrumbs test="John"></zea-breadcrumbs>`)

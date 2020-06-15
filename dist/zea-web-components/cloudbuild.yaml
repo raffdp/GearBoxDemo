@@ -1,0 +1,18 @@
+steps:
+  - name: 'node:lts'
+    entrypoint: yarn
+    args: [install, '--frozen-lockfile']
+  - name: 'node:lts'
+    entrypoint: yarn
+    args: [run, build]
+  - name: gcr.io/cloud-builders/gsutil
+    args:
+      - '-m'
+      - rsync
+      - '-d'
+      - '-c'
+      - '-r'
+      - storybook-static/
+      - 'gs://$_SUBDOMAIN.zea.live'
+substitutions:
+  _SUBDOMAIN: web-components-staging
