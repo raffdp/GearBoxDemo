@@ -3,7 +3,7 @@ body,
 #root {
   height: 100%;
 }
-:root {
+/* :root {
   --ion-color-primary: #f9ce03;
   --ion-color-primary-tint: #fbe167;
   --theme-font-family: 'Roboto', sans-serif;
@@ -34,7 +34,7 @@ body,
   --color-disabled-1: #252525;
   --color-disabled-2: #424242;
   --color-shadow: #00000026;
-}
+} */
 
 body {
   margin: 0;

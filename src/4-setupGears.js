@@ -11,7 +11,7 @@ const setupGears = (asset) => {
   asset.addChild(gearsOp);
 
 
-  asset.loaded.connect(()=>{
+  asset.once('loaded', ()=>{
     
     {
       const group = new Group('FRONT_PROPELLER_HOUSING');
@@ -27,6 +27,8 @@ const setupGears = (asset) => {
       gear.getMember("Axis").setValue(axis);
       gear.getOutput().setParam(group.getParameter("GlobalXfo"));
     }
+ 
+    
     {
       const group = new Group('GEAR_2');
       group.getParameter('InitialXfoMode').setValue('average');
@@ -176,7 +178,7 @@ const setupGears = (asset) => {
             ]);
         const sliderParam = asset.getParameter("GearSliderValue")
         const initialXfo = group.getGlobalXfo().clone()
-        sliderParam.valueChanged.connect(()=>{
+        sliderParam.on('valueChanged', ()=>{
           const value = sliderParam.getValue()
           const xfo = group.getGlobalXfo().clone()
           xfo.tr.y = initialXfo.tr.y + value * 0.02
@@ -192,7 +194,6 @@ const setupGears = (asset) => {
           }
         })
       }
-    
     setGearBoxSetting(1)
   })
   

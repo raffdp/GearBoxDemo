@@ -1,7 +1,6 @@
 import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
-import { SelectionManager } from "../dist/zea-ux/dist/index.rawimport.js"
 import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
-import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
+
 import loadModel from "./1-loadModel.js"
 import setupMaterials from "./2-setupMaterials.js"
 import setupCutaway from "./3-setupCutaway.js"
@@ -12,7 +11,7 @@ import setupStates from "./6-setupStates.js"
 const domElement = document.getElementById("renderer");
 
 const scene = new Scene();
-// scene.setupGrid(1.0, 10);
+scene.setupGrid(1.0, 10);
 
 const renderer = new GLRenderer( domElement, {
   webglOptions: {
@@ -24,12 +23,11 @@ const renderer = new GLRenderer( domElement, {
 renderer.getViewport().getCamera().setPositionAndTarget(new Vec3({"x":0.56971,"y":-0.83733,"z":0.34243}), new Vec3({"x":0.03095,"y":-0.05395,"z":0}))
 
 
-
 // const envMap = new EnvMap("SmartLocEnv");
 // envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
 // const backgroundColor = new Color('#e3e3e3');
 // scene.getSettings().getParameter('EnvMap').setValue(envMap);
-scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#ffffff'))
+scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#D9EAFA'))
 
 const cadPass = new GLCADPass(true)
 cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
@@ -39,7 +37,7 @@ renderer.addPass(cadPass, PassType.OPAQUE)
 renderer.setScene(scene);
 renderer.resumeDrawing();
 
-renderer.getViewport().mouseDownOnGeom.connect((event)=>{
+renderer.getViewport().on('mouseDownOnGeom', (event)=>{
   const intersectionData = event.intersectionData;
   const geomItem = intersectionData.geomItem
   console.log(geomItem.getPath());
@@ -49,7 +47,7 @@ renderer.getViewport().mouseDownOnGeom.connect((event)=>{
 // Load the Model
 // Page 1 - load and setup the cad Model.
 const asset = loadModel();
-asset.loaded.connect(()=>{
+asset.once('loaded', ()=>{
   renderer.frameAll()
 })
 
@@ -65,6 +63,7 @@ scene.getRoot().addChild(asset)
 
 ////////////////////////////////////
 // Setup the Left side Tree view.
+import { SelectionManager } from "../dist/zea-ux/dist/index.rawimport.js"
 
 const appData = {
   scene,
@@ -74,11 +73,11 @@ const appData = {
 appData.selectionManager  = new SelectionManager(appData);
 
 // // Note: the alpha value determines  the fill of the highlight.
-const selectionColor = new Color("#111111");
-selectionColor.a = 0.1
-const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
-appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
-appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor)
+// const selectionColor = new Color("#111111");
+// selectionColor.a = 0.1
+// const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
+// appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
+// appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor)
 
 const sceneTreeView = document.getElementById(
   "zea-tree-view"
@@ -86,21 +85,25 @@ const sceneTreeView = document.getElementById(
 sceneTreeView.appData = appData
 sceneTreeView.rootItem  = scene.getRoot()
 
-// document.addEventListener("keydown", event => {
-//   if(event.key==="f"){
-//     renderer.frameAll()
-//   }
-// });
+document.addEventListener("keydown", event => {
+  if(event.key==="f"){
+    renderer.frameAll()
+  }
+  else if(event.key==="w"){
+    cadPass.displayWireframes = !cadPass.displayWireframes
+  }
+});
 
-const camera = renderer.getViewport().getCamera();
-renderer.viewChanged.connect(() =>{
-  const xfoParam =  camera.getParameter('GlobalXfo')
-  console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
-})
+// const camera = renderer.getViewport().getCamera();
+// renderer.viewChanged.connect(() =>{
+//   const xfoParam =  camera.getParameter('GlobalXfo')
+//   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
+// })
 
-
+/*
 // ////////////////////////////////////
 // // Setup Collaboration
+// import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
 
 // const socketUrl = 'https://websocket-staging.zea.live';
 
@@ -153,10 +156,9 @@ renderer.viewChanged.connect(() =>{
 //   "zea-user-chip"
 // );
 // userChip.userData = userData
-
-
-// ////////////////////////////////////
-// // Display the Fps
-// const fpsDisplay = document.createElement("zea-fps-display")
-// fpsDisplay.renderer  = renderer
-// domElement.appendChild(fpsDisplay)
+*/
+////////////////////////////////////
+// Display the Fps
+const fpsDisplay = document.createElement("zea-fps-display")
+fpsDisplay.renderer  = renderer
+domElement.appendChild(fpsDisplay)

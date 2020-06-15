@@ -24,7 +24,7 @@ export class FPSDisplay extends HTMLElement {
 
   set renderer(renderer) {
     let frameCounter = 0;
-    renderer.redrawOccured.connect( () =>{
+    renderer.on('redrawOccured', () =>{
       frameCounter++;
     });
     setInterval(()=>{
