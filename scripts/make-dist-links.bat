@@ -4,7 +4,8 @@ mkdir "../dist/zea-engine"
 mklink /J "../dist/zea-engine/dist" "../node_modules/@zeainc/zea-engine/dist"
 mklink /J "../dist/zea-engine/public-resources" "../node_modules/@zeainc/zea-engine/public-resources"
 
-mklink /J "../dist/zea-web-components" "../node_modules/@zeainc/zea-web-components"
+mkdir "../dist/zea-components"
+mklink /J "../dist/zea-web-components/dist" "../node_modules/@zeainc/zea-web-components/dist"
 
 mkdir "../dist/zea-cad"
 mklink /J "../dist/zea-cad/dist" "../node_modules/@zeainc/zea-cad/dist"

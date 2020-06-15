@@ -1,1 +1,0 @@
-import{r as o,h as r}from"./p-da09bae5.js";const s=class{constructor(r){o(this,r),this.test="Hello World"}render(){return r("div",{class:"zea-input-color"},this.test)}};s.style=".zea-input-color{color:var(--color-freground-1)}";export{s as zea_input_color}

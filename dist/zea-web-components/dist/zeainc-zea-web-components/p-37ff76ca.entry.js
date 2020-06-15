@@ -1,1 +1,0 @@
-import{r as o,h as r}from"./p-da09bae5.js";const t=class{constructor(r){o(this,r),this.test="Hello World"}render(){return r("div",{class:"zea-input-photo"},this.test)}};t.style=".zea-input-photo{color:var(--color-freground-1)}";export{t as zea_input_photo}
