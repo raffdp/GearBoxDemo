@@ -1,0 +1,117 @@
+/* Base style */
+:host {
+  display: inline-block;
+}
+
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+  font-size: 13px;
+}
+
+.small {
+  font-size: 11px;
+}
+
+.zea-button {
+  border-radius: 2px;
+  outline: none;
+  padding: 0;
+  width: 100%;
+}
+
+.zea-button-label {
+  padding: 0.5em 1em;
+  white-space: nowrap;
+}
+
+.zea-button-content-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/*text variant (default) */
+.zea-button {
+  color: var(--color-foreground-1);
+  background-color: var(--color-background-1);
+  border: 1px solid var(--color-background-1);
+}
+
+.zea-button:hover {
+  background-color: var(--color-primary-3);
+}
+
+.zea-button:disabled {
+  background-color: var(--color-disabled-2);
+  border: 1px solid var(--color-disabled-2);
+  color: var(--color-disabled-1);
+}
+
+/* Solid variant */
+.zea-button.solid {
+  color: var(--color-foreground-1);
+  background-color: var(--color-secondary-1);
+  border: 1px solid var(--color-secondary-1);
+}
+
+.zea-button.solid:hover {
+  background-color: var(--color-secondary-2);
+  border: 1px solid var(--color-secondary-2);
+}
+
+.zea-button.solid:disabled {
+  background-color: var(--color-disabled-2);
+  border: 1px solid var(--color-disabled-2);
+  color: var(--color-disabled-1);
+}
+
+/* Outlined variant */
+.zea-button.outlined {
+  color: var(--color-secondary-1);
+  background-color: transparent;
+  border: 1px solid var(--color-secondary-1);
+}
+
+.zea-button.outlined:hover {
+  background-color: var(--color-secondary-3);
+}
+
+.zea-button.outlined:disabled {
+  background-color: var(--color-disabled-2);
+  border: 1px solid var(--color-disabled-2);
+  color: var(--color-disabled-1);
+}
+
+/* Pill variant */
+.zea-button.pill {
+  color: var(--color-button-text-1);
+  background-color: var(--color-primary-1);
+  border: 1px solid var(--color-primary-1);
+  border-radius: 20px;
+  min-height: 40px;
+}
+
+.zea-button.pill:hover {
+  background-color: var(--color-primary-2);
+  border: 1px solid var(--color-primary-2);
+}
+
+.zea-button.pill:disabled {
+  background-color: var(--color-disabled-2);
+  border: 1px solid var(--color-disabled-2);
+  color: var(--color-foreground-1);
+}
+
+.zea-start-icon ::slotted(zea-icon) {
+  vertical-align: middle;
+  padding-left: 0.5em;
+}
+
+.zea-end-icon ::slotted(zea-icon) {
+  vertical-align: middle;
+  padding-right: 0.5em;
+}

@@ -1,0 +1,49 @@
+:host {
+  max-height: 100%;
+  width: 100%;
+  display: block;
+  position: relative;
+  height: 100%;
+}
+
+:host(.disabled) {
+  height: auto;
+}
+
+.zea-scroll-pane {
+  pointer-events: auto;
+  max-height: 100%;
+  overflow: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+
+.zea-scroll-pane::-webkit-scrollbar {
+  width: 0px;
+  background: transparent; /* Chrome/Safari/Webkit */
+}
+
+.v-scroll-track {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  background-color: var(--color-background-4);
+  z-index: 1000;
+}
+
+.v-scroll-bar {
+  position: absolute;
+  right: 0px;
+  width: 10px;
+  top: 0;
+  background-color: var(--color-grey-3);
+  z-index: 10000;
+  box-shadow: -2px 4px 7px -3px var(--color-background-1);
+}
+
+:host(.disabled) .v-scroll-track,
+:host(.disabled) .v-scroll-bar {
+  display: none;
+}

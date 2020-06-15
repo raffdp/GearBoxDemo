@@ -1,0 +1,26 @@
+:host,
+zea-icon,
+.zea-icon {
+  display: inline-block;
+  vertical-align: middle;
+  /* color: var(--color-foreground-2); */
+}
+
+ion-icon {
+  display: block;
+}
+
+.zea-custom-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.zea-custom-icon svg * {
+  /* stroke: currentColor; */
+}
+
+.zea-custom-icon-inner {
+  width: 1em;
+  height: 1em;
+}

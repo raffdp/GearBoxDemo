@@ -1,0 +1,16 @@
+:host {
+  display: block;
+  color: var(--color-foreground-1);
+}
+
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+a {
+  color: var(--color-primary-1);
+}

@@ -1,0 +1,24 @@
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.tool-wrap {
+  padding: 8px;
+  margin: 4px;
+  border-radius: 20px;
+  color: var(--color-foreground-1);
+}
+
+.tool-wrap:hover {
+  background-color: var(--color-grey-3);
+}
+
+.tool-wrap.active,
+.tool-wrap.active:hover {
+  background-color: var(--toolbar-active-bg-color, var(--color-primary-1));
+  color: var(--toolbar-active-fg-color, var(--color-background-1));
+}

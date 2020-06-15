@@ -1,0 +1,114 @@
+.zea-dropdown-menu {
+  color: var(--color-foreground-1);
+  font-size: 14px;
+}
+
+ul,
+li {
+  display: block;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-background-2);
+  cursor: default;
+  position: relative;
+  color: var(--color-foreground-1);
+}
+
+li.flashed > span,
+li.flashed:hover > span {
+  background-color: var(--color-secondary-3) !important;
+}
+
+.menu-root {
+  display: flex;
+  justify-content: left;
+  align-items: center;
+}
+
+ul ul {
+  display: none;
+}
+
+.leaf-label,
+.branch-label {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.menu-root > li > .leaf-label,
+.menu-root > li > .branch-label {
+  padding: 16px;
+}
+
+.menu-root > li > .branch-label > .branch-arrow {
+  display: none;
+}
+
+li .leaf-label,
+li .branch-label {
+  padding: 8px 8px 8px 16px;
+  display: flex;
+}
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+ul ul li > .leaf-label {
+  display: flex;
+  align-items: center;
+}
+
+.branch-name {
+  flex-grow: 1;
+}
+
+li:hover > span {
+  background-color: var(--color-grey-3);
+}
+
+li:hover > ul {
+  display: block;
+  position: absolute;
+  box-shadow: 0 6px 13px 0 var(--color-shadow);
+}
+
+ul ul ul {
+  margin-left: 100%;
+  margin-top: -30px;
+}
+
+.action-name {
+  min-width: 100px;
+  display: block;
+  flex-grow: 1;
+}
+
+.keyboard-shortcut {
+  display: block;
+  opacity: 0.75;
+  font-size: 0.8em;
+  padding-left: 10px;
+}
+
+.branch-arrow-icon {
+  display: block;
+  opacity: 0.5;
+}
+
+.keyboard-key {
+  border: 1px solid var(--color-grey-3);
+  padding: 2px;
+  border-radius: 5px;
+  font-size: 0.8em;
+  text-align: center;
+  min-width: 10px;
+  display: inline-block;
+  background-color: var(--color-background-1);
+  text-transform: uppercase;
+  margin: 0 2px;
+}

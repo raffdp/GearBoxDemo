@@ -1,0 +1,160 @@
+.zea-input {
+  color: var(--color-foreground-1);
+}
+
+.input-label {
+  font-size: 11px;
+  color: var(--color-grey-3);
+}
+
+.input-wrap {
+  display: block;
+  /* margin: 2em 0 1em; */
+}
+
+input[type='text'] {
+  box-sizing: border-box;
+  width: 100%;
+  color: var(--color-foreground-2);
+  background-color: transparent;
+  border: none;
+  outline: none;
+  font-size: 1em;
+  border-bottom: 1px solid var(--color-grey-3);
+}
+
+input[type='text'].invalid {
+  border-bottom: 1px solid var(--color-warning-2);
+}
+
+.invalid-message {
+  color: var(--color-warning-2);
+  padding: 0.3em 0;
+  font-size: 12px;
+}
+
+/**/
+
+.photo-input {
+  display: flex;
+  overflow: hidden;
+}
+
+.photo-input input {
+  position: absolute;
+  left: -100000px;
+}
+:host,
+input,
+button,
+select,
+textarea {
+  font-family: 'Roboto', sans-serif;
+}
+
+.photo-input .input-label {
+  display: block;
+}
+
+.photo-thumb {
+  flex-shrink: 0;
+  display: block;
+  width: 54px;
+  height: 54px;
+  border-radius: 30px;
+  margin-right: 10px;
+  background-color: var(--color-secondary-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  position: relative;
+}
+
+.photo-copy {
+  font-size: 12px;
+  color: var(--color-foreground-2);
+}
+
+#photo-preview {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  border-radius: 30px;
+}
+/**/
+
+.color-input {
+  display: flex;
+  overflow: hidden;
+}
+
+.color-input .input-label {
+  display: block;
+}
+
+.color-thumb {
+  flex-shrink: 0;
+  display: block;
+  width: 54px;
+  height: 54px;
+  border-radius: 30px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.color-copy {
+  font-size: 12px;
+  color: var(--color-foreground-2);
+}
+
+.color-popup {
+  padding: 7px;
+  position: absolute;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  margin-top: -70px;
+  margin-left: 43px;
+  border-radius: 10px;
+  background-color: var(--color-background-2);
+  display: none;
+  z-index: 1000;
+}
+
+.color-popup.top-left {
+  margin-top: 110px;
+  margin-left: -54px;
+}
+
+.color-popup.shown {
+  display: grid;
+}
+
+.color-option {
+  padding: 8px;
+}
+
+.color-option.active {
+  padding: 0;
+}
+
+.color-option.active .color-sample {
+  width: 32px;
+  height: 32px;
+  border-radius: 20px;
+}
+
+.color-sample {
+  width: 16px;
+  height: 16px;
+  border-radius: 10px;
+}
+
+.choosen-color {
+  width: 32px;
+  height: 32px;
+  border-radius: 20px;
+}

@@ -1,0 +1,45 @@
+:host,
+.zea-app-shell {
+  color: var(--color-freground-1);
+  width: 100%;
+  height: 100%;
+}
+
+#brand {
+  display: inline-block;
+  vertical-align: middle;
+  z-index: 10000020;
+  position: relative;
+  background-size: contain;
+  background-position: 20px center;
+  background-repeat: no-repeat;
+  width: 150px;
+  height: 24px;
+}
+
+#left-panel-container,
+#right-panel-container,
+#center-panel-container {
+  height: 100%;
+}
+
+header {
+  display: flex;
+  align-items: center;
+}
+
+#tools-container {
+  flex-grow: 1;
+  text-align: right;
+}
+
+header zea-user-chip {
+  margin-right: 10px;
+}
+
+#main-search {
+  width: 300px;
+  display: inline-block;
+  text-align: right;
+  margin: 0 20px;
+}
