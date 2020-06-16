@@ -1,19 +1,150 @@
-import { Color, Group, Material } from "../dist/zea-engine/dist/index.esm.js"
+import { Color, Group, Material, EnvMap } from "../dist/zea-engine/dist/index.esm.js"
 
-const setupMaterials = (asset) => {
+const setupMaterials = (asset, scene) => {
+
+  const envMap = new EnvMap("SmartLocEnv");
+  envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
+  scene.getSettings().getParameter('EnvMap').setValue(envMap);
+
+  const setRenderingMode = (mode)=>{
+    if (mode == 0) {
+
+      asset.getParameter('Display Edges').setValue(false)
+      asset.getParameter('Edge Color').setValue(new Color(0.0, 0.0, 0.0, 1))
   
+      {
+        const material = casingMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.55,0.05,0.05),
+          Metallic: 0.75,
+          Roughness: 0.35,
+          Reflectance: 0.8,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = blackMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.1, 0.1, .1),
+          Metallic: 0.85,
+          Roughness: 0.35,
+          Reflectance: 0.7,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = blackRubberGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.01, 0.01, .01),
+          Metallic: 0.0,
+          Roughness: 0.85,
+          Reflectance: 0.01,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = orangeRubberGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.01, 0.01, .01),
+          Metallic: 0.0,
+          Roughness: 0.85,
+          Reflectance: 0.01,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = shinyMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.65, 0.65, .65),
+          Metallic: 0.95,
+          Roughness: 0.25,
+          Reflectance: 0.95,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = goldMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color("#d4af37"),
+          Metallic: 0.99,
+          Roughness: 0.15,
+          Reflectance: 0.95,
+          EmissiveStrength: 0.0
+        }, "GLDrawCADSurfaceShader")
+      }
+    } else if (mode == 1) {
+      asset.getParameter('Display Edges').setValue(true)
+      asset.getParameter('Edge Color').setValue(new Color(0.2, 0.2, 0.2, 1))
+      // scene.getSettings().getParameter('EnvMap').setValue(null);
+      const EmissiveStrength = 0.9
+      const Roughness = 1.0
+      const Reflectance = 0.0
+      {
+        const material = casingMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.85,0.55,0.55),
+          Metallic: 0.75,
+          Roughness,
+          Reflectance,
+          EmissiveStrength
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = blackMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.4, 0.4, 0.4),
+          Metallic: 0.85,
+          Roughness,
+          Reflectance,
+          EmissiveStrength
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = blackRubberGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.2, 0.2, 0.2),
+          Metallic: 0.0,
+          Roughness,
+          Reflectance,
+          EmissiveStrength
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = orangeRubberGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.2, 0.2, 0.2),
+          Metallic: 0.0,
+          Roughness,
+          Reflectance,
+          EmissiveStrength
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = shinyMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color(0.65, 0.65, .65),
+          Metallic: 0.95,
+          Roughness,
+          Reflectance,
+          EmissiveStrength: 0.9
+        }, "GLDrawCADSurfaceShader")
+      }
+      {
+        const material = goldMetalGroup.getParameter('Material').getValue();  
+        material.modifyParams({
+          BaseColor: new Color("#d4af37"),
+          Metallic: 0.99,
+          Roughness,
+          Reflectance,
+          EmissiveStrength: 0.9
+        }, "GLDrawCADSurfaceShader")
+      }
+    }
+  }
 
   const casingMetalGroup = new Group('casingMetalGroup');
   {
     const material = new Material('casingMetal');
-    material.modifyParams({
-      // BaseColor: new Color(0.55,0.05,0.05),
-      BaseColor: new Color(0.85,0.55,0.55),
-      Metallic: 0.75,
-      Roughness: 0.35,
-      Reflectance: 0.8,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     casingMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(casingMetalGroup);
   }
@@ -21,14 +152,6 @@ const setupMaterials = (asset) => {
   const blackMetalGroup = new Group('blackMetalGroup');
   {
     const material = new Material('blackMetal');
-    material.modifyParams({
-      // BaseColor: new Color(0.1, 0.1, .1),
-      BaseColor: new Color(0.4, 0.4, 0.4),
-      Metallic: 0.85,
-      Roughness: 0.35,
-      Reflectance: 0.7,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     blackMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(blackMetalGroup);
   }
@@ -51,45 +174,20 @@ const setupMaterials = (asset) => {
   const blackRubberGroup = new Group('blackRubberGroup');
   {
     const material = new Material('blackRubber');
-    material.modifyParams({
-      // BaseColor: new Color(0.01, 0.01, .01),
-      BaseColor: new Color(0.2, 0.2, 0.2),
-      Metallic: 0.0,
-      Roughness: 0.85,
-      Reflectance: 0.01,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     blackRubberGroup.getParameter('Material').setValue(material);  
     asset.addChild(blackRubberGroup);
   }
 
-
   const orangeRubberGroup = new Group('orangeRubberGroup');
   {
     const material = new Material('orangeRubber');
-    material.modifyParams({
-      // BaseColor: new Color(0.01, 0.01, .01),
-      BaseColor: new Color(0.2, 0.2, 0.2),
-      Metallic: 0.0,
-      Roughness: 0.85,
-      Reflectance: 0.01,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     orangeRubberGroup.getParameter('Material').setValue(material);  
     asset.addChild(orangeRubberGroup);
   }
 
-
   const shinyMetalGroup = new Group('shinyMetalGroup');
   {
     const material = new Material('shinyMetal');
-    material.modifyParams({
-      BaseColor: new Color(0.65, 0.65, .65),
-      Metallic: 0.95,
-      Roughness: 0.25,
-      Reflectance: 0.95,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     shinyMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(shinyMetalGroup);
   }
@@ -97,16 +195,10 @@ const setupMaterials = (asset) => {
   const goldMetalGroup = new Group('goldMetalGroup');
   {
     const material = new Material('goldMetal');
-    material.modifyParams({
-      BaseColor: new Color("#d4af37"),
-      Metallic: 0.99,
-      Roughness: 0.15,
-      Reflectance: 0.95,
-      EmissiveStrength: 0.9
-    }, "GLDrawCADSurfaceShader")
     goldMetalGroup.getParameter('Material').setValue(material);  
     asset.addChild(goldMetalGroup);
   }
+  setRenderingMode(1)
 
   asset.once('loaded', ()=>{
     
@@ -268,6 +360,6 @@ const setupMaterials = (asset) => {
     ]);
   
   })
-  return asset;
+  return setRenderingMode;
 }
 export default setupMaterials

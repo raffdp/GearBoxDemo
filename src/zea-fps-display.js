@@ -15,7 +15,7 @@ export class FPSDisplay extends HTMLElement {
       position: fixed;
       bottom: 15px;
       right: 20px;
-      color: white;
+      color: black;
     }
 `
 ));

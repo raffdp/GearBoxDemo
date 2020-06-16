@@ -1,3 +1,4 @@
+
 import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
 import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
 
@@ -22,11 +23,6 @@ const renderer = new GLRenderer( domElement, {
 
 renderer.getViewport().getCamera().setPositionAndTarget(new Vec3({"x":0.56971,"y":-0.83733,"z":0.34243}), new Vec3({"x":0.03095,"y":-0.05395,"z":0}))
 
-
-// const envMap = new EnvMap("SmartLocEnv");
-// envMap.getParameter('FilePath').setUrl("data/HDR_029_Sky_Cloudy_Ref.vlenv");
-// const backgroundColor = new Color('#e3e3e3');
-// scene.getSettings().getParameter('EnvMap').setValue(envMap);
 scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#D9EAFA'))
 
 const cadPass = new GLCADPass(true)
@@ -51,7 +47,7 @@ asset.once('loaded', ()=>{
   renderer.frameAll()
 })
 
-setupMaterials(asset)
+const setRenderingMode = setupMaterials(asset, scene)
 setupCutaway(asset);
 setupGears(asset);
 setupExplode(asset);
@@ -100,14 +96,16 @@ document.addEventListener("keydown", event => {
 //   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
 // })
 
-/*
+
 // ////////////////////////////////////
 // // Setup Collaboration
-// import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
+import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
 
-// const socketUrl = 'https://websocket-staging.zea.live';
+const socketUrl = 'https://websocket-staging.zea.live';
 
-// const urlParams = new URLSearchParams(window.location.search);
+const urlParams = new URLSearchParams(window.location.search);
+
+
 // let userId = urlParams.get('user-id');
 // if (!userId) {
 //   userId = localStorage.getItem('userId');
@@ -120,43 +118,65 @@ document.addEventListener("keydown", event => {
 // }
 
 
-// const color = Color.random();
-// const firstNames = ["Phil", "Froilan", "Alvaro", "Dan", "Mike", "Rob", "Steve"]
-// const lastNames = ["Taylor", "Smith", "Haines", "Moore", "Elías Pájaro Torreglosa", "Moreno"]
-// const userData = {
-//   given_name: firstNames[Math.randomInt(0, firstNames.length)],
-//   family_name: lastNames[Math.randomInt(0, lastNames.length)],
-//   id: userId,
-//   color: color.toHex()
-// }
+const color = Color.random();
+const firstNames = ["Phil", "Froilan", "Alvaro", "Dan", "Mike", "Rob", "Steve"]
+const lastNames = ["Taylor", "Smith", "Haines", "Moore", "Elías Pájaro Torreglosa", "Moreno"]
+const userData = {
+  given_name: firstNames[Math.randomInt(0, firstNames.length)],
+  family_name: lastNames[Math.randomInt(0, lastNames.length)],
+  id: Math.random().toString(36).slice(2, 12),
+  color: color.toHex()
+}
 
-// const session = new Session(userData, socketUrl);
+const session = new Session(userData, socketUrl);
 
-// let roomId = urlParams.get('room-id');
-// session.joinRoom(document.location.origin+roomId);
+let roomId = urlParams.get('room-id');
+session.joinRoom(document.location.origin+roomId);
 
-// const sessionSync = new SessionSync(session, appData, userData, {});
+const sessionSync = new SessionSync(session, appData, userData, {});
 
 
-// const userChipSet = document.getElementById(
-//   "zea-user-chip-set"
-// );
-// userChipSet.session = session
-// userChipSet.showImages = true;//boolean('Show Images', true)
+const userChipSet = document.getElementById(
+  "zea-user-chip-set"
+);
+userChipSet.session = session
+userChipSet.showImages = true;//boolean('Show Images', true)
 
-// document.addEventListener(
-//   'zeaUserClicked',
-//   () => {
-//     console.log('user clicked')
-//   },
-//   false
-// )
+document.addEventListener(
+  'zeaUserClicked',
+  () => {
+    console.log('user clicked')
+  },
+  false
+)
 
-// const userChip = document.getElementById(
-//   "zea-user-chip"
-// );
-// userChip.userData = userData
-*/
+const userChip = document.getElementById(
+  "zea-user-chip"
+);
+userChip.userData = userData
+
+////////////////////////////////////
+// Rendering Stypes
+
+const RealisticRenderingMenu = document.getElementById(
+  "RealisticRendering"
+);
+
+RealisticRenderingMenu.addEventListener('click', ()=>{
+  setRenderingMode(0)
+})
+
+
+const IllustrationRenderingMenu = document.getElementById(
+  "IllustrationRendering"
+);
+
+IllustrationRenderingMenu.addEventListener('click', ()=>{
+  console.log('IllustrationRendering ok')
+  setRenderingMode(1)
+})
+
+
 ////////////////////////////////////
 // Display the Fps
 const fpsDisplay = document.createElement("zea-fps-display")

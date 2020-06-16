@@ -3,38 +3,39 @@ body,
 #root {
   height: 100%;
 }
-/* :root {
-  --ion-color-primary: #f9ce03;
-  --ion-color-primary-tint: #fbe167;
+
+:root  {
+  --ion-color-primary: #F9CE03;
+  --ion-color-primary-tint: #FBE167;
   --theme-font-family: 'Roboto', sans-serif;
-  --color-primary-1: #f8c706;
-  --color-primary-2: #fbdc5c;
-  --color-primary-3: #4f451d;
-  --color-secondary-1: #8b52af;
-  --color-secondary-2: #b892ce;
-  --color-secondary-3: #3b3340;
-  --color-warning-1: #e11c13;
-  --color-warning-2: #ed6d65;
-  --color-warning-3: #4d2320;
-  --color-success-1: #80bb41;
-  --color-success-2: #b0d687;
-  --color-success-3: #3a452c;
-  --color-background-1: #1f1f1f;
-  --color-background-2: #333333;
-  --color-background-3: #1f1f1f;
-  --color-background-4: #111111;
-  --color-foreground-1: #dcdbdc;
-  --color-foreground-2: #a0a0a0;
-  --color-foreground-3: #7f7f7f;
-  --color-grey-1: #2d2d2d;
-  --color-grey-2: #323232;
-  --color-grey-3: #4e4e4e;
-  --color-button-text-1: #333333;
-  --color-button-text-2: #ffffff;
-  --color-disabled-1: #252525;
-  --color-disabled-2: #424242;
+  --color-primary-1: #F9CE03;
+  --color-primary-2: #FBE167;
+  --color-primary-3: #594F1F;
+  --color-secondary-1: #8B52AF;
+  --color-secondary-2: #B892CE;
+  --color-secondary-3: #F2EBF7;
+  --color-warning-1: #E52011;
+  --color-warning-2: #EF7970;
+  --color-warning-3: #FAD2CF;
+  --color-success-1: #8BC34A;
+  --color-success-2: #B9DB92;
+  --color-success-3: #E8F3DB;
+  --color-background-1: #FFFFFF;
+  --color-background-2: #FFFFFF;
+  --color-background-3: #F5F5F5;
+  --color-background-4: #FFFFFF;
+  --color-foreground-1: #333333;
+  --color-foreground-2: #7A7A7A;
+  --color-foreground-3: #989898;
+  --color-grey-1: #F5F5F5;
+  --color-grey-2: #EAEAEA;
+  --color-grey-3: #D6D6D6;
+  --color-button-text-1: #FFFFFF;
+  --color-button-text-2: #333333;
+  --color-disabled-1: #B8B8B8;
+  --color-disabled-2: #E8E8E8;
   --color-shadow: #00000026;
-} */
+}
 
 body {
   margin: 0;
@@ -65,6 +66,7 @@ code {
 .App-logo {
   height: 30px;
   pointer-events: none;
+  margin-right: 20px;
 }
 
 /* @media (prefers-reduced-motion: no-preference) {
@@ -76,7 +78,22 @@ code {
 .App-header {
   text-align: left;
   margin: 5px;
+  display: flex;
 } 
+
+
+.UserChipSetHolder {
+}
+
+.MenuHolder {
+  flex-grow: 1;
+  position: relative;
+  z-index: 1000;
+}
+
+.MenuItem {
+ border: 1px solid blue;
+}
 
 .App-link {
   color: #61dafb;

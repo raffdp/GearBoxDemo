@@ -13,7 +13,7 @@
     <div class="App">
     <zea-layout
       orientation="vertical"
-      cell-a-size="40"
+      cell-a-size="45"
       resize-cell-a="false"
       cell-b-size="100%"
       cell-c-size="5px"
@@ -21,17 +21,35 @@
     >
       <div slot="a" class="App-header">
         <img class="App-logo" src="img/logo-zea.svg" height="30px"/>
-        <zea-user-chip-set id="zea-user-chip-set"></zea-user-chip-set>
+        <div class="UserChipSetHolder">
+          <zea-user-chip-set id="zea-user-chip-set"></zea-user-chip-set>
+        </div>
+        <div class="MenuHolder">
+          <zea-menu type="dropdown" show-anchor="true">
+            <zea-menu-item>
+              Rendering Style
+              <zea-menu-subitems>
+                <zea-menu-item class="MenuItem" id="RealisticRendering">
+                  <zea-icon name="eye"></zea-icon> Realistic
+                </zea-menu-item>
+                <zea-menu-item class="MenuItem" id="IllustrationRendering">
+                  <zea-icon name="eye"></zea-icon> Illustration
+                </zea-menu-item>
+              </zea-menu-subitems>
+            </zea-menu-item>
+          </zea-menu>
+        </div>
+        
         <zea-user-chip id="zea-user-chip"></zea-user-chip> 
       </div>
       <zea-layout slot="b" cell-a-size="200" cell-b-size="100%" cell-c-size="3px" resize-cell-c="false">
-        <div slot="a">
+        <zea-scroll-pane slot="a">
           <zea-tree-view id="zea-tree-view"></zea-tree-view>
-        </div>
+        </zea-scroll-pane>
         <div slot="b" id="renderer"></div>
       </zea-layout>
     </zea-layout>
-    <div slot="b" id="renderer"></div>
+    <!-- <div slot="b" id="renderer"></div> -->
   </div>
   </body>
   <script type="module" src="./src/index.js"></script>
