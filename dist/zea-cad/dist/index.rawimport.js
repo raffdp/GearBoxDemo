@@ -5118,6 +5118,7 @@ class GLCADBody extends EventEmitter {
       const highlighted = this.cadBody.isHighlighted();
       if (highlighted) {
         updateHighlightColor();
+        bodyItemDataChanged(this.bodyId);
         if (highlightedBodies.indexOf(this.bodyId) == -1) {
           highlightedBodies.push(this.bodyId);
 

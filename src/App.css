@@ -83,6 +83,7 @@ code {
 
 
 .UserChipSetHolder {
+  min-width: 100px;
 }
 
 .MenuHolder {

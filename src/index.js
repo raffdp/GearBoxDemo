@@ -156,7 +156,7 @@ const userChip = document.getElementById(
 userChip.userData = userData
 
 ////////////////////////////////////
-// Rendering Stypes
+// Rendering Styles
 
 const RealisticRenderingMenu = document.getElementById(
   "RealisticRendering"
@@ -166,13 +166,11 @@ RealisticRenderingMenu.addEventListener('click', ()=>{
   setRenderingMode(0)
 })
 
-
 const IllustrationRenderingMenu = document.getElementById(
   "IllustrationRendering"
 );
 
 IllustrationRenderingMenu.addEventListener('click', ()=>{
-  console.log('IllustrationRendering ok')
   setRenderingMode(1)
 })
 
