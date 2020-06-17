@@ -174,6 +174,6 @@ const setupStates = (asset, renderer) => {
     stateMachine.activateState('Initial')
   })
 
-
+  return stateMachine
 }
 export default setupStates

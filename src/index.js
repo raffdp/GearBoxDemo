@@ -51,7 +51,7 @@ const setRenderingMode = setupMaterials(asset, scene)
 setupCutaway(asset);
 setupGears(asset);
 setupExplode(asset);
-setupStates(asset, renderer);
+const stateMachine = setupStates(asset, renderer);
 
 scene.getRoot().addChild(asset)
 
@@ -59,14 +59,22 @@ scene.getRoot().addChild(asset)
 
 ////////////////////////////////////
 // Setup the Left side Tree view.
-import { SelectionManager } from "../dist/zea-ux/dist/index.rawimport.js"
+import { SelectionManager, UndoRedoManager } from "../dist/zea-ux/dist/index.rawimport.js"
 
 const appData = {
   scene,
   renderer
 }
 
+
+// This UndoRedoManager is here to facilitate collboration changes in the scene.
+// Changes are recorded to the UndoRedoManager, which is then synchronized using
+// SessionSync below.
+appData.undoRedoManager  = new UndoRedoManager();
+renderer.setUndoRedoManager(appData.undoRedoManager)
+
 appData.selectionManager  = new SelectionManager(appData);
+
 
 // // Note: the alpha value determines  the fill of the highlight.
 // const selectionColor = new Color("#111111");
@@ -134,7 +142,7 @@ let roomId = urlParams.get('room-id');
 session.joinRoom(document.location.origin+roomId);
 
 const sessionSync = new SessionSync(session, appData, userData, {});
-
+sessionSync.syncStateMachines(stateMachine)
 
 const userChipSet = document.getElementById(
   "zea-user-chip-set"
