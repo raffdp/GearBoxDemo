@@ -1,1 +1,8487 @@
-"use strict";Object.defineProperty(exports,"__esModule",{value:!0});var e=require("@zeainc/zea-engine");const t={},o={},s=[];class a{constructor(){this.__undoStack=[],this.__redoStack=[],this.__currChangeUpdated=this.__currChangeUpdated.bind(this)}flush(){for(const e of this.__undoStack)e.destroy();this.__undoStack=[];for(const e of this.__redoStack)e.destroy();this.__redoStack=[]}addChange(e){this.getCurrentChange()&&this.getCurrentChange().updated.disconnect(this.__currChangeUpdated),this.__undoStack.push(e),e.updated.connect(this.__currChangeUpdated);for(const e of this.__redoStack)e.destroy();this.__redoStack=[],this.emit("changeAdded",{change:e})}getCurrentChange(){return this.__undoStack[this.__undoStack.length-1]}__currChangeUpdated(e){this.emit("changeUpdated",e)}undo(e=!0){if(this.__undoStack.length>0){const t=this.__undoStack.pop();t.undo(),e&&(this.__redoStack.push(t),this.emit("changeUndone"))}}redo(){if(this.__redoStack.length>0){const e=this.__redoStack.pop();e.redo(),this.__undoStack.push(e),this.emit("changeRedone")}}constructChange(e){return new t[e]}static isChangeClassRegistered(e){return-1!=s.indexOf(e.constructor)}static getChangeClassName(e){const t=s.indexOf(e.constructor);return o[t]?o[t]:(console.warn("Change not registered:",e.constructor.name),"")}static registerChange(e,a){-1!=s.indexOf(a)&&console.warn("Class already registered:",e);const i=s.length;s.push(a),t[e]=a,o[i]=e}}class i extends e.EventEmitter{constructor(e){super(),this.name=e||a.getChangeClassName(this)}undo(){throw new Error("Implement me")}redo(){throw new Error("Implement me")}update(e){throw new Error("Implement me")}toJSON(e){return{}}fromJSON(e,t){}changeFromJSON(e){this.update(e)}destroy(){}}class n extends e.TreeItem{constructor(e){super(e),this.captured=!1}highlight(){}unhighlight(){}getManipulationPlane(){const t=this.getGlobalXfo();return new e.Ray(t.tr,t.ori.getZaxis())}onMouseEnter(e){this.highlight()}onMouseLeave(e){this.unhighlight()}onMouseDown(e){e.setCapture(this),e.stopPropagation(),this.captured=!0,e.viewport?this.handleMouseDown(e):e.vrviewport&&this.onVRControllerButtonDown(e)}onMouseMove(e){this.captured&&(e.stopPropagation(),e.viewport?this.handleMouseMove(e):e.vrviewport&&this.onVRPoseChanged(e))}onMouseUp(e){this.captured&&(e.releaseCapture(),e.stopPropagation(),this.captured=!1,e.viewport?this.handleMouseUp(e):e.vrviewport&&this.onVRControllerButtonUp(e))}onWheel(e){}handleMouseDown(e){this.gizmoRay=this.getManipulationPlane();const t=e.mouseRay.intersectRayPlane(this.gizmoRay);return e.grabPos=e.mouseRay.pointAtDist(t),this.onDragStart(e),!0}handleMouseMove(e){const t=e.mouseRay.intersectRayPlane(this.gizmoRay);return e.holdPos=e.mouseRay.pointAtDist(t),this.onDrag(e),!0}handleMouseUp(e){const t=e.mouseRay.intersectRayPlane(this.gizmoRay);return e.releasePos=e.mouseRay.pointAtDist(t),this.onDragEnd(e),!0}onVRControllerButtonDown(e){this.activeController=e.controller;const t=this.activeController.getTipXfo().clone(),o=this.getManipulationPlane(),s=t.tr.subtract(o.start),a=t.tr.subtract(o.dir.scale(s.dot(o.dir)));return e.grabPos=a,this.onDragStart(e),!0}onVRPoseChanged(e){if(this.activeController){const t=this.activeController.getTipXfo(),o=this.getManipulationPlane(),s=t.tr.subtract(o.start),a=t.tr.subtract(o.dir.scale(s.dot(o.dir)));return e.holdPos=a,this.onDrag(e),!0}}onVRControllerButtonUp(e){if(this.activeController==e.controller){const t=this.activeController.getTipXfo();return this.onDragEnd(e,t.tr),this.activeController=void 0,!0}}onDragStart(e){console.log("onDragStart",e)}onDrag(e){console.log("onDrag",e)}onDragEnd(e){console.log("onDragEnd",e)}}class r extends n{constructor(e){super(e)}handleMouseDown(e){this.gizmoRay=this.getManipulationPlane(),this.grabDist=e.mouseRay.intersectRayVector(this.gizmoRay)[1];const t=this.gizmoRay.pointAtDist(this.grabDist);return e.grabDist=this.grabDist,e.grabPos=t,this.onDragStart(e),!0}handleMouseMove(e){const t=e.mouseRay.intersectRayVector(this.gizmoRay)[1],o=this.gizmoRay.pointAtDist(t);e.holdDist=t,e.holdPos=o,e.value=t,e.delta=t-this.grabDist,this.onDrag(e)}handleMouseUp(e){const t=e.mouseRay.intersectRayVector(this.gizmoRay)[1],o=this.gizmoRay.pointAtDist(t);return e.releasePos=o,this.onDragEnd(e),!0}onVRControllerButtonDown(e){this.gizmoRay=this.getManipulationPlane(),this.activeController=e.controller;const t=this.activeController.getTipXfo();this.grabDist=t.tr.subtract(this.gizmoRay.start).dot(this.gizmoRay.dir);const o=this.gizmoRay.start.add(this.gizmoRay.dir.scale(this.grabDist));return e.grabPos=o,this.onDragStart(e),!0}onVRPoseChanged(e){const t=this.activeController.getTipXfo().tr.subtract(this.gizmoRay.start).dot(this.gizmoRay.dir),o=this.gizmoRay.start.add(this.gizmoRay.dir.scale(t));return e.value=t,e.holdPos=o,e.delta=t-this.grabDist,this.onDrag(e),!0}onVRControllerButtonUp(e){if(this.activeController==e.controller)return this.onDragEnd(),this.activeController=void 0,!0}}class h extends i{constructor(t,o,s=e.ValueSetMode.USER_SETVALUE){t?(super(t?t.getName()+" Changed":"ParameterValueChange"),this.__prevValue=t.getValue(),this.__param=t,this.__mode=s,null!=o&&(this.__nextValue=o,this.__param.setValue(this.__nextValue,s))):super()}undo(){this.__param&&this.__param.setValue(this.__prevValue,this.__mode)}redo(){this.__param&&this.__param.setValue(this.__nextValue,this.__mode)}update(e){if(!this.__param)return;this.__nextValue=e.value;const t=e.mode?e.mode:this.__mode;this.__param.setValue(this.__nextValue,t),this.updated.emit(e)}toJSON(e){const t={name:this.name,paramPath:this.__param.getPath()};return null!=this.__nextValue&&(this.__nextValue.toJSON?t.value=this.__nextValue.toJSON():t.value=this.__nextValue),t}fromJSON(t,o){const s=o.appData.scene.getRoot().resolvePath(t.paramPath,1);s&&s instanceof e.Parameter?(this.__param=s,this.__prevValue=this.__param.getValue(),this.__prevValue.clone?this.__nextValue=this.__prevValue.clone():this.__nextValue=this.__prevValue,this.name=t.name,null!=t.value&&this.changeFromJSON(t)):console.warn("resolvePath is unable to resolve",t.paramPath)}changeFromJSON(t){this.__param&&(this.__nextValue.fromJSON?this.__nextValue.fromJSON(t.value):this.__nextValue=t.value,this.__param.setValue(this.__nextValue,e.ValueSetMode.REMOTEUSER_SETVALUE))}}a.registerChange("ParameterValueChange",h);class l extends r{constructor(t,o,s,a){super(t),this.__color=a,this.__hilightedColor=new e.Color(1,1,1),this.colorParam=this.addParameter(new e.ColorParameter("BaseColor",a));const i=new e.Material("handle","HandleShader");i.getParameter("maintainScreenSize").setValue(1),i.replaceParameter(this.colorParam);const n=new e.Cylinder(s,o,64);n.getParameter("baseZAtZero").setValue(!0);const r=new e.Cone(4*s,10*s,64,!0),h=new e.GeomItem("handle",n,i),l=new e.GeomItem("tip",r,i),c=new e.Xfo;c.tr.set(0,0,o),r.transformVertices(c),this.addChild(h),this.addChild(l)}highlight(){this.colorParam.setValue(this.__hilightedColor)}unhighlight(){this.colorParam.setValue(this.__color)}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}onDragStart(e){this.grabPos=e.grabPos;const t=this.getTargetParam();this.baseXfo=t.getValue(),e.undoRedoManager&&(this.change=new h(t),e.undoRedoManager.addChange(this.change))}onDrag(e){const t=e.holdPos.subtract(this.grabPos),o=this.baseXfo.clone();o.tr.addInPlace(t),this.change?this.change.update({value:o}):this.param.setValue(o)}onDragEnd(e){this.change=null}}class c extends n{constructor(e){super(e),this.fullXfoManipulationInVR=!0}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}onDragStart(e){this.grabPos=e.grabPos;const t=this.getTargetParam();this.baseXfo=t.getValue(),e.undoRedoManager&&(this.change=new h(t),e.undoRedoManager.addChange(this.change))}onDrag(e){const t=e.holdPos.subtract(this.grabPos),o=this.baseXfo.clone();if(o.tr.addInPlace(t),this.change)this.change.update({value:o});else{this.getTargetParam().setValue(o)}}onDragEnd(e){this.change=null}onVRControllerButtonDown(e){if(this.fullXfoManipulationInVR){this.activeController=e.controller;const t=this.activeController.getTipXfo(),o=this.getGlobalXfo();this.grabOffset=t.inverse().multiply(o)}else super.onVRControllerButtonDown(e);return!0}onVRPoseChanged(e){if(this.fullXfoManipulationInVR){const e=this.activeController.getTipXfo().multiply(this.grabOffset);if(this.change)this.change.update({value:e});else{this.getTargetParam().setValue(e)}}else super.onVRPoseChanged(e)}onVRControllerButtonUp(e){this.fullXfoManipulationInVR?this.change=null:super.onVRControllerButtonUp(e)}}class d extends n{constructor(e){super(e)}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}onDragStart(t){this.baseXfo=this.getGlobalXfo().clone(),this.baseXfo.sc.set(1,1,1),this.deltaXfo=new e.Xfo;const o=this.getTargetParam(),s=o.getValue();this.offsetXfo=this.baseXfo.inverse().multiply(s),this.vec0=t.grabPos.subtract(this.baseXfo.tr),this.grabCircleRadius=this.vec0.length(),this.vec0.normalizeInPlace(),t.undoRedoManager&&(this.change=new h(o),t.undoRedoManager.addChange(this.change))}onDrag(t){const o=t.holdPos.subtract(this.baseXfo.tr),s=o.length();o.normalizeInPlace();const a=s/this.grabCircleRadius;let i=this.vec0.angleTo(o)*a;if(this.vec0.cross(o).dot(this.baseXfo.ori.getZaxis())<0&&(i=-i),this.range&&(i=Math.clamp(i,this.range[0],this.range[1])),t.shiftKey){const e=Math.degToRad(22.5);i=Math.floor(i/e)*e}this.deltaXfo.ori.setFromAxisAndAngle(new e.Vec3(0,0,1),i);const n=this.baseXfo.multiply(this.deltaXfo).multiply(this.offsetXfo);if(this.change)this.change.update({value:n});else{this.getTargetParam().setValue(n)}}onDragEnd(e){this.change=null}}class u extends d{constructor(t,o,s,a){super(t),this.__color=a,this.__hilightedColor=new e.Color(1,1,1),this.radiusParam=this.addParameter(new e.NumberParameter("radius",o)),this.colorParam=this.addParameter(new e.ColorParameter("BaseColor",a));const i=new e.Material("handle","HandleShader");i.getParameter("maintainScreenSize").setValue(1),i.replaceParameter(this.colorParam);const n=new e.Torus(s,o,64);this.handle=new e.GeomItem("handle",n,i),this.handleXfo=new e.Xfo,this.radiusParam.on("valueChanged",()=>{o=this.radiusParam.getValue(),n.getParameter("radius").setValue(o),n.getParameter("height").setValue(.02*o)}),this.addChild(this.handle)}highlight(){this.colorParam.setValue(this.__hilightedColor)}unhighlight(){this.colorParam.setValue(this.__color)}getBaseXfo(){return this.getParameter("GlobalXfo").getValue()}onDragStart(t){super.onDragStart(t),this.colorParam.setValue(new e.Color(1,1,1))}onDrag(e){super.onDrag(e)}onDragEnd(e){super.onDragEnd(e),this.colorParam.setValue(this.__color)}}class g extends r{constructor(t,o,s,a){super(t),this.__color=a,this.__hilightedColor=new e.Color(1,1,1),this.colorParam=this.addParameter(new e.ColorParameter("BaseColor",a));const i=new e.Material("handle","HandleShader");i.getParameter("maintainScreenSize").setValue(1),i.replaceParameter(this.colorParam);const n=new e.Cylinder(s,o-10*s,64);n.getParameter("baseZAtZero").setValue(!0);const r=new e.Cuboid(10*s,10*s,10*s),h=new e.GeomItem("handle",n,i),l=new e.GeomItem("tip",r,i),c=new e.Xfo;c.tr.set(0,0,o-10*s),r.transformVertices(c),this.addChild(h),this.addChild(l)}highlight(){this.colorParam.setValue(this.__hilightedColor)}unhighlight(){this.colorParam.setValue(this.__color)}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}onDragStart(e){this.grabDist=e.grabDist,this.oriXfo=this.getGlobalXfo(),this.tmplocalXfo=this.getLocalXfo();const t=this.getTargetParam();this.baseXfo=t.getValue(),e.undoRedoManager&&(this.change=new h(t),e.undoRedoManager.addChange(this.change))}onDrag(e){const t=this.baseXfo.clone(),o=e.holdDist/this.grabDist;o<1e-4||(t.sc.set(this.baseXfo.sc.x*o,this.baseXfo.sc.y*o,this.baseXfo.sc.z*o),this.tmplocalXfo.sc.set(1,1,o),this.setLocalXfo(this.tmplocalXfo),this.change?this.change.update({value:t}):this.param.setValue(t))}onDragEnd(e){this.change=null,this.tmplocalXfo.sc.set(1,1,1),this.setLocalXfo(this.tmplocalXfo);const t=this.getChildByName("tip"),o=t.getLocalXfo();o.sc.set(1,1,1),t.setLocalXfo(o)}}class m extends n{constructor(t,o,s){super(t),this.radius=o;const a=new e.Material("mask","HandleShader");a.getParameter("maintainScreenSize").setValue(1),a.getParameter("BaseColor").setValue(s);const i=new e.Sphere(o,64),n=new e.GeomItem("mask",i,a);this.addChild(n)}highlight(){}unhighlight(){}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}handleMouseDown(e){return!0}handleMouseMove(e){return!0}handleMouseUp(e){return!0}onDragStart(t){this.baseXfo=this.getGlobalXfo(),this.baseXfo.sc.set(1,1,1),this.deltaXfo=new e.Xfo;const o=this.getTargetParam();this.offsetXfo=this.baseXfo.inverse().multiply(o.getValue()),this.vec0=t.grabPos.subtract(this.baseXfo.tr),this.vec0.normalizeInPlace(),this.colorParam.setValue(new e.Color(1,1,1)),t.undoRedoManager&&(this.change=new ParameterValueChange(o),t.undoRedoManager.addChange(this.change))}onDrag(e){const t=e.holdPos.subtract(this.baseXfo.tr);t.normalizeInPlace();const o=this.vec0.angleTo(t)*modulator,s=this.vec0.cross(t).normalize();this.deltaXfo.ori.setFromAxisAndAngle(s,o);const a=this.baseXfo.multiply(this.deltaXfo),i=a.multiply(this.offsetXfo);if(this.change)this.change.update({value:i});else{this.getTargetParam().setValue(a)}}onDragEnd(e){this.change=null,this.colorParam.setValue(this.__color)}}class p extends c{constructor(t,o,s,a){super(t),this.__color=s,this.__hilightedColor=new e.Color(1,1,1),this.sizeParam=this.addParameter(new e.NumberParameter("size",o)),this.colorParam=this.addParameter(new e.ColorParameter("BaseColor",s));const i=new e.Material("handle","HandleShader");i.getParameter("maintainScreenSize").setValue(1),i.replaceParameter(this.colorParam);const n=new e.Cuboid(o,o,.02*o),r=new e.Xfo;r.tr=a,n.transformVertices(r),this.handle=new e.GeomItem("handle",n,i),this.sizeParam.on("valueChanged",()=>{o=this.sizeParam.getValue(),n.getParameter("size").setValue(o),n.getParameter("height").setValue(.02*o)}),this.addChild(this.handle)}highlight(){this.colorParam.setValue(this.__hilightedColor)}unhighlight(){this.colorParam.setValue(this.__color)}}class _ extends e.TreeItem{constructor(t,o){super("XfoHandle");const s=new e.TreeItem("Translate");s.setVisible(!1),this.addChild(s);const a=new e.Color(1,.1,.1),i=new e.Color("#32CD32"),n=new e.Color("#1E90FF");a.a=.8,i.a=.8,n.a=.8;{const i=new l("linearX",t,o,a),n=new e.Xfo;n.ori.setFromAxisAndAngle(new e.Vec3(0,1,0),.5*Math.PI),i.getParameter("LocalXfo").setValue(n),s.addChild(i)}{const a=new l("linearY",t,o,i),n=new e.Xfo;n.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),-.5*Math.PI),a.getParameter("LocalXfo").setValue(n),s.addChild(a)}{const e=new l("linearZ",t,o,n);s.addChild(e)}const r=.35*t;{const t=new p("planarXY",r,i,new e.Vec3(.5*r,.5*r,0)),o=new e.Xfo;t.getParameter("LocalXfo").setValue(o),s.addChild(t)}{const t=new p("planarYZ",r,a,new e.Vec3(-.5*r,.5*r,0)),o=new e.Xfo;o.ori.setFromAxisAndAngle(new e.Vec3(0,1,0),.5*Math.PI),t.getParameter("LocalXfo").setValue(o),s.addChild(t)}{const t=new p("planarXZ",r,n,new e.Vec3(.5*r,.5*r,0)),o=new e.Xfo;o.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),.5*Math.PI),t.getParameter("LocalXfo").setValue(o),s.addChild(t)}const h=new e.TreeItem("Rotate");h.setVisible(!1),this.addChild(h);{const s=new m("rotation",t-o,new e.Color(1,1,1,.4));h.addChild(s)}{const s=new u("rotationX",t,o,a),i=new e.Xfo;i.ori.setFromAxisAndAngle(new e.Vec3(0,1,0),.5*Math.PI),s.getParameter("LocalXfo").setValue(i),h.addChild(s)}{const s=new u("rotationY",t,o,i),a=new e.Xfo;a.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),.5*Math.PI),s.getParameter("LocalXfo").setValue(a),h.addChild(s)}{const e=new u("rotationZ",t,o,n);h.addChild(e)}const c=new e.TreeItem("Scale");c.setVisible(!1),this.addChild(c);const d=.95*t;{const t=new g("scaleX",d,o,a),s=new e.Xfo;s.ori.setFromAxisAndAngle(new e.Vec3(0,1,0),.5*Math.PI),t.getParameter("LocalXfo").setValue(s),c.addChild(t)}{const t=new g("scaleY",d,o,i),s=new e.Xfo;s.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),-.5*Math.PI),t.getParameter("LocalXfo").setValue(s),c.addChild(t)}{const e=new g("scaleZ",d,o,n);c.addChild(e)}}_cleanGlobalXfo(e){const t=this.getParentItem();if(void 0!==t){const e=t.getGlobalXfo().clone();return e.sc.set(1,1,1),e.multiply(this.__localXfoParam.getValue())}return this.__localXfoParam.getValue()}showHandles(e){this.traverse(e=>{if(e!=this)return e.setVisible(!1),!1});const t=this.getChildByName(e);t&&t.setVisible(!0)}setTargetParam(e){this.param=e,this.traverse(t=>{t instanceof n&&t.setTargetParam(e,!1)})}}class f extends e.Group{constructor(t){let o,s;super(),t.selectionOutlineColor?o=t.selectionOutlineColor:(o=new e.Color("#03E3AC"),o.a=.1),t.branchSelectionOutlineColor?s=t.branchSelectionOutlineColor:(s=o.lerp(new e.Color("white"),.5),s.a=.1),this.getParameter("HighlightColor").setValue(o),this.addParameter(new e.ColorParameter("SubtreeHighlightColor",s)),this.propagatingSelectionToItems=0!=t.setItemsSelected,this.getParameter("InitialXfoMode").setValue(e.Group.INITIAL_XFO_MODES.average),this.__itemsParam.setFilterFn(t=>t instanceof e.BaseItem)}clone(e){const t=new f;return t.copyFrom(this,e),t}rebindInitialXfos(){Array.from(this.__itemsParam.getValue()).forEach((t,o)=>{t instanceof e.TreeItem&&(this.__initialXfos[o]=t.getGlobalXfo())})}__bindItem(t,o){this.propagatingSelectionToItems&&t.setSelected(this);const s={};if(t instanceof e.TreeItem){const a=this.getParameter("HighlightColor").getValue();a.a=this.getParameter("HighlightFill").getValue();const i=this.getParameter("SubtreeHighlightColor").getValue();t.addHighlight("selected"+this.getId(),a,!1),t.getChildren().forEach(t=>{t instanceof e.TreeItem&&t.addHighlight("branchselected"+this.getId(),i,!0)}),s.globalXfoChangedIndex=t.on("globalXfoChanged",e=>{this.calculatingGroupXfo||this.propagatingXfoToItems||(this.__initialXfos[o]=t.getGlobalXfo(),this.groupXfoDirty=!0,this._setGlobalXfoDirty())}),this.__initialXfos[o]=t.getGlobalXfo(),this.groupXfoDirty=!0}this.__signalIndices[o]=s}__unbindItem(t,o){this.propagatingSelectionToItems&&t.setSelected(!1),t instanceof e.TreeItem&&(t.removeHighlight("selected"+this.getId()),t.getChildren().forEach(t=>{t instanceof e.TreeItem&&t.removeHighlight("branchselected"+this.getId(),!0)}),t.removeListenerById("globalXfoChanged",this.__signalIndices[o].globalXfoChangedIndex),this.__initialXfos.splice(o,1),this.groupXfoDirty=!0),this.__signalIndices.splice(o,1)}_propagateDirtyXfoToItems(){if(this.groupXfoDirty||this.calculatingGroupXfo)return;const t=Array.from(this.__itemsParam.getValue());if(!this.calculatingGroupXfo&&t.length>0&&this.invGroupXfo&&!this.dirty){const o=this.__globalXfoParam.getValue().multiply(this.invGroupXfo);this.propagatingXfoToItems=!0;const s=(e,t)=>{const s=e.getParameter("GlobalXfo"),a=o.multiply(t);s.setValue(a)};t.forEach((t,o)=>{t instanceof e.TreeItem&&s(t,this.__initialXfos[o])}),this.propagatingXfoToItems=!1}}}class v extends i{constructor(e,t,o){super("SelectionChange"),this.__selectionManager=e,this.__prevSelection=t,this.__newSelection=o}undo(){this.__selectionManager.setSelection(this.__prevSelection,!1)}redo(){this.__selectionManager.setSelection(this.__newSelection,!1)}toJSON(e){const t=super.toJSON(e),o=[];for(const e of this.__newSelection)o.push(e.getPath());return t.itemPaths=o,t}fromJSON(e,t){super.fromJSON(e,t),this.__selectionManager=t.appData.selectionManager,this.__prevSelection=new Set(this.__selectionManager.getSelection());const o=t.appData.scene.getRoot(),s=new Set;for(const t of e.itemPaths)s.add(o.resolvePath(t,1));this.__newSelection=s,this.__selectionManager.setSelection(this.__newSelection,!1)}}a.registerChange("SelectionChange",v);class C extends i{constructor(e,t){super("Selection Visibility Change"),this.selection=e,this.state=t,this.do(this.state)}undo(){this.do(!this.state)}redo(){this.do(this.state)}do(e){for(const t of this.selection)t.getParameter("Visible").setValue(e)}}a.registerChange("ToggleSelectionVisibility",C);class I extends e.EventEmitter{constructor(e,t={}){if(super(),this.appData=e,this.leadSelection=void 0,this.selectionGroup=new f(t),!0===t.enableXfoHandles){const e=.1,t=.02*e;this.xfoHandle=new _(e,t),this.xfoHandle.setTargetParam(this.selectionGroup.getParameter("GlobalXfo"),!1),this.xfoHandle.setVisible(!1),this.selectionGroup.addChild(this.xfoHandle)}this.appData.renderer&&this.setRenderer(this.appData.renderer)}setRenderer(e){this.__renderer=e,this.__renderer.addTreeItem(this.selectionGroup)}setXfoMode(e){this.xfoHandle&&(this.selectionGroup.rebindInitialXfos(),this.selectionGroup.getParameter("InitialXfoMode").setValue(e))}showHandles(e){if(this.xfoHandle&&this.currMode!=e){this.currMode=e;for(const t in this.handleGroup)this.handleGroup[t].emit(e==t);this.xfoHandle.showHandles(e)}}updateHandleVisiblity(){if(!this.xfoHandle)return;const e=this.selectionGroup.getItems(),t=Array.from(e).length>0;this.xfoHandle.setVisible(t),this.__renderer.requestRedraw()}getSelection(){return this.selectionGroup.getItems()}setSelection(e,t=!0){const o=new Set(this.selectionGroup.getItems()),s=new Set(o);for(const t of e)o.has(t)||o.add(t);for(const t of o)e.has(t)||o.delete(t);if(this.selectionGroup.setItems(o),o.size>0?this.__setLeadSelection(o.values().next().value):this.__setLeadSelection(),this.updateHandleVisiblity(),t){const e=new v(this,s,o);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(e)}}__setLeadSelection(e){this.leadSelection!=e&&(this.leadSelection=e,this.emit("leadSelectionChanged",{treeItem:e}))}toggleItemSelection(e,t=!0){const o=new Set(this.selectionGroup.getItems()),s=new Set(o);if(t&&(1!=o.size||!o.has(e))){let t=!0;if(o.has(e)){let s=1;e.traverse(e=>{o.has(e)&&s++}),t=s!=o.size}t&&o.clear()}let a;o.has(e)?(o.delete(e),a=!1):(o.add(e),a=!0),this.selectionGroup.setItems(o),a&&1===o.size?this.__setLeadSelection(e):a||(1===o.size?this.__setLeadSelection(o.values().next().value):0===o.size&&this.__setLeadSelection());const i=new v(this,s,o);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(i),this.updateHandleVisiblity(),this.emit("selectionChanged",{prevSelection:s,selection:o})}clearSelection(e=!0){const t=new Set(this.selectionGroup.getItems());if(0==t.size)return!1;let o;if(e&&(o=new Set(t)),t.clear(),this.selectionGroup.setItems(t),this.updateHandleVisiblity(),e){const e=new v(this,o,t);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(e),this.emit("selectionChanged",{selection:t,prevSelection:o})}return!0}selectItems(e,t=!0){const o=new Set(this.selectionGroup.getItems()),s=new Set(o);t&&o.clear();for(const t of e)t.getSelected()||o.add(t);const a=new v(this,s,o);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(a),this.selectionGroup.setItems(o),1===o.size?this.__setLeadSelection(o.values().next().value):0===o.size&&this.__setLeadSelection(),this.updateHandleVisiblity(),this.emit("selectionChanged",{prevSelection:s,selection:o})}deselectItems(e){const t=this.selectionGroup.getItems(),o=new Set(t);for(const o of e)o.getSelected()&&t.delete(selectedParam);this.selectionGroup.setItems(t);const s=new v(this,o,t);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(s),1===t.size?this.__setLeadSelection(t.values().next().value):0===t.size&&this.__setLeadSelection(),this.updateHandleVisiblity(),this.emit("selectionChanged",{prevSelection:o,selection:t})}toggleSelectionVisiblity(){if(this.leadSelection){const e=this.selectionGroup.getItems(),t=!this.leadSelection.getVisible(),o=new C(e,t);this.appData.undoRedoManager&&this.appData.undoRedoManager.addChange(o)}}startPickingMode(e,t,o,s){console.log(e),this.__pickCB=t,this.__pickFilter=o,this.__pickCount=s,this.__picked=[]}pickingFilter(e){return this.__pickFilter(e)}pickingModeActive(){return null!=this.__pickCB}cancelPickingMode(){this.__pickCB=void 0}pick(e){if(this.__pickCB){if(Array.isArray(e))this.__pickFilter?this.__picked=this.__picked.concat(e.filter(this.__pickFilter)):this.__picked=this.__picked.concat(e);else{if(this.__pickFilter&&!this.__pickFilter(e))return;this.__picked.push(e)}this.__picked.length==this.__pickCount&&(this.__pickCB(this.__picked),this.__pickCB=void 0)}}}class P extends i{constructor(e,t,o){e?(super(e.getName()+" Added"),this.treeItem=e,this.owner=t,this.selectionManager=o,this.prevSelection=new Set(this.selectionManager.getSelection()),this.treeItemIndex=this.owner.addChild(this.treeItem),this.selectionManager.setSelection(new Set([this.treeItem]),!1),this.treeItem.addRef(this)):super()}undo(){if(this.treeItem instanceof e.Operator){this.treeItem.detach()}else this.treeItem instanceof e.TreeItem&&this.treeItem.traverse(t=>{if(t instanceof e.Operator){t.detach()}},!1);this.owner.removeChild(this.treeItemIndex),this.selectionManager&&this.selectionManager.setSelection(this.prevSelection,!1)}redo(){if(this.treeItem instanceof e.Operator){this.treeItem.reattach()}else subTreeItem instanceof e.TreeItem&&this.treeItem.traverse(t=>{if(t instanceof e.Operator){t.reattach()}},!1);this.owner.addChild(this.treeItem),this.selectionManager&&this.selectionManager.setSelection(new Set([this.treeItem]),!1)}toJSON(e){return{name:this.name,treeItem:this.treeItem.toJSON(e),treeItemPath:this.treeItem.getPath(),treeItemIndex:this.treeItemIndex}}fromJSON(t,o){const s=e.sgFactory.constructClass(t.treeItem.type);s?(this.name=t.name,this.treeItem=s,this.treeItem.addRef(this),this.treeItem.fromJSON(t.treeItem,o),this.treeItemIndex=this.owner.addChild(this.treeItem,!1,!1)):console.warn("resolvePath is unable to conostruct",t.treeItem)}destroy(){this.treeItem.removeRef(this)}}a.registerChange("TreeItemAddChange",P);class w extends i{constructor(t,o){if(super(),this.items=[],this.itemOwners=[],this.itemPaths=[],this.itemIndices=[],t){this.selectionManager=o.selectionManager,this.prevSelection=new Set(this.selectionManager.getSelection()),this.items=t,this.newSelection=new Set(this.prevSelection);const s=[];this.items.forEach(t=>{const o=t.getOwner(),a=o.getChildIndex(t);if(s.push(t.getName()),t.addRef(this),this.itemOwners.push(o),this.itemPaths.push(t.getPath()),this.itemIndices.push(a),this.selectionManager&&this.newSelection.has(t)&&this.newSelection.delete(t),t instanceof e.Operator){t.detach()}else t instanceof e.TreeItem&&t.traverse(t=>{if(t instanceof e.Operator){t.detach()}this.selectionManager&&this.newSelection.has(t)&&this.newSelection.delete(t)},!1);o.removeChild(a)}),this.selectionManager.setSelection(this.newSelection,!1),this.name=s+" Deleted"}}undo(){this.items.forEach((t,o)=>{if(this.itemOwners[o].insertChild(t,this.itemIndices[o],!1,!1),t instanceof e.Operator){t.reattach()}else subTreeItem instanceof e.TreeItem&&t.traverse(t=>{if(t instanceof e.Operator){t.reattach()}},!1)}),this.selectionManager&&this.selectionManager.setSelection(this.prevSelection,!1)}redo(){this.selectionManager&&this.selectionManager.setSelection(this.newSelection,!1),this.items.forEach((t,o)=>{if(this.itemOwners[o].removeChild(this.itemIndices[o]),t instanceof e.Operator){t.detach()}else subTreeItem instanceof e.TreeItem&&t.traverse(t=>{if(t instanceof e.Operator){t.detach()}},!1)})}toJSON(e){const t={name:this.name,items:[],itemPaths:this.itemPaths,itemIndices:this.itemIndices};return this.items.forEach(e=>{t.items.push(e.toJSON())}),t}fromJSON(e,t){this.name=e.name,e.itemPaths.forEach(e=>{const o=t.scene.getRoot().resolvePath(e,1);if(!o)return void console.warn("resolvePath is unable to resolve",e);const s=o.getOwner();this.itemOwners.push(s),this.itemPaths.push(o.getPath()),this.itemIndices.push(s.getChildIndex(o))})}destroy(){this.items.forEach(e=>e.removeRef(this))}}a.registerChange("TreeItemsRemoveChange",w);class b extends i{constructor(e,t){e?(console.log("TreeItemMoveChange"),super(e.getName()+" Added"),this.treeItem=e,this.oldOwner=this.treeItem.getOwner(),this.oldOwnerIndex=this.oldOwner.getChildIndex(this.treeItem),this.newOwner=t,this.newOwner.addChild(this.treeItem,!0)):super()}undo(){this.oldOwner.insertChild(this.treeItem,this.oldOwnerIndex,!0)}redo(){this.newOwner.addChild(this.treeItem,!0)}toJSON(e){return{name:this.name,treeItemPath:this.treeItem.getPath(),newOwnerPath:this.newOwner.getPath()}}fromJSON(e,t){const o=appData.scene.getRoot().resolvePath(e.treeItemPath,1);if(!o)return void console.warn("resolvePath is unable to resolve",e.treeItemPath);const s=appData.scene.getRoot().resolvePath(e.newOwnerPath,1);s?(this.name=e.name,this.treeItem=o,this.newOwner=s,this.oldOwner=this.treeItem.getOwner(),this.oldOwnerIndex=this.oldOwner.getChildIndex(this.treeItem),this.newOwner.addChild(this.treeItem,!0)):console.warn("resolvePath is unable to resolve",e.newOwnerPath)}}a.registerChange("TreeItemMoveChange",b);class D extends e.ParameterOwner{constructor(e){super(),e||console.error("App data not provided to tool"),this.appData=e,this.__params=[],this.__installed=!1,this.__activated=!1}getName(){return this.constructor.name}isPrimaryTool(){return!1}installed(){return this.__installed}install(e){if(this.__installed)throw new Error("Tool already installed");this.index=e,this.__installed=!0,this.emit("installChanged",{installed:this.__installed})}uninstall(){this.__installed=!1,this.emit("installChanged",{installed:this.__installed})}activateTool(){if(this.__activated)throw new Error("Tool already activate");this.__activated=!0,this.emit("activatedChanged",{activated:this.__activated})}deactivateTool(){this.__activated=!1,this.emit("activatedChanged",{activated:this.__activated})}onMouseDown(e){}onMouseMove(e){}onMouseUp(e){}onDoubleClick(e){}onWheel(e){}onKeyPressed(e,t){}onKeyDown(e,t){}onKeyUp(e,t){}onTouchStart(e){}onTouchMove(e){}onTouchEnd(e){}onTouchCancel(e){}onDoubleTap(e){}onVRControllerButtonDown(e){}onVRControllerButtonUp(e){}onVRControllerDoubleClicked(e){}onVRPoseChanged(e){}}const M={VIEWER:0,DCC:1};class S extends D{constructor(t){super(t),this.dragging=!1,this.selectionRect=new e.Rect(1,1),this.selectionRectMat=new e.Material("marker","ScreenSpaceShader"),this.selectionRectMat.getParameter("BaseColor").setValue(new e.Color("#03E3AC")),this.selectionRectXfo=new e.Xfo,this.selectionRectXfo.tr.set(.5,.5,0),this.selectionRectXfo.sc.set(0,0,0)}activateTool(){super.activateTool(),this.rectItem||(this.rectItem=new e.GeomItem("selectionRect",this.selectionRect,this.selectionRectMat),this.rectItem.getParameter("Visible").setValue(!1),this.appData.renderer.addTreeItem(this.rectItem))}deactivateTool(){super.deactivateTool(),this.selectionRectXfo.sc.set(0,0,0),this.rectItem.setGlobalXfo(this.selectionRectXfo)}onMouseDown(e){return 0==e.button&&!e.altKey&&(console.log("onMouseDown"),this.mouseDownPos=e.mousePos,this.dragging=!1,!0)}__resizeRect(t,o){const s=new e.Vec2(1/t.getWidth()*2,1/t.getHeight()*2),a=o.multiply(s);this.selectionRectXfo.sc.set(Math.abs(a.x),Math.abs(a.y),1);const i=this.mouseDownPos.subtract(o.scale(.5)).multiply(s).subtract(new e.Vec2(1,1));this.selectionRectXfo.tr.x=i.x,this.selectionRectXfo.tr.y=-i.y,this.rectItem.setGlobalXfo(this.selectionRectXfo)}onMouseMove(e){if(this.mouseDownPos){const t=this.mouseDownPos.subtract(e.mousePos);this.dragging&&this.__resizeRect(e.viewport,t),t.length()>4&&(this.dragging=!0,this.rectItem.getParameter("Visible").setValue(!0),this.__resizeRect(e.viewport,t))}return!0}onMouseUp(t){if(this.mouseDownPos){if(this.dragging){this.rectItem.getParameter("Visible").setValue(!1);const o=t.mousePos,s=new e.Vec2(Math.min(this.mouseDownPos.x,o.x),Math.min(this.mouseDownPos.y,o.y)),a=new e.Vec2(Math.max(this.mouseDownPos.x,o.x),Math.max(this.mouseDownPos.y,o.y)),i=t.viewport.getGeomItemsInRect(s,a);if(this.appData.selectionManager.pickingModeActive())this.appData.selectionManager.pick(i);else{const e=new Set([...i].filter(e=>!(e.getOwner()instanceof n)));t.shiftKey?this.appData.selectionManager.deselectItems(e):this.appData.selectionManager.selectItems(e,!t.ctrlKey),this.selectionRectXfo.sc.set(0,0,0),this.rectItem.setGlobalXfo(this.selectionRectXfo)}}else{const e=t.viewport.getGeomDataAtPos(t.mousePos);if(null==e||e.geomItem.getOwner()instanceof n)this.appData.selectionManager.clearSelection();else if(this.appData.selectionManager.pickingModeActive())this.appData.selectionManager.pick(e.geomItem);else if(t.shiftKey){const t=new Set;t.add(e.geomItem),this.appData.selectionManager.deselectItems(t)}else this.appData.selectionManager.toggleItemSelection(e.geomItem,!t.ctrlKey)}return this.mouseDownPos=void 0,!0}}onVRControllerButtonDown(e){if(1==e.button){const t=e.controller.getGeomItemAtTip();if(null!=t&&!(t.geomItem.getOwner()instanceof n))return this.appData.selectionManager.toggleItemSelection(t.geomItem),!0}}}a.registerChange("SelectionTool",S);const T=function(){return{escape:function(e){return e.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1")},parseExtension:e,mimeType:function(t){const o=e(t).toLowerCase();return function(){const e="application/font-woff";return{woff:e,woff2:e,ttf:"application/font-truetype",eot:"application/vnd.ms-fontobject",png:"image/png",jpg:"image/jpeg",jpeg:"image/jpeg",gif:"image/gif",tiff:"image/tiff",svg:"image/svg+xml"}}()[o]||""},dataAsUrl:function(e,t){return"data:"+t+";base64,"+e},isDataUrl:function(e){return-1!==e.search(/^(data:)/)},canvasToBlob:function(e){return e.toBlob?new Promise((function(t){e.toBlob(t)})):function(e){return new Promise((function(t){const o=window.atob(e.toDataURL().split(",")[1]),s=o.length,a=new Uint8Array(s);for(let e=0;e<s;e++)a[e]=o.charCodeAt(e);t(new Blob([a],{type:"image/png"}))}))}(e)},resolveUrl:function(e,t){const o=document.implementation.createHTMLDocument(),s=o.createElement("base");o.head.appendChild(s);const a=o.createElement("a");return o.body.appendChild(a),s.href=t,a.href=e,a.href},getAndEncode:function(e){x.impl.options.cacheBust&&(e+=(/\?/.test(e)?"&":"?")+(new Date).getTime());return new Promise((function(t){const o=new XMLHttpRequest;let s;if(o.onreadystatechange=function(){if(4!==o.readyState)return;if(200!==o.status)return void(s?t(s):a("cannot fetch resource: "+e+", status: "+o.status));const i=new FileReader;i.onloadend=function(){const e=i.result.split(/,/)[1];t(e)},i.readAsDataURL(o.response)},o.ontimeout=function(){s?t(s):a("timeout of 30000ms occured while fetching resource: "+e)},o.responseType="blob",o.timeout=3e4,o.open("GET",e,!0),o.send(),x.impl.options.imagePlaceholder){const e=x.impl.options.imagePlaceholder.split(/,/);e&&e[1]&&(s=e[1])}function a(e){console.error(e),t("")}}))},uid:function(){let e=0;return function(){return"u"+("0000"+(Math.random()*Math.pow(36,4)<<0).toString(36)).slice(-4)+e++}}(),delay:function(e){return function(t){return new Promise((function(o){setTimeout((function(){o(t)}),e)}))}},asArray:function(e){const t=[],o=e.length;for(let s=0;s<o;s++)t.push(e[s]);return t},escapeXhtml:function(e){return e.replace(/#/g,"%23").replace(/\n/g,"%0A")},makeImage:function(e){return new Promise((function(t,o){const s=new Image;s.onload=function(){t(s)},s.onerror=o,s.src=e}))},width:function(e){const o=t(e,"border-left-width"),s=t(e,"border-right-width");return e.scrollWidth+o+s},height:function(e){const o=t(e,"border-top-width"),s=t(e,"border-bottom-width");return e.scrollHeight+o+s}};function e(e){const t=/\.([^\.\/]*?)$/g.exec(e);return t?t[1]:""}function t(e,t){const o=window.getComputedStyle(e).getPropertyValue(t);return parseFloat(o.replace("px",""))}}(),X=function(){const e=/url\(['"]?([^'"]+?)['"]?\)/g;return{inlineAll:function(e,a,i){return function(){return!t(e)}()?Promise.resolve(e):Promise.resolve(e).then(o).then((function(t){let o=Promise.resolve(e);return t.forEach((function(e){o=o.then((function(t){return s(t,e,a,i)}))})),o}))},shouldProcess:t,impl:{readUrls:o,inline:s}};function t(t){return-1!==t.search(e)}function o(t){const o=[];let s;for(;null!==(s=e.exec(t));)o.push(s[1]);return o.filter((function(e){return!T.isDataUrl(e)}))}function s(e,t,o,s){return Promise.resolve(t).then((function(e){return o?T.resolveUrl(e,o):e})).then(s||T.getAndEncode).then((function(e){return T.dataAsUrl(e,T.mimeType(t))})).then((function(o){return e.replace(function(e){return new RegExp("(url\\(['\"]?)("+T.escape(e)+")(['\"]?\\))","g")}(t),"$1"+o+"$3")}))}}(),V=function(){return{resolveAll:function(){return e().then((function(e){return Promise.all(e.map((function(e){return e.resolve()})))})).then((function(e){return e.join("\n")}))},impl:{readAll:e}};function e(){return Promise.resolve(T.asArray(document.styleSheets)).then((function(e){const t=[];return e.forEach((function(e){try{T.asArray(e.cssRules||[]).forEach(t.push.bind(t))}catch(t){console.log("Error while reading CSS rules from "+e.href,t.toString())}})),t})).then((function(e){return e.filter((function(e){return e.type===CSSRule.FONT_FACE_RULE})).filter((function(e){return X.shouldProcess(e.style.getPropertyValue("src"))}))})).then((function(t){return t.map(e)}));function e(e){return{resolve:function(){const t=(e.parentStyleSheet||{}).href;return X.inlineAll(e.cssText,t)},src:function(){return e.style.getPropertyValue("src")}}}}}(),y=function(){return{inlineAll:function t(o){return o instanceof Element?function(e){const t=e.style.getPropertyValue("background");return t?X.inlineAll(t).then((function(t){e.style.setProperty("background",t,e.style.getPropertyPriority("background"))})).then((function(){return e})):Promise.resolve(e)}(o).then((function(){return o instanceof HTMLImageElement?e(o).inline():Promise.all(T.asArray(o.childNodes).map((function(e){return t(e)})))})):Promise.resolve(o)},impl:{newImage:e}};function e(e){return{inline:function(t){return T.isDataUrl(e.src)?Promise.resolve():Promise.resolve(e.src).then(t||T.getAndEncode).then((function(t){return T.dataAsUrl(t,T.mimeType(e.src))})).then((function(t){return new Promise((function(o,s){e.onload=o,e.onerror=s,e.src=t}))}))}}}}(),R={imagePlaceholder:void 0,cacheBust:!1},x={toSvg:O,toPng:function(e,t){return G(e,t||{}).then((function(e){return e.toDataURL()}))},toJpeg:function(e,t){return G(e,t=t||{}).then((function(e){return e.toDataURL("image/jpeg",t.quality||1)}))},toBlob:function(e,t){return G(e,t||{}).then(T.canvasToBlob)},toPixelData:function(e,t){return G(e,t||{}).then((function(t){return t.getContext("2d").getImageData(0,0,T.width(e),T.height(e)).data}))},toCanvas:function(e,t){return G(e,t||{}).then((function(e){return e}))},impl:{fontFaces:V,images:y,util:T,inliner:X,options:{}}};function O(e,t){return function(e){void 0===e.imagePlaceholder?x.impl.options.imagePlaceholder=R.imagePlaceholder:x.impl.options.imagePlaceholder=e.imagePlaceholder;void 0===e.cacheBust?x.impl.options.cacheBust=R.cacheBust:x.impl.options.cacheBust=e.cacheBust}(t=t||{}),Promise.resolve(e).then((function(e){return function e(t,o,s){return s||!o||o(t)?Promise.resolve(t).then((function(e){return e instanceof HTMLCanvasElement?T.makeImage(e.toDataURL()):e.cloneNode(!1)})).then((function(e){return a(t,e,o)})).then((function(e){return function(e,t){return t instanceof Element?Promise.resolve().then(o).then(s).then(a).then(i).then((function(){return t})):t;function o(){var o,s;o=window.getComputedStyle(e),s=t.style,o.cssText?s.cssText=o.cssText:function(e,t){T.asArray(e).forEach((function(o){t.setProperty(o,e.getPropertyValue(o),e.getPropertyPriority(o))}))}(o,s)}function s(){[":before",":after"].forEach((function(o){!function(o){const s=window.getComputedStyle(e,o),a=s.getPropertyValue("content");if(""===a||"none"===a)return;const i=T.uid();t.className=t.className+" "+i;const n=document.createElement("style");n.appendChild(function(e,t,o){const s="."+e+":"+t,a=o.cssText?function(e){const t=e.getPropertyValue("content");return e.cssText+" content: "+t+";"}(o):function(e){return T.asArray(e).map((function(t){return t+": "+e.getPropertyValue(t)+(e.getPropertyPriority(t)?" !important":"")})).join("; ")+";"}(o);return document.createTextNode(s+"{"+a+"}")}(i,o,s)),t.appendChild(n)}(o)}))}function a(){e instanceof HTMLTextAreaElement&&(t.innerHTML=e.value),e instanceof HTMLInputElement&&t.setAttribute("value",e.value)}function i(){t instanceof SVGElement&&(t.setAttribute("xmlns","http://www.w3.org/2000/svg"),t instanceof SVGRectElement&&["width","height"].forEach((function(e){const o=t.getAttribute(e);o&&t.style.setProperty(e,o)})))}}(t,e)})):Promise.resolve();function a(t,o,s){const a=t.childNodes;return 0===a.length?Promise.resolve(o):i(o,T.asArray(a),s).then((function(){return o}));function i(t,o,s){let a=Promise.resolve();return o.forEach((function(o){a=a.then((function(){return e(o,s)})).then((function(e){e&&t.appendChild(e)}))})),a}}}(e,t.filter,!0)})).then(k).then(A).then((function(e){t.bgcolor&&(e.style.backgroundColor=t.bgcolor);t.width&&(e.style.width=t.width+"px");t.height&&(e.style.height=t.height+"px");t.style&&Object.keys(t.style).forEach((function(o){e.style[o]=t.style[o]}));return e})).then((function(o){return function(e,t,o){return Promise.resolve(e).then((function(e){return e.setAttribute("xmlns","http://www.w3.org/1999/xhtml"),(new XMLSerializer).serializeToString(e)})).then(T.escapeXhtml).then((function(e){return'<foreignObject x="0" y="0" width="100%" height="100%">'+e+"</foreignObject>"})).then((function(e){return'<svg xmlns="http://www.w3.org/2000/svg" width="'+t+'" height="'+o+'">'+e+"</svg>"})).then((function(e){return"data:image/svg+xml;charset=utf-8,"+e}))}(o,t.width||T.width(e),t.height||T.height(e))}))}function G(e,t){return O(e,t).then(T.makeImage).then(T.delay(100)).then((function(o){const s=function(e){const o=document.createElement("canvas");if(o.width=t.width||T.width(e),o.height=t.height||T.height(e),t.bgcolor){const e=o.getContext("2d");e.fillStyle=t.bgcolor,e.fillRect(0,0,o.width,o.height)}return o}(e);return s.getContext("2d").drawImage(o,0,0),s}))}function k(e){return V.resolveAll().then((function(t){const o=document.createElement("style");return e.appendChild(o),o.appendChild(document.createTextNode(t)),e}))}function A(e){return y.inlineAll(e).then((function(){return e}))}class E extends e.GeomItem{constructor(t,o,s){const a=new e.Material("uimat","FlatSurfaceShader");let i;a.visibleInGeomDataBuffer=!1,super("VRControllerUI",new e.Plane(1,1),a),this.appData=t,this.__vrUIDOMHolderElement=o,this.__vrUIDOMElement=s,this.__uiimage=new e.DataImage,a.getParameter("BaseColor").setValue(this.__uiimage),this.__uiGeomOffsetXfo=new e.Xfo,this.__uiGeomOffsetXfo.sc.set(0,0,1),this.__rect={width:0,height:0},this.__uiGeomOffsetXfo.ori.setFromAxisAndAngle(new e.Vec3(0,1,0),Math.PI),this.setGeomOffsetXfo(this.__uiGeomOffsetXfo);let n=[];const r=()=>{i=null;const e=n.map(e=>this.updateElemInAtlas(e));Promise.all(e).then(()=>{this.updateUIImage(),n=[]})};this.__mutationObserver=new MutationObserver(e=>{this.mainCtx?(e.some(e=>{let t=e.target;for(;t.parentNode;){if(t==this.__vrUIDOMElement)return this.renderUIToImage(),n=[],!1;if(t.classList.contains("VRUIElement")||t==this.__vrUIDOMElement){-1==n.indexOf(t)&&n.push(t);break}t=t.parentNode}return!0}),i&&clearTimeout(i),i=setTimeout(r,50)):this.renderUIToImage()}),this.__active=!1,this.__renderRequested=!1}activate(){this.__vrUIDOMHolderElement.style.display="block",this.__active=!0,this.__mutationObserver.observe(this.__vrUIDOMElement,{attributes:!0,characterData:!0,childList:!0,subtree:!0}),this.renderUIToImage()}deactivate(){this.__vrUIDOMHolderElement.style.display="none",this.__active=!0,this.__mutationObserver.disconnect()}updateElemInAtlas(e){return new Promise((t,o)=>{x.toCanvas(e).then(o=>{const s=e.getBoundingClientRect();s.width*s.height!=0?(this.mainCtx.fillRect(s.x,s.y,s.width,s.height),this.mainCtx.drawImage(o,s.x,s.y),t()):t()})})}updateUIImage(){const e=this.mainCtx.getImageData(0,0,this.__rect.width,this.__rect.height);this.__uiimage.setData(this.__rect.width,this.__rect.height,new Uint8Array(e.data.buffer))}renderUIToImage(){x.toCanvas(this.__vrUIDOMElement).then(e=>{this.mainCtx=e.getContext("2d"),this.mainCtx.fillStyle="#FFFFFF";const t=this.__vrUIDOMElement.getBoundingClientRect();if(t.width*t.height!=0){if(t.width!=this.__rect.width||t.height!=this.__rect.height){this.__rect=t;const e=7e-4;this.__uiGeomOffsetXfo.sc.set(this.__rect.width*e,this.__rect.height*e,1),this.setGeomOffsetXfo(this.__uiGeomOffsetXfo),this.appData.session.pub("pose-message",{interfaceType:"VR",updateUIPanel:{size:this.__uiGeomOffsetXfo.sc.toJSON()}})}this.updateUIImage()}})}sendMouseEvent(e,t,o){const s=new MouseEvent(e,Object.assign({target:o,view:window,bubbles:!0,cancelable:!0},t));return o.dispatchEvent(s),s}}class U extends i{constructor(e){super("HoldObjectsChange"),this.__selection=[],this.__prevXfos=[],this.__newXfos=[],e&&this.update(e)}undo(){for(let e=0;e<this.__selection.length;e++)this.__selection[e]&&this.__selection[e].setGlobalXfo(this.__prevXfos[e])}redo(){for(let e=0;e<this.__selection.length;e++)this.__selection[e]&&this.__selection[e].setGlobalXfo(this.__newXfos[e])}update(e){if(e.newItem)this.__selection[e.newItemId]=e.newItem,this.__prevXfos[e.newItemId]=e.newItem.getGlobalXfo();else if(e.changeXfos)for(let t=0;t<e.changeXfoIds.length;t++){const o=e.changeXfoIds[t];this.__selection[o]&&(this.__selection[o].setGlobalXfo(e.changeXfos[t]),this.__newXfos[o]=e.changeXfos[t])}this.updated.emit(e)}toJSON(e){const t=super.toJSON(e),o=[];for(let e=0;e<this.__selection.length;e++)this.__selection[e]?o[e]=this.__selection[e].getPath():o.push(null);return t.itemPaths=o,t}fromJSON(e,t){super.fromJSON(e,t);const o=t.appData.scene.getRoot(),s=[];for(let t=0;t<e.itemPaths.length;t++){const a=e.itemPaths[t];a&&(s[t]=o.resolvePath(a,1))}this.__selection=s}}a.registerChange("HoldObjectsChange",U);class L extends D{constructor(e){super(e)}isPrimaryTool(){return!0}}class B extends i{constructor(e){super(e)}setParentAndXfo(e,t){this.parentItem=e;const o=this.parentItem.generateUniqueName(this.geomItem.getName());this.geomItem.setName(o),this.geomItem.setGlobalXfo(t),this.childIndex=this.parentItem.addChild(this.geomItem,!0),this.geomItem.addRef(this)}undo(){this.parentItem.removeChild(this.childIndex)}redo(){this.parentItem.addChild(this.geomItem,!1,!1)}toJSON(e){const t=super.toJSON(e);return t.parentItemPath=this.parentItem.getPath(),t.geomItemName=this.geomItem.getName(),t.geomItemXfo=this.geomItem.getParameter("LocalXfo").getValue(),t}fromJSON(t,o){const s=o.appData.scene.getRoot();this.parentItem=s.resolvePath(t.parentItemPath,1),this.geomItem.setName(this.parentItem.generateUniqueName(t.geomItemName));const a=new e.Xfo;a.fromJSON(t.geomItemXfo),this.geomItem.setLocalXfo(a),this.childIndex=this.parentItem.addChild(this.geomItem,!1)}destroy(){this.geomItem.removeRef(this)}}class H extends L{constructor(t){super(t),this.stage=0,this.removeToolOnRightClick=!0,this.cp=this.addParameter(new e.ColorParameter("Line Color",new e.Color(.7,.2,.2)))}activateTool(){super.activateTool(),this.appData.renderer.getDiv().style.cursor="crosshair",this.appData.renderer.getXRViewport().then(t=>{this.vrControllerToolTip||(this.vrControllerToolTip=new e.Cross(.05),this.vrControllerToolTipMat=new e.Material("VRController Cross","LinesShader"),this.vrControllerToolTipMat.getParameter("Color").setValue(this.cp.getValue()),this.vrControllerToolTipMat.visibleInGeomDataBuffer=!1);const o=t=>{const o=new e.GeomItem("CreateGeomToolTip",this.vrControllerToolTip,this.vrControllerToolTipMat);t.getTipItem().removeAllChildren(),t.getTipItem().addChild(o,!1)};for(const e of t.getControllers())o(e);this.addIconToControllerId=t.on("controllerAdded",o)})}deactivateTool(){super.deactivateTool(),this.appData.renderer.getDiv().style.cursor="pointer",this.appData.renderer.getXRViewport().then(e=>{e.removeListenerById("controllerAdded",this.addIconToControllerId)})}screenPosToXfo(t,o){const s=o.calcRayFromScreenPos(t),a=new e.Ray(this.constructionPlane.tr,this.constructionPlane.ori.getZaxis()),i=s.intersectRayPlane(a);if(i>0){const e=this.constructionPlane.clone();return e.tr=s.pointAtDist(i),e}const n=o.getCamera(),r=n.getGlobalXfo().clone();return r.tr=s.pointAtDist(n.getFocalDistance()),r}createStart(e,t){this.stage=1}createPoint(e){}createMove(e){}createRelease(e){}onMouseDown(t){if(0==this.stage){if(0==t.button){this.constructionPlane=new e.Xfo;const o=this.screenPosToXfo(t.mousePos,t.viewport);this.createStart(o,this.appData.scene.getRoot())}else 2==t.button&&this.removeToolOnRightClick&&this.appData.toolManager.removeTool(this.index);return!0}return 2!=t.button||(this.appData.undoRedoManager.undo(!1),this.stage=0,!0)}onMouseMove(e){if(this.stage>0){const t=this.screenPosToXfo(e.mousePos,e.viewport);return this.createMove(t.tr),!0}}onMouseUp(e){if(this.stage>0){const t=this.screenPosToXfo(e.mousePos,e.viewport);return this.createRelease(t.tr),!0}}onWheel(e){}onKeyPressed(e,t){}onKeyDown(e,t){}onKeyUp(e,t){}onTouchStart(e){}onTouchMove(e){}onTouchEnd(e){}onTouchCancel(e){}onVRControllerButtonDown(t){if(!this.__activeController){this.__activeController=t.controller,this.constructionPlane=new e.Xfo;const o=this.constructionPlane.clone();o.tr=this.__activeController.getTipXfo().tr,this.createStart(o,this.appData.scene.getRoot())}return!0}onVRPoseChanged(e){if(this.__activeController&&this.stage>0){const e=this.__activeController.getTipXfo();return this.createMove(e.tr),!0}}onVRControllerButtonUp(e){if(this.stage>0&&this.__activeController==e.controller){const e=this.__activeController.getTipXfo();return this.createRelease(e.tr),0==this.stage&&(this.__activeController=void 0),!0}}}class N extends B{constructor(t,o,s,a){super("Create Line"),this.line=new e.Lines(0),this.line.setNumVertices(2),this.line.setNumSegments(1),this.line.setSegment(0,0,1);const i=new e.Material("Line","LinesShader");i.getParameter("Color").setValue(new e.Color(.7,.2,.2)),this.geomItem=new e.GeomItem("Line"),this.geomItem.setGeometry(this.line),this.geomItem.setMaterial(i),s&&i.getParameter("Color").setValue(s),a&&(this.line.lineThickness=a),t&&o&&this.setParentAndXfo(t,o)}update(e){e.p1&&(this.line.getVertex(1).setFromOther(e.p1),this.line.geomDataChanged.emit()),this.updated.emit(e)}fromJSON(t,o){if(super.fromJSON(t,o),t.color){const o=new e.Color;o.fromJSON(t.color),material.getParameter("Color").setValue(o)}t.thickness&&(this.line.lineThickness=t.thickness)}}a.registerChange("CreateLineChange",N);class F extends H{constructor(t){super(t),this.tp=this.addParameter(new e.NumberParameter("Line Thickness",.06,[0,.1]))}createStart(e,t){this.change=new N(t,e),this.appData.undoRedoManager.addChange(this.change),this.xfo=e.inverse(),this.stage=1,this.length=0}createMove(e){const t=this.xfo.transformVec3(e);this.length=t.length(),this.change.update({p1:t})}createRelease(e){0==this.length&&this.appData.undoRedoManager.undo(!1),this.stage=0,this.emit("actionFinished")}}class z extends B{constructor(t,o){super("Create Circle",t),this.circle=new e.Circle(0,64),this.circle.lineThickness=.05;const s=new e.Material("circle","FatLinesShader");s.getParameter("Color").setValue(new e.Color(.7,.2,.2)),this.geomItem=new e.GeomItem("Circle"),this.geomItem.setGeometry(this.circle),this.geomItem.setMaterial(s),t&&o&&this.setParentAndXfo(t,o)}update(e){this.circle.getParameter("Radius").setValue(e.radius),this.updated.emit(e)}toJSON(){const e=super.toJSON();return e.radius=this.circle.getParameter("Radius").getValue(),e}changeFromJSON(e){console.log("CreateCircleChange:",e),e.radius&&this.circle.getParameter("Radius").setValue(e.radius)}}a.registerChange("CreateCircleChange",z);class J extends B{constructor(t,o){super("Create Rect"),this.rect=new e.Rect(0,0),this.rect.lineThickness=.05;const s=new e.Material("circle","FatLinesShader");s.getParameter("Color").setValue(new e.Color(.7,.2,.2)),this.geomItem=new e.GeomItem("Rect"),this.geomItem.setGeometry(this.rect),this.geomItem.setMaterial(s),t&&o&&this.setParentAndXfo(t,o)}update(e){if(e.baseSize&&this.rect.setSize(e.baseSize[0],e.baseSize[1]),e.tr){const t=this.geomItem.getParameter("LocalXfo").getValue();t.tr.fromJSON(e.tr),this.geomItem.getParameter("LocalXfo").setValue(t)}this.updated.emit(e)}}a.registerChange("CreateRectChange",J);class Z extends B{constructor(t,o,s,a){super("Create Freehand Line"),this.used=0,this.vertexCount=100,this.line=new e.Lines,this.line.setNumVertices(this.vertexCount),this.line.setNumSegments(this.vertexCount-1),this.line.vertices.setValue(0,new e.Vec3);const i=new e.Material("freeHandLine","FatLinesShader");this.geomItem=new e.GeomItem("freeHandLine"),this.geomItem.setGeometry(this.line),this.geomItem.setMaterial(i),s&&i.getParameter("Color").setValue(s),a&&(this.line.lineThickness=a),t&&o&&this.setParentAndXfo(t,o)}update(e){this.used++;let t=!1;this.used>=this.line.getNumSegments()&&(this.vertexCount=this.vertexCount+100,this.line.setNumVertices(this.vertexCount),this.line.setNumSegments(this.vertexCount-1),t=!0),this.line.vertices.setValue(this.used,e.point),this.line.setSegment(this.used-1,this.used-1,this.used),t?this.line.geomDataTopologyChanged.emit({indicesChanged:!0}):this.line.geomDataChanged.emit({indicesChanged:!0}),this.updated.emit(e)}toJSON(e){const t=super.toJSON(e);return t.lineThickness=this.line.lineThickness,t.color=this.geomItem.getMaterial().getParameter("Color").getValue(),t}fromJSON(t,o){t.lineThickness&&(this.line.lineThickness=t.lineThickness);const s=new e.Color(.7,.2,.2);t.color&&s.fromJSON(t.color),this.geomItem.getMaterial().getParameter("Color").setValue(s),super.fromJSON(t,o)}}a.registerChange("CreateFreehandLineChange",Z);class W extends B{constructor(t,o){super("Create Sphere",t),this.sphere=new e.Sphere(0,64,32);const s=new e.Material("Sphere","SimpleSurfaceShader");this.geomItem=new e.GeomItem("Sphere"),this.geomItem.setGeometry(this.sphere),this.geomItem.setMaterial(s),t&&o&&this.setParentAndXfo(t,o)}update(e){this.sphere.radius=e.radius,this.updated.emit(e)}toJSON(){const e=super.toJSON();return e.radius=this.geomItem.getGeometry().radius,e}changeFromJSON(e){e.radius&&(this.geomItem.getGeometry().radius=e.radius)}}a.registerChange("CreateSphereChange",W);class K extends B{constructor(t,o){super("Create Cuboid"),this.cuboid=new e.Cuboid(0,0,0,!0);const s=new e.Material("Cuboid","SimpleSurfaceShader");this.geomItem=new e.GeomItem("Cuboid"),this.geomItem.setGeometry(this.cuboid),this.geomItem.setMaterial(s),t&&o&&this.setParentAndXfo(t,o)}update(e){if(e.baseSize&&this.cuboid.setBaseSize(e.baseSize[0],e.baseSize[1]),e.tr){const t=this.geomItem.getParameter("LocalXfo").getValue();t.tr.fromJSON(e.tr),this.geomItem.getParameter("LocalXfo").setValue(t)}e.height&&(this.cuboid.z=e.height),this.updated.emit(e)}}a.registerChange("CreateCuboidChange",K);class j extends r{constructor(t,o=.5,s=.02,a=new e.Color("#F9CE03")){super(t),this.lengthParam=this.addParameter(new e.NumberParameter("Length",o)),this.handleRadiusParam=this.addParameter(new e.NumberParameter("Handle Radius",s)),this.barRadiusParam=this.addParameter(new e.NumberParameter("Bar Radius",.25*s)),this.colorParam=this.addParameter(new e.ColorParameter("Color",a)),this.hilghlightColorParam=this.addParameter(new e.ColorParameter("Highlight Color",new e.Color(1,1,1))),this.handleMat=new e.Material("handle","FlatSurfaceShader"),this.handleMat.getParameter("BaseColor").setValue(this.colorParam.getValue());const i=new e.Material("topBar","FlatSurfaceShader");i.getParameter("BaseColor").setValue(new e.Color(.5,.5,.5));const n=new e.Cylinder(.25*s,1,64,2,!0,!0),r=new e.Sphere(s,64);this.handle=new e.GeomItem("handle",r,this.handleMat),this.baseBar=new e.GeomItem("baseBar",n,this.handleMat),this.topBar=new e.GeomItem("topBar",n,i),this.handleXfo=new e.Xfo,this.baseBarXfo=new e.Xfo,this.topBarXfo=new e.Xfo,this.barRadiusParam.on("valueChanged",()=>{n.getParameter("radius").setValue(this.barRadiusParam.getValue())}),this.handleRadiusParam.on("valueChanged",()=>{r.getParameter("radius").setValue(this.handleRadiusParam.getValue())}),this.lengthParam.on("valueChanged",()=>{this.__updateSlider(this.value)}),this.colorParam.on("valueChanged",()=>{this.handleMat.getParameter("BaseColor").setValue(this.colorParam.getValue())}),this.addChild(this.handle),this.addChild(this.baseBar),this.addChild(this.topBar),this.__updateSlider(0)}highlight(){this.handleMat.getParameter("BaseColor").setValue(this.hilghlightColorParam.getValue())}unhighlight(){this.handleMat.getParameter("BaseColor").setValue(this.colorParam.getValue())}setTargetParam(e){this.param=e;const t=()=>{this.__updateSlider(e.getValue())};t(),e.on("valueChanged",t)}__updateSlider(t){this.value=t;const o=this.param&&this.param.getRange()?this.param.getRange():[0,1],s=Math.remap(t,o[0],o[1],0,1),a=this.lengthParam.getValue();this.baseBarXfo.sc.z=s*a,this.handleXfo.tr.z=s*a,this.topBarXfo.tr.z=s*a,this.topBarXfo.sc.z=(1-s)*a,this.handle.setLocalXfo(this.handleXfo,e.ValueSetMode.GENERATED_VALUE),this.baseBar.setLocalXfo(this.baseBarXfo,e.ValueSetMode.GENERATED_VALUE),this.topBar.setLocalXfo(this.topBarXfo,e.ValueSetMode.GENERATED_VALUE)}onDragStart(t){this.handleXfo.sc.x=this.handleXfo.sc.y=this.handleXfo.sc.z=1.2,this.handle.setLocalXfo(this.handleXfo,e.ValueSetMode.GENERATED_VALUE),this.param&&t.undoRedoManager&&(this.change=new h(this.param),t.undoRedoManager.addChange(this.change))}onDrag(e){const t=this.lengthParam.getValue(),o=this.param&&this.param.getRange()?this.param.getRange():[0,1],s=Math.clamp(Math.remap(e.value,0,t,o[0],o[1]),o[0],o[1]);if(!this.param)return this.__updateSlider(s),void(this.value=s);this.change?this.change.update({value:s}):this.param.setValue(s)}onDragEnd(t){this.change=null,this.handleXfo.sc.x=this.handleXfo.sc.y=this.handleXfo.sc.z=1,this.handle.setLocalXfo(this.handleXfo,e.ValueSetMode.GENERATED_VALUE)}toJSON(e,t=0){const o=super.toJSON(e,t|SAVE_FLAG_SKIP_CHILDREN);return this.param&&(o.targetParam=this.param.getPath()),o}fromJSON(e,t,o){super.fromJSON(e,t,o),e.targetParam&&t.resolvePath(e.targetParam).then(e=>{this.setTargetParam(e)})}}e.sgFactory.registerClass("SliderHandle",j);class Y extends d{constructor(t,o=1,s=1,a=.02,i=new e.Color(1,1,0)){super(t),this.arcRadiusParam=this.addParameter(new e.NumberParameter("Arc Radius",o)),this.arcAngleParam=this.addParameter(new e.NumberParameter("Arc Angle",s)),this.handleRadiusParam=this.addParameter(new e.NumberParameter("Handle Radius",a)),this.colorParam=this.addParameter(new e.ColorParameter("Color",i)),this.hilghlightColorParam=this.addParameter(new e.ColorParameter("Highlight Color",new e.Color(1,1,1))),this.handleMat=new e.Material("handleMat","HandleShader");const n=new e.Circle(o,s,64),r=new e.Sphere(a,64);this.handle=new e.GeomItem("handle",r,this.handleMat),this.arc=new e.GeomItem("arc",n,this.handleMat),this.handleXfo=new e.Xfo,this.handleGeomOffsetXfo=new e.Xfo,this.handleGeomOffsetXfo.tr.x=o,this.handle.getParameter("GeomOffsetXfo").setValue(this.handleGeomOffsetXfo),this.range=[0,s],this.arcAngleParam.on("valueChanged",()=>{const e=this.arcAngleParam.getValue();n.getParameter("Angle").setValue(e),this.range=[0,e]}),this.arcRadiusParam.on("valueChanged",()=>{const e=this.arcRadiusParam.getValue();n.getParameter("Radius").setValue(e),this.handleGeomOffsetXfo.tr.x=e,this.handle.getParameter("GeomOffsetXfo").setValue(this.handleGeomOffsetXfo)}),this.handleRadiusParam.on("valueChanged",()=>{r.getParameter("radius").setValue(this.handleRadiusParam.getValue())}),this.colorParam.on("valueChanged",()=>{this.handleMat.getParameter("BaseColor").setValue(this.colorParam.getValue())}),this.addChild(this.handle),this.addChild(this.arc),this.setTargetParam(this.handle.getParameter("GlobalXfo"),!1)}onMouseEnter(e){e.intersectionData&&e.intersectionData.geomItem==this.handle&&this.highlight()}onMouseLeave(e){this.unhighlight()}onMouseDown(e){e.intersectionData&&e.intersectionData.geomItem==this.handle&&super.onMouseDown(e)}highlight(){this.handleMat.getParameter("BaseColor").setValue(this.hilghlightColorParam.getValue())}unhighlight(){this.handleMat.getParameter("BaseColor").setValue(this.colorParam.getValue())}getBaseXfo(){return this.handle.getParameter("GlobalXfo").getValue()}onDragStart(t){this.baseXfo=this.getGlobalXfo().clone(),this.baseXfo.sc.set(1,1,1),this.deltaXfo=new e.Xfo,this.vec0=this.getGlobalXfo().ori.getXaxis(),this.vec0.normalizeInPlace(),t.undoRedoManager&&(this.change=new h(this.param),t.undoRedoManager.addChange(this.change)),this.handleGeomOffsetXfo.sc.x=this.handleGeomOffsetXfo.sc.y=this.handleGeomOffsetXfo.sc.z=1.2,this.handle.getParameter("GeomOffsetXfo").setValue(this.handleGeomOffsetXfo),this.emit("dragStart")}onDrag(e){const t=e.holdPos.subtract(this.baseXfo.tr);t.normalizeInPlace();let o=this.vec0.angleTo(t);if(this.vec0.cross(t).dot(this.baseXfo.ori.getZaxis())<0&&(o=-o),this.range&&(o=Math.clamp(o,this.range[0],this.range[1])),e.shiftKey){const e=Math.degToRad(22.5);o=Math.floor(o/e)*e}this.deltaXfo.ori.setFromAxisAndAngle(new Vec3(0,0,1),o);const s=this.baseXfo.multiply(this.deltaXfo);if(this.change)this.change.update({value:s});else{(this.param?this.param:this.getParameter("GlobalXfo")).setValue(s)}}onDragEnd(e){this.change=null,this.handleGeomOffsetXfo.sc.x=this.handleGeomOffsetXfo.sc.y=this.handleGeomOffsetXfo.sc.z=1,this.handle.getParameter("GeomOffsetXfo").setValue(this.handleGeomOffsetXfo),this.emit("dragEnd")}toJSON(e,t=0){const o=super.toJSON(e,t|SAVE_FLAG_SKIP_CHILDREN);return this.param&&(o.targetParam=this.param.getPath()),o}fromJSON(e,t,o){super.fromJSON(e,t,o),e.targetParam&&t.resolvePath(e.targetParam).then(e=>{this.setTargetParam(e)})}}e.sgFactory.registerClass("ArcSlider",Y);exports.ArcSlider=Y,exports.AxialRotationHandle=u,exports.Change=i,exports.CreateCircleTool=class extends H{constructor(e){super(e)}createStart(e,t){this.change=new z(t,e),this.appData.undoRedoManager.addChange(this.change),this.xfo=e,this.stage=1,this.radius=0}createMove(e){this.radius=e.distanceTo(this.xfo.tr),this.change.update({radius:this.radius})}createRelease(e){0==this.radius&&this.appData.undoRedoManager.undo(!1),this.change=null,this.stage=0,this.emit("actionFinished")}},exports.CreateCuboidTool=class extends H{constructor(e){super(e)}createStart(e,t){this.change=new K(t,e),this.appData.undoRedoManager.addChange(this.change),this.xfo=e,this.invxfo=e.inverse(),this.stage=1,this._height=0}createMove(e){if(1==this.stage){const t=this.invxfo.transformVec3(e);this.change.update({baseSize:[Math.abs(t.x),Math.abs(t.y)],tr:this.xfo.tr.add(t.scale(.5))})}else{const t=this.invxfo.transformVec3(e);this.change.update({height:t.y})}}createRelease(t,o){if(1==this.stage){this.stage=2,this.pt1=t;const o=new e.Quat;o.setFromAxisAndAngle(new e.Vec3(1,0,0),.5*Math.PI),this.constructionPlane.ori=this.constructionPlane.ori.multiply(o),this.constructionPlane.tr=t,this.invxfo=this.constructionPlane.inverse()}else 2==this.stage&&(this.stage=0,this.emit("actionFinished"))}},exports.CreateFreehandLineTool=class extends F{constructor(t){super(t),this.mp=this.addParameter(new e.BooleanParameter("Modulate Thickness By Stroke Speed",!1))}createStart(e,t){const o=this.cp.getValue(),s=this.tp.getValue();this.change=new Z(t,e,o,s),this.appData.undoRedoManager.addChange(this.change),this.xfo=e,this.invxfo=e.inverse(),this.stage=1,this.prevP=e.tr,this.length=0}createMove(e){const t=this.invxfo.transformVec3(e),o=t.subtract(this.prevP).length();o>.001&&this.change.update({point:t}),this.length+=o,this.prevP=t}createRelease(e){0==this.length&&this.appData.undoRedoManager.undo(!1),this.stage=0,this.emit("actionFinished")}},exports.CreateLineTool=F,exports.CreateRectTool=class extends H{constructor(e){super(e)}createStart(e,t){this.change=new J(t,e),this.appData.undoRedoManager.addChange(this.change),this.xfo=e,this.invxfo=e.inverse(),this.stage=1,this._size=0}createMove(e){if(1==this.stage){const t=this.invxfo.transformVec3(e);this._size=Math.abs(t.x),Math.abs(t.y),this.change.update({baseSize:[Math.abs(t.x),Math.abs(t.y)],tr:this.xfo.tr.add(t.scale(.5))})}else{const t=this.invxfo.transformVec3(e);this.change.update({height:t.y})}}createRelease(e,t){0==this._size&&this.appData.undoRedoManager.undo(!1),this.stage=0,this.emit("actionFinished")}},exports.CreateSphereTool=class extends H{constructor(e){super(e)}createStart(e,t){this.change=new W(t,e),this.appData.undoRedoManager.addChange(this.change),this.xfo=e,this.stage=1,this.radius=0}createMove(e){this.radius=e.distanceTo(this.xfo.tr),this.change.update({radius:this.radius})}createRelease(e){0==this.radius&&this.appData.undoRedoManager.undo(!1),this.stage=0,this.emit("actionFinished")}},exports.HandleTool=class extends D{constructor(e){super(e),this.activeHandle=void 0,this.capturedItems=[],this.mouseOverItems=[]}activateTool(){super.activateTool(),console.log("activateTool.HandleTool"),this.appData.renderer.getDiv().style.cursor="crosshair";const t=t=>{if(!this.__activated)return;const o=new e.Sphere(.015),s=new e.Material("Cross","FlatSurfaceShader");s.getParameter("BaseColor").setValue(new e.Color("#03E3AC")),s.visibleInGeomDataBuffer=!1;const a=new e.GeomItem("HandleToolTip",o,s);t.getTipItem().removeAllChildren(),t.getTipItem().addChild(a,!1)},o=e=>{for(const o of e.getControllers())t(o);this.addIconToControllerId=e.on("controllerAdded",t)};this.appData.renderer.getXRViewport().then(e=>{o(e)})}deactivateTool(){super.deactivateTool(),this.appData.renderer.getXRViewport().then(e=>{e.removeListenerById("controllerAdded",this.addIconToControllerId)})}onMouseDown(e){if(!this.activeHandle){const t=e.viewport.getGeomDataAtPos(e.mousePos);if(null==t)return;if(t.geomItem.getOwner()instanceof n)return this.activeHandle=t.geomItem.getOwner(),this.activeHandle.handleMouseDown(Object.assign(e,{intersectionData:t})),!0}}onMouseMove(e){if(this.activeHandle)return this.activeHandle.handleMouseMove(e),!0;{if(0==e.button&&1==e.buttons)return!1;const t=e.viewport.getGeomDataAtPos(e.mousePos);if(null!=t&&t.geomItem.getOwner()instanceof n){const e=t.geomItem.getOwner();return this.__highlightedHandle&&this.__highlightedHandle.unhighlight(),this.__highlightedHandle=e,this.__highlightedHandle.highlight(),!0}this.__highlightedHandle&&(this.__highlightedHandle.unhighlight(),this.__highlightedHandle=void 0)}}onMouseUp(e){if(this.activeHandle)return this.activeHandle.handleMouseUp(e),this.activeHandle=void 0,!0}onWheel(e){this.activeHandle&&this.activeHandle.onWheel(e)}onTouchStart(e){}onTouchMove(e){}onTouchEnd(e){}onTouchCancel(e){}__prepareVREvent(e){const t=e.controller.getId();e.setCapture=e=>{this.capturedItems[t]=e},e.getCapture=()=>this.capturedItems[t],e.releaseCapture=()=>{this.capturedItems[t]=null}}onVRControllerButtonDown(e){const t=e.controller.getId();if(this.capturedItems[t])this.__prepareVREvent(e),this.capturedItems[t].onMouseDown(e);else{const t=e.controller.getGeomItemAtTip();null!=t&&(e.intersectionData=t,e.geomItem=t.geomItem,this.__prepareVREvent(e),t.geomItem.onMouseDown(e))}}onVRPoseChanged(e){for(const t of e.controllers){const o=t.getId();if(this.capturedItems[o])this.capturedItems[o].onMouseMove(e);else{const s=t.getGeomItemAtTip();null!=s?(e.intersectionData=s,e.geomItem=s.geomItem,s.geomItem!=this.mouseOverItems[o]&&(this.mouseOverItems[o]&&this.mouseOverItems[o].onMouseLeave(e),this.mouseOverItems[o]=s.geomItem,this.mouseOverItems[o].onMouseEnter(e)),s.geomItem.onMouseMove(e)):this.mouseOverItems[o]&&(this.mouseOverItems[o].onMouseLeave(e),this.mouseOverItems[o]=null)}}}onVRControllerButtonUp(e){this.__prepareVREvent(e);const t=e.controller.getId();if(this.capturedItems[t])this.capturedItems[t].onMouseUp(e);else{const t=e.controller.getGeomItemAtTip();null!=t&&(e.intersectionData=t,e.geomItem=t.geomItem,t.geomItem.onMouseUp(e))}}},exports.LinearMovementHandle=l,exports.OpenVRUITool=class extends D{constructor(e,t){super(e),this.vrUITool=t,this.uiToolIndex=-1,this.__stayClosed=!1}uninstall(){super.uninstall(),this.uiToolIndex>0&&this.appData.toolManager.removeToolByHandle(this.vrUITool)}onVRControllerButtonDown(e){}onVRControllerButtonUp(e){}stayClosed(){this.__stayClosed=!0}onVRPoseChanged(e){if(this.vrUITool.installed())return;const t=e.viewXfo,o=(e,o)=>{if(!e)return!1;const s=e.getTreeItem().getGlobalXfo(),a=s.tr.subtract(t.tr);return a.normalizeInPlace(),a.angleTo(s.ori.getYaxis())<.25*Math.PI?(this.__stayClosed||(this.vrUITool.setUIControllers(this,e,o,t),this.uiToolIndex=this.appData.toolManager.pushTool(this.vrUITool)),!0):void 0};if(e.controllers.length>0){if(o(e.controllers[0],e.controllers[1]))return!0;if(o(e.controllers[1],e.controllers[0]))return!0}this.uiToolIndex=-1,this.__stayClosed=!1}},exports.ParameterValueChange=h,exports.PlanarMovementHandle=c,exports.ScreenSpaceMovementHandle=class extends n{constructor(e){super(e)}setTargetParam(e,t=!0){if(this.param=e,t){const t=()=>{this.setGlobalXfo(e.getValue())};t(),e.on("valueChanged",t)}}getTargetParam(){return this.param?this.param:this.getParameter("GlobalXfo")}handleMouseDown(t){this.gizmoRay=new e.Ray,this.gizmoRay.dir=t.mouseRay.dir.negate();const o=this.getTargetParam().getValue();this.gizmoRay.pos=o.tr;const s=t.mouseRay.intersectRayPlane(this.gizmoRay);return t.grabPos=t.mouseRay.pointAtDist(s),this.onDragStart(t),!0}handleMouseMove(e){const t=e.mouseRay.intersectRayPlane(this.gizmoRay);return e.holdPos=e.mouseRay.pointAtDist(t),this.onDrag(e),!0}handleMouseUp(e){const t=e.mouseRay.intersectRayPlane(this.gizmoRay);return e.releasePos=e.mouseRay.pointAtDist(t),this.onDragEnd(e),!0}onDragStart(e){this.grabPos=e.grabPos;const t=this.getTargetParam();this.baseXfo=t.getValue(),e.undoRedoManager&&(this.change=new h(t),e.undoRedoManager.addChange(this.change))}onDrag(e){const t=e.holdPos.subtract(this.grabPos),o=this.baseXfo.clone();if(o.tr.addInPlace(t),this.change)this.change.update({value:o});else{this.getTargetParam().setValue(o)}}onDragEnd(e){this.change=null}},exports.SelectionManager=I,exports.SelectionTool=S,exports.SliderHandle=j,exports.ToolManager=class{constructor(e){this.__toolStack=[],this.appData=e,this.avatarPointerVisible=!1,this.avatarPointerHighlighted=!1}insertTool(e,t){this.__toolStack.splice(t,0,e),e.install(t)}insertToolBefore(e,t){const o=this.__toolStack.indexOf(t)+1;return this.__toolStack.splice(o-1,0,e),e.install(o),o}insertToolAfter(e,t){const o=this.__toolStack.indexOf(t)+1;return this.__toolStack.splice(o,0,e),e.install(o),o==this.__toolStack.length&&e.activateTool(),o}getToolIndex(e){return this.__toolStack.indexOf(e)}removeTool(e){const t=this.__toolStack[e];if(this.__toolStack.splice(e,1),t.uninstall(),e==this.__toolStack.length){t.deactivateTool();const e=this.currTool();e?e.activateTool():this.appData.renderer.getDiv().style.cursor="pointer"}}removeToolByHandle(e){this.removeTool(this.getToolIndex(e))}pushTool(e){const t=this.currTool();if(t){if(e==t)return void console.warn("Tool Already Pushed on the stack:",e.constructor.name);t.deactivateTool()}return this.__toolStack.push(e),e.install(this.__toolStack.length-1),e.activateTool(),console.log("ToolManager.pushTool:",e.constructor.name),this.__toolStack.length-1}__removeCurrTool(){if(this.__toolStack.length>0){const e=this.__toolStack.pop();e.deactivateTool(),e.uninstall()}}popTool(){this.__removeCurrTool();const e=this.currTool();e&&e.activateTool()}replaceCurrentTool(e){this.__removeCurrTool(),this.__toolStack.push(e),e.install(this.__toolStack.length-1),e.activateTool()}currTool(){return this.__toolStack[this.__toolStack.length-1]}currToolName(){return this.__toolStack[this.__toolStack.length-1].getName()}bind(e){const t=e.getViewport();this.mouseDownId=t.on("mouseDown",this.onMouseDown.bind(this)),this.mouseMoveId=t.on("mouseMove",this.onMouseMove.bind(this)),this.mouseUpId=t.on("mouseUp",this.onMouseUp.bind(this)),this.mouseLeaveId=t.on("mouseLeave",this.onMouseLeave.bind(this)),this.mouseDoubleClickedId=t.on("mouseDoubleClicked",this.onDoubleClick.bind(this)),this.mouseWheelId=t.on("mouseWheel",this.onWheel.bind(this)),this.keyDownId=t.on("keyDown",this.onKeyDown.bind(this)),this.keyUpId=t.on("keyUp",this.onKeyUp.bind(this)),this.keyPressedId=t.on("keyPressed",this.onKeyPressed.bind(this)),this.touchStartId=t.on("touchStart",this.onTouchStart.bind(this)),this.touchMoveId=t.on("touchMove",this.onTouchMove.bind(this)),this.touchEndId=t.on("touchEnd",this.onTouchEnd.bind(this)),this.touchCancelId=t.on("touchCancel",this.onTouchCancel.bind(this)),this.doubleTappedId=t.on("doubleTapped",this.onDoubleTap.bind(this)),this.appData.renderer.getXRViewport().then(e=>{this.controllerDownId=e.on("controllerButtonDown",this.onVRControllerButtonDown.bind(this)),this.controllerUpId=e.on("controllerButtonUp",this.onVRControllerButtonUp.bind(this)),this.controllerDoubleClickId=e.on("controllerDoubleClicked",this.onVRControllerDoubleClicked.bind(this)),this.onVRPoseChangedId=e.on("viewChanged",this.onVRPoseChanged.bind(this))})}onMouseDown(e){e.undoRedoManager=this.appData.undoRedoManager,e.showPointerOnAvatar=!0;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onMouseDown(e))break}1==e.showPointerOnAvatar?(this.avatarPointerVisible||(this.emit("movePointer",e),this.avatarPointerVisible=!0),this.avatarPointerHighlighted||(this.emit("hilightPointer",e),this.avatarPointerHighlighted=!0)):this.avatarPointerVisible&&(this.avatarPointerVisible=!1,this.emit("hidePointer"))}onMouseMove(e){e.undoRedoManager=this.appData.undoRedoManager,e.showPointerOnAvatar=!0;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onMouseMove(e))break}1==e.showPointerOnAvatar?(this.emit("movePointer",e),this.avatarPointerVisible=!0):this.avatarPointerVisible&&(this.avatarPointerVisible=!1,this.emit("hidePointer"))}onMouseUp(e){e.undoRedoManager=this.appData.undoRedoManager,e.showPointerOnAvatar=!0;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onMouseUp(e))break}1==e.showPointerOnAvatar?this.avatarPointerHighlighted&&(this.emit("unhilightPointer",e),this.avatarPointerHighlighted=!1):this.avatarPointerVisible&&(this.avatarPointerVisible=!1,this.emit("hidePointer"))}onMouseLeave(e){let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&o.onMouseLeave&&1==o.onMouseLeave(e))break}this.avatarPointerVisible&&(this.avatarPointerVisible=!1,this.emit("hidePointer"))}onDoubleClick(e){let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onDoubleClick(e))break}}onWheel(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onWheel(e))break}}onKeyPressed(e,t){t.undoRedoManager=this.appData.undoRedoManager;let o=this.__toolStack.length;for(;o--;){const e=this.__toolStack[o];if(e&&1==e.onKeyPressed(t,t,viewport))break}}onKeyDown(e,t){t.undoRedoManager=this.appData.undoRedoManager;let o=this.__toolStack.length;for(;o--;){const s=this.__toolStack[o];if(s&&1==s.onKeyDown(e,t))break}}onKeyUp(e,t){t.undoRedoManager=this.appData.undoRedoManager;let o=this.__toolStack.length;for(;o--;){const s=this.__toolStack[o];if(s&&1==s.onKeyUp(e,t))break}}onTouchStart(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onTouchStart(e))break}}onTouchMove(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onTouchMove(e))break}}onTouchEnd(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onTouchEnd(e))break}}onTouchCancel(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onTouchCancel(e))break}}onDoubleTap(e){e.undoRedoManager=this.appData.undoRedoManager;let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onDoubleTap(e))break}}__prepareEvent(e){e.undoRedoManager=this.appData.undoRedoManager,e.propagating=!0,e.stopPropagation=()=>{e.propagating=!1}}onVRControllerButtonDown(e){this.__prepareEvent(e);let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onVRControllerButtonDown(e))break;if(!e.propagating)break}}onVRControllerButtonUp(e){this.__prepareEvent(e);let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onVRControllerButtonUp(e))break;if(!e.propagating)break}}onVRControllerDoubleClicked(e){this.__prepareEvent(e);let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onVRControllerDoubleClicked(e))break;if(!e.propagating)break}}onVRPoseChanged(e){this.__prepareEvent(e);let t=this.__toolStack.length;for(;t--;){const o=this.__toolStack[t];if(o&&1==o.onVRPoseChanged(e))break;if(!e.propagating)break}}destroy(){const e=this.appData.renderer.getViewport();e.removeListenerById("mouseDown",this.mouseDownId),e.removeListenerById("mouseMove",this.mouseMoveId),e.removeListenerById("mouseUp",this.mouseUpId),e.removeListenerById("mouseLeave",this.mouseUpId),e.removeListenerById("mouseWheel",this.mouseWheelId),e.removeListenerById("keyDown",this.keyDownId),e.removeListenerById("keyUp",this.keyUpId),e.removeListenerById("keyPressed",this.keyPressedId),e.removeListenerById("touchStart",this.touchStartId),e.removeListenerById("touchMove",this.touchMoveId),e.removeListenerById("touchEnd",this.touchEndId),e.removeListenerById("touchCancel",this.touchCancelId),this.appData.renderer.getXRViewport().then(t=>{e.removeListenerById("controllerDown",this.controllerDownId),e.removeListenerById("controllerUp",this.controllerUpId),e.removeListenerById("viewChanged",this.onVRPoseChangedId)})}},exports.TreeItemAddChange=P,exports.TreeItemMoveChange=b,exports.TreeItemsRemoveChange=w,exports.UndoRedoManager=a,exports.VIEW_TOOL_MODELS=M,exports.VRHoldObjectsTool=class extends D{constructor(e){super(e),this.__pressedButtonCount=0,this.__freeIndices=[],this.__vrControllers=[],this.__heldObjectCount=0,this.__heldGeomItems=[],this.__heldGeomItemIds=[],this.__heldGeomItemRefs=[],this.__heldGeomItemOffsets=[]}activateTool(){super.activateTool(),console.log("activateTool.VRHoldObjectsTool"),this.appData.renderer.getDiv().style.cursor="crosshair";const t=t=>{if(!this.__activated)return;const o=new e.Cross(.03),s=new e.Material("Cross","FlatSurfaceShader");s.getParameter("BaseColor").setValue(new e.Color("#03E3AC")),s.visibleInGeomDataBuffer=!1;const a=new e.GeomItem("HandleToolTip",o,s);t.getTipItem().removeAllChildren(),t.getTipItem().addChild(a,!1)};this.appData.renderer.getXRViewport().then(e=>{for(const o of e.getControllers())t(o);this.addIconToControllerId=e.on("controllerAdded",t)})}deactivateTool(){super.deactivateTool(),this.appData.renderer.getXRViewport().then(e=>{e.removeListenerById("controllerAdded",this.addIconToControllerId)})}computeGrabXfo(t){let o;if(1==t.length)o=this.__vrControllers[t[0]].getTipXfo();else if(2==t.length){const s=this.__vrControllers[t[0]].getTipXfo(),a=this.__vrControllers[t[1]].getTipXfo();s.ori.alignWith(a.ori),o=new e.Xfo,o.tr=s.tr.lerp(a.tr,.5),o.ori=s.ori.lerp(a.ori,.5);let i=a.tr.subtract(s.tr);i.normalizeInPlace();const n=o.ori.getXaxis();i.dot(n)<0&&(i=i.negate());const r=i.angleTo(n);if(r>0){const t=n.cross(i);t.normalizeInPlace();const s=new e.Quat;s.setFromAxisAndAngle(t,r),o.ori=s.multiply(o.ori)}}return o}initAction(){for(let e=0;e<this.__heldGeomItems.length;e++){const t=this.__heldGeomItems[e];if(!t)continue;const o=this.computeGrabXfo(this.__heldGeomItemRefs[e]);this.__heldGeomItemOffsets[e]=o.inverse().multiply(t.getGlobalXfo())}}onVRControllerButtonDown(e){const t=e.controller.getId();this.__vrControllers[t]=e.controller;const o=e.controller.getGeomItemAtTip();if(o){if(o.geomItem.getOwner()instanceof n)return!1;if(e.intersectionData=o,o.geomItem.onMouseDown(e,o),!e.propagating)return!1;let s=this.__heldGeomItems.indexOf(o.geomItem);if(-1==s){s=this.__heldGeomItems.length,this.__heldObjectCount++,this.__heldGeomItems.push(o.geomItem),this.__heldGeomItemRefs[s]=[t],this.__heldGeomItemIds[t]=s;const e={newItem:o.geomItem,newItemId:s};this.change?this.change.update(e):(this.change=new U(e),this.appData.undoRedoManager.addChange(this.change))}else this.__heldGeomItemIds[t]=s,this.__heldGeomItemRefs[s].push(t);return this.initAction(),!0}}onVRControllerButtonUp(e){const t=e.controller.getId();if(this.__pressedButtonCount--,void 0!==this.__heldGeomItemIds[t]){const e=this.__heldGeomItemIds[t],o=this.__heldGeomItemRefs[e];return o.splice(o.indexOf(t),1),0==o.length&&(this.__heldObjectCount--,this.__heldGeomItems[e]=void 0,this.change=void 0),this.__heldGeomItemIds[t]=void 0,this.initAction(),!0}}onVRPoseChanged(e){if(!this.change)return!1;const t=[],o=[];for(let e=0;e<this.__heldGeomItems.length;e++){if(!this.__heldGeomItems[e])continue;const s=this.computeGrabXfo(this.__heldGeomItemRefs[e]);t.push(s.multiply(this.__heldGeomItemOffsets[e])),o.push(e)}return this.change.update({changeXfos:t,changeXfoIds:o}),!0}},exports.VRUITool=class extends D{constructor(t){super(t),this.__vrUIDOMHolderElement=document.createElement("div"),this.__vrUIDOMHolderElement.className="vrUIHolder",this.__vrUIDOMElement=document.createElement("div"),this.__vrUIDOMElement.className="vrUI",document.body.appendChild(this.__vrUIDOMHolderElement),this.controllerUI=new E(t,this.__vrUIDOMHolderElement,this.__vrUIDOMElement),this.controllerUI.addRef(this),t.renderer.addTreeItem(this.controllerUI),this.__uiLocalXfo=new e.Xfo,this.__uiLocalXfo.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),-.6*Math.PI);const o=new e.Material("pointermat","LinesShader");o.visibleInGeomDataBuffer=!1,o.getParameter("Color").setValue(new e.Color(1.2,0,0));const s=new e.Lines;s.setNumVertices(2),s.setNumSegments(1),s.setSegment(0,0,1),s.getVertex(0).set(0,0,0),s.getVertex(1).set(0,0,-1),s.setBoundingBoxDirty(),this.__pointerLocalXfo=new e.Xfo,this.__pointerLocalXfo.sc.set(1,1,.1),this.__pointerLocalXfo.ori.setFromAxisAndAngle(new e.Vec3(1,0,0),-.2*Math.PI),this.__uiPointerItem=new e.GeomItem("VRControllerPointer",s,o),this.__uiPointerItem.addRef(this),this.__triggerHeld=!1}getName(){return"VRUITool"}setUIControllers(e,t,o,s){this.openUITool=e,this.uiController=t,this.pointerController=o;const a=this.uiController.getTreeItem().getGlobalXfo();if(this.pointerController){const e=this.pointerController.getTreeItem().getGlobalXfo(),t=a.tr.subtract(s.tr),o=e.tr.subtract(s.tr);t.cross(o).dot(s.ori.getYaxis())>0?this.__uiLocalXfo.tr.set(.05,-.05,.08):this.__uiLocalXfo.tr.set(-.05,-.05,.08)}else this.__uiLocalXfo.tr.set(0,-.05,.08);this.controllerUI.setLocalXfo(this.__uiLocalXfo)}activateTool(){super.activateTool(),this.controllerUI.activate(),this.uiController&&(this.uiController.getTipItem().addChild(this.controllerUI,!1),this.pointerController&&this.pointerController.getTipItem().addChild(this.__uiPointerItem,!1),this.appData.session.pub("pose-message",{interfaceType:"VR",showUIPanel:{controllerId:this.uiController.getId(),localXfo:this.__uiLocalXfo.toJSON(),size:this.controllerUI.getGeomOffsetXfo().sc.toJSON()}}))}deactivateTool(){super.deactivateTool(),this.controllerUI.deactivate(),this.uiController&&(this.uiController.getTipItem().removeChildByHandle(this.controllerUI),this.pointerController&&this.pointerController.getTipItem().removeChildByHandle(this.__uiPointerItem),this.appData.session.pub("pose-message",{interfaceType:"VR",hideUIPanel:{controllerId:this.uiController.getId()}}))}setPointerLength(e){this.__pointerLocalXfo.sc.set(1,1,e),this.__uiPointerItem.setLocalXfo(this.__pointerLocalXfo)}calcUIIntersection(){const t=this.__uiPointerItem.getGlobalXfo(),o=t.ori.getZaxis().negate(),s=new e.Ray(t.tr,o),a=this.controllerUI.getGlobalXfo(),i=this.controllerUI.getGeomOffsetXfo().sc,n=new e.Ray(a.tr,a.ori.getZaxis().negate()),r=s.intersectRayPlane(n);if(r<=0)return void this.setPointerLength(.5);const h=t.tr.add(o.scale(r)).subtract(n.start),l=h.dot(a.ori.getXaxis())/i.x,c=h.dot(a.ori.getYaxis())/i.y;if(Math.abs(l)>.5||Math.abs(c)>.5)return void this.setPointerLength(.5);this.setPointerLength(r);const d=this.__vrUIDOMElement.getBoundingClientRect();return{clientX:Math.round(l*d.width+d.width/2),clientY:Math.round(c*-d.height+d.height/2)}}sendEventToUI(e,t){const o=this.calcUIIntersection();if(o){o.offsetX=o.pageX=o.pageX=o.screenX=o.clientX,o.offsetY=o.pageY=o.pageY=o.screenY=o.clientY;const s=document.elementFromPoint(o.clientX,o.clientY);return s!=this._element&&(this._element&&this.controllerUI.sendMouseEvent("mouseleave",Object.assign(t,o),this._element),this._element=s,this.controllerUI.sendMouseEvent("mouseenter",Object.assign(t,o),this._element)),this.controllerUI.sendMouseEvent(e,Object.assign(t,o),this._element),this._element}this._element&&(this.controllerUI.sendMouseEvent("mouseleave",Object.assign(t,o),this._element),this._element=null)}onVRControllerButtonDown(e){if(e.controller==this.pointerController){this.__triggerHeld=!0;const t=this.sendEventToUI("mousedown",{button:e.button-1});this.__triggerDownElem=t||null}return!0}onVRControllerButtonUp(e){if(e.controller==this.pointerController){this.__triggerHeld=!1;const t=this.sendEventToUI("mouseup",{button:e.button-1});t&&this.__triggerDownElem==t&&this.sendEventToUI("click",{button:e.button-1}),this.__triggerDownElem=null}return!0}onVRPoseChanged(e){const t=e.viewXfo;return(()=>{const e=this.uiController.getTreeItem().getGlobalXfo(),o=e.tr.subtract(t.tr);return o.normalizeInPlace(),!(o.angleTo(e.ori.getYaxis())>.5*Math.PI)||(this.appData.toolManager.removeToolByHandle(this),!1)})()&&this.sendEventToUI("mousemove",{}),!0}},exports.ViewTool=class extends D{constructor(t,o=M.VIEWER){super(t),console.log("ViewTool:",o),this.__maipulationModel=o,this.__defaultMode="orbit",this.__mode=this.__defaultMode,this.__mouseDragDelta=new e.Vec2,this.__keyboardMovement=!1,this.__keysPressed=[],this.__maxVel=.002,this.__velocity=new e.Vec3,this.__ongoingTouches={},this.__orbitRateParam=this.addParameter(new e.NumberParameter("orbitRate",1)),this.__dollySpeedParam=this.addParameter(new e.NumberParameter("dollySpeed",.02)),this.__mouseWheelDollySpeedParam=this.addParameter(new e.NumberParameter("mouseWheelDollySpeed",.002)),this.__controllerTriggersHeld=[]}activateTool(){super.activateTool(),console.log("activateTool.ViewTool"),this.appData.renderer.getDiv().style.cursor="default",this.appData.renderer.getXRViewport().then(t=>{this.vrControllerToolTip||(this.vrControllerToolTip=new e.Sphere(.015),this.vrControllerToolTipMat=new e.Material("Cross","FlatSurfaceShader"),this.vrControllerToolTipMat.getParameter("BaseColor").setValue(new e.Color("#03E3AC")),this.vrControllerToolTipMat.visibleInGeomDataBuffer=!1);const o=t=>{const o=new e.GeomItem("HandleToolTip",this.vrControllerToolTip,this.vrControllerToolTipMat);t.getTipItem().removeAllChildren(),t.getTipItem().addChild(o,!1)};for(const e of t.getControllers())o(e);this.addIconToControllerId=t.on("controllerAdded",o)})}deactivateTool(){super.deactivateTool(),this.appData.renderer.getXRViewport().then(e=>{e.removeListenerById("controllerAdded",this.addIconToControllerId)})}setDefaultMode(e){this.__defaultMode=e}look(t,o){const s=o.getCamera().getFocalDistance(),a=this.__orbitRateParam.getValue()*e.SystemDesc.isMobileDevice?-1:1;if(this.__keyboardMovement){const e=o.getCamera().getGlobalXfo();this.__mouseDownCameraXfo=e.clone(),this.__mouseDownZaxis=e.ori.getZaxis();const t=this.__mouseDownZaxis.scale(-s);this.__mouseDownCameraTarget=e.tr.add(t)}const i=this.__mouseDownCameraXfo.clone(),n=new e.Quat;n.rotateZ(t.x/o.getWidth()*Math.PI*a),i.ori=n.multiply(i.ori);const r=new e.Quat;r.rotateX(t.y/o.getHeight()*Math.PI*a),i.ori.multiplyInPlace(r),this.__keyboardMovement,o.getCamera().setGlobalXfo(i)}orbit(t,o){const s=o.getCamera().getFocalDistance(),a=this.__orbitRateParam.getValue()*e.SystemDesc.isMobileDevice?-1:1;if(this.__keyboardMovement){const e=o.getCamera().getGlobalXfo();this.__mouseDownCameraXfo=e.clone(),this.__mouseDownZaxis=e.ori.getZaxis();const t=this.__mouseDownZaxis.scale(-s);this.__mouseDownCameraTarget=e.tr.add(t)}const i=this.__mouseDownCameraXfo.clone(),n=new e.Quat;n.rotateZ(t.x/o.getWidth()*2*Math.PI*-a),i.ori=n.multiply(i.ori);const r=new e.Quat;r.rotateX(t.y/o.getHeight()*Math.PI*-a),i.ori.multiplyInPlace(r),i.tr=this.__mouseDownCameraTarget.add(i.ori.getZaxis().scale(s)),this.__keyboardMovement,o.getCamera().setGlobalXfo(i)}pan(t,o){const s=o.getCamera().getFocalDistance(),a=o.getCamera().getFov(),i=new e.Vec3(1,0,0),n=new e.Vec3(0,1,0),r=2*s*Math.tan(.5*a),h=r*(o.getWidth()/o.getHeight()),l=new e.Xfo;l.tr=i.scale(-t.x/o.getWidth()*h),l.tr.addInPlace(n.scale(t.y/o.getHeight()*r)),o.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(l))}dolly(t,o){const s=t.x*this.__dollySpeedParam.getValue(),a=new e.Xfo;a.tr.set(0,0,s),o.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(a))}panAndZoom(t,o,s){const a=s.getCamera().getFocalDistance(),i=s.getCamera().getFov(),n=new e.Vec3(1,0,0),r=new e.Vec3(0,1,0),h=2*a*Math.tan(.5*i),l=h*(s.getWidth()/s.getHeight()),c=new e.Xfo;c.tr=n.scale(-t.x/s.getWidth()*l),c.tr.addInPlace(r.scale(t.y/s.getHeight()*h));const d=o*a;s.getCamera().setFocalDistance(this.__mouseDownFocalDist+d),c.tr.z+=d,s.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(c))}initDrag(e){const t=e.getCamera().getFocalDistance();this.__mouseDragDelta.set(0,0),this.__mouseDownCameraXfo=e.getCamera().getGlobalXfo().clone(),this.__mouseDownZaxis=e.getCamera().getGlobalXfo().ori.getZaxis();const o=this.__mouseDownZaxis.scale(-t);this.__mouseDownCameraTarget=e.getCamera().getGlobalXfo().tr.add(o),this.__mouseDownFocalDist=t}aimFocus(t,o){this.__focusIntervalId&&clearInterval(this.__focusIntervalId);let s=0;const a=()=>{const i=t.getGlobalXfo(),n=t.getFocalDistance(),r=o.subtract(i.tr),h=r.normalizeInPlace(),l=new e.Quat,c=new e.Quat;{const e=i.ori.getZaxis().clone();e.z=0;const t=r.negate();t.z=0,l.setFrom2Vectors(e,t)}{const e=i.ori.getZaxis().clone(),t=r.negate();e.x=t.x,e.y=t.y,e.normalizeInPlace(),e.cross(t).dot(i.ori.getXaxis())>0?c.rotateX(e.angleTo(t)):c.rotateX(-e.angleTo(t))}const d=i.clone();d.ori=l.multiply(d.ori),d.ori.multiplyInPlace(c);const u=Math.pow(s/20,2),g=i.clone();g.ori=i.ori.lerp(d.ori,u),t.setFocalDistance(n+(h-n)*u),t.setGlobalXfo(g),s++,s<=20?this.__focusIntervalId=setTimeout(a,20):(this.__focusIntervalId=void 0,this.emit("movementFinished"))};a(),this.__manipulationState="focussing"}onMouseMove(e){}onDragStart(e){this.__mouseDownPos=e.mousePos,this.initDrag(e.viewport),2==e.button?this.__mode="pan":e.ctrlKey&&2==e.button?this.__mode="dolly":e.shiftKey||2==e.button?this.__mode="look":this.__mode=this.__defaultMode}onDrag(e){switch(this.__keyboardMovement?this.__mouseDragDelta=e.mousePos:this.__mouseDragDelta=e.mousePos.subtract(this.__mouseDownPos),this.__mode){case"orbit":this.orbit(this.__mouseDragDelta,e.viewport);break;case"look":this.look(this.__mouseDragDelta,e.viewport);break;case"pan":this.pan(this.__mouseDragDelta,e.viewport);break;case"dolly":this.dolly(this.__mouseDragDelta,e.viewport)}}onDragEnd(e){return this.emit("movementFinished"),!1}onMouseDown(e){return!(this.__maipulationModel==M.DCC&&!e.altKey)&&(this.dragging=!0,this.__mouseDownPos=e.mousePos,this.onDragStart(e),!0)}onMouseUp(e){if(this.dragging)return this.onDragEnd(e),this.dragging=!1,!0}onMouseMove(e){if(this.dragging)return this.onDrag(e),e.showPointerOnAvatar=!1,!0}onDoubleClick(e){if(e.intersectionData){const t=e.viewport.getCamera(),o=t.getGlobalXfo().tr.add(e.intersectionData.mouseRay.dir.scale(e.intersectionData.dist));this.aimFocus(t,o)}}onWheel(e){if(this.__maipulationModel==M.DCC&&!e.altKey)return!1;const t=e.viewport,o=t.getCamera().getGlobalXfo(),s=o.ori.getZaxis();this.__mouseWheelZoomIntervalId&&clearInterval(this.__mouseWheelZoomIntervalId);let a=0;const i=()=>{const n=t.getCamera().getFocalDistance(),r=this.__mouseWheelDollySpeedParam.getValue(),h=e.deltaY*r*n*.2;o.tr.addInPlace(s.scale(h)),"orbit"==this.__defaultMode&&t.getCamera().setFocalDistance(n+h),t.getCamera().setGlobalXfo(o),a++,a<5?this.__mouseWheelZoomIntervalId=setTimeout(i,20):(this.__mouseWheelZoomIntervalId=void 0,this.emit("movementFinished"),e.viewport.renderGeomDataFbo())};i()}__integrateVelocityChange(t,o){const s=new e.Xfo;s.tr=this.__velocity.normalize().scale(this.__maxVel),o.getCamera().setGlobalXfo(o.getCamera().getGlobalXfo().multiply(s))}onKeyPressed(e,t){return!1}onKeyDown(e,t){}onKeyUp(e,t){return!0}__startTouch(t,o){this.__ongoingTouches[t.identifier]={identifier:t.identifier,pos:new e.Vec2(t.pageX,t.pageY)}}__endTouch(e,t){delete this.__ongoingTouches[e.identifier]}onTouchStart(e){e.preventDefault(),e.stopPropagation(),0==Object.keys(this.__ongoingTouches).length&&(this.__manipMode=void 0);const t=e.changedTouches;for(let e=0;e<t.length;e++)this.__startTouch(t[e]);return this.initDrag(e.viewport),!0}onTouchMove(t){t.preventDefault(),t.stopPropagation();const o=t.changedTouches;if(1==o.length&&"panAndZoom"!=this.__manipMode){const s=o[0],a=new e.Vec2(s.pageX,s.pageY),i=this.__ongoingTouches[s.identifier].pos.subtract(a);return"look"==this.__defaultMode?(i.scaleInPlace(6),this.look(i,t.viewport)):this.orbit(i,t.viewport),this.__manipMode="orbit",!0}if(2==o.length){const s=o[0],a=this.__ongoingTouches[s.identifier],i=o[1],n=this.__ongoingTouches[i.identifier],r=new e.Vec2(s.pageX,s.pageY),h=new e.Vec2(i.pageX,i.pageY),l=n.pos.subtract(a.pos).length()-h.subtract(r).length(),c=r.subtract(a.pos),d=h.subtract(n.pos),u=c.add(d);return u.scaleInPlace(.5),this.panAndZoom(u,.002*l,t.viewport),this.__manipMode="panAndZoom",!0}}onTouchEnd(e){e.preventDefault(),e.stopPropagation();const t=e.changedTouches;switch(this.__manipMode){case"orbit":case"panAndZoom":this.emit("movementFinished")}for(let e=0;e<t.length;e++)this.__endTouch(t[e]);return 0==Object.keys(this.__ongoingTouches).length&&(this.__manipMode=void 0),!0}onTouchCancel(e){console.log("touchcancel.");const t=e.changedTouches;for(let e=0;e<t.length;e++)this.__endTouch(t[e]);return!0}onDoubleTap(e){const t=e.changedTouches;for(let e=0;e<t.length;e++)this.__startTouch(t[e]);if(e.intersectionData){const t=e.viewport.getCamera(),o=t.getGlobalXfo().tr.add(e.intersectionData.mouseRay.dir.scale(e.intersectionData.dist));this.aimFocus(t,o)}}__initMoveStage(e){if(1==this.__controllerTriggersHeld.length)this.__grabPos=this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo().tr.clone(),this.stageXfo__GrabStart=e.getXfo().clone(),this.__invOri=this.stageXfo__GrabStart.ori.inverse();else if(2==this.__controllerTriggersHeld.length){const t=this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo().tr,o=this.__controllerTriggersHeld[1].getControllerTipStageLocalXfo().tr;this.__grabDir=o.subtract(t),this.__grabPos=t.lerp(o,.5),this.__grabDir.y=0,this.__grabDist=this.__grabDir.length(),this.__grabDir.scaleInPlace(1/this.__grabDist),this.stageXfo__GrabStart=e.getXfo().clone(),this.__grab_to_stage=this.__grabPos.subtract(this.stageXfo__GrabStart.tr)}}onVRControllerButtonDown(e){if(1==e.button)return this.__controllerTriggersHeld.push(e.controller),this.__initMoveStage(e.vrviewport),!0}onVRControllerButtonUp(e){if(1!=e.button)return;const t=this.__controllerTriggersHeld.indexOf(e.controller);return this.__controllerTriggersHeld.splice(t,1),this.__initMoveStage(e.vrviewport),!0}onVRControllerDoubleClicked(e){console.log("onVRControllerDoubleClicked:",this.__controllerTriggersHeld.length);const t=e.vrviewport.getXfo().clone();t.sc.set(1,1,1),e.vrviewport.setXfo(t)}onVRPoseChanged(t){if(1==this.__controllerTriggersHeld.length){const o=this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo().tr,s=new e.Xfo;s.tr=this.__grabPos.subtract(o);const a=this.stageXfo__GrabStart.multiply(s);return t.vrviewport.setXfo(a),!0}if(2==this.__controllerTriggersHeld.length){const o=this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo().tr,s=this.__controllerTriggersHeld[1].getControllerTipStageLocalXfo().tr,a=o.lerp(s,.5),i=s.subtract(o);i.y=0;const n=i.length();i.scaleInPlace(1/n);const r=new e.Xfo,h=Math.max(Math.min(this.__grabDist/n,10),.1);r.sc.set(h,h,h);let l=this.__grabDir.angleTo(i);this.__grabDir.cross(i).y>0&&(l=-l),r.ori.rotateY(l);const c=r.ori.rotateVec3(this.__grabPos);r.tr.addInPlace(this.__grabPos.subtract(c));const d=this.__grabPos.scale(1-h);r.tr.addInPlace(r.ori.rotateVec3(d));const u=this.__grabPos.subtract(a).scale(h);r.tr.addInPlace(r.ori.rotateVec3(u));const g=this.stageXfo__GrabStart.multiply(r);return t.vrviewport.setXfo(g),!0}}};
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+var zeaEngine = require('@zeainc/zea-engine');
+
+const __changeClasses = {};
+const __classNames = {};
+const __classes = [];
+
+/** Class representing an undo redo manager. */
+class UndoRedoManager extends zeaEngine.EventEmitter {
+  /**
+   * Create an undo redo manager.
+   */
+  constructor() {
+    super();
+    this.__undoStack = [];
+    this.__redoStack = [];
+    this.__currChange = null;
+
+    this.__currChangeUpdated = this.__currChangeUpdated.bind(this);
+  }
+
+  /**
+   * The flush method.
+   */
+  flush() {
+    for (const change of this.__undoStack) change.destroy();
+    this.__undoStack = [];
+    for (const change of this.__redoStack) change.destroy();
+    this.__redoStack = [];
+    if (this.__currChange) {
+      this.__currChange.off('updated', this.__currChangeUpdated);
+      this.__currChange = null;
+    }
+  }
+
+  /**
+   * The addChange method.
+   * @param {any} change - The change param.
+   */
+  addChange(change) {
+    // console.log("AddChange:", change.name)
+    if (this.__currChange) {
+      this.__currChange.off('updated', this.__currChangeUpdated);
+    }
+
+    this.__undoStack.push(change);
+    this.__currChange = change;
+    this.__currChange.on('updated', this.__currChangeUpdated);
+
+    for (const change of this.__redoStack) change.destroy();
+    this.__redoStack = [];
+
+    this.emit('changeAdded', { change });
+  }
+
+  /**
+   * The getCurrentChange method.
+   * @return {any} The return value.
+   */
+  getCurrentChange() {
+    return this.__currChange
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __currChangeUpdated(updateData) {
+    this.emit('changeUpdated', updateData);
+  }
+
+  /**
+   * The undo method.
+   * @param {boolean} pushOnRedoStack - The pushOnRedoStack param.
+   */
+  undo(pushOnRedoStack = true) {
+    if (this.__undoStack.length > 0) {
+      if (this.__currChange) {
+        this.__currChange.off('updated', this.__currChangeUpdated);
+        this.__currChange = null;
+      }
+
+      const change = this.__undoStack.pop();
+      // console.log("undo:", change.name)
+      change.undo();
+      if (pushOnRedoStack) {
+        this.__redoStack.push(change);
+        this.emit('changeUndone');
+      }
+    }
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    if (this.__redoStack.length > 0) {
+      const change = this.__redoStack.pop();
+      // console.log("redo:", change.name)
+      change.redo();
+      this.__undoStack.push(change);
+      this.emit('changeRedone');
+    }
+  }
+
+  // //////////////////////////////////
+  // User Synchronization
+
+  /**
+   * The constructChange method.
+   * @param {string} className - The className param.
+   * @return {any} The return value.
+   */
+  constructChange(className) {
+    return new __changeClasses[className]()
+  }
+
+  /**
+   * The isChangeClassRegistered method.
+   * @param {object} inst - The instance of the Change class.
+   * @return {boolean} Returns 'true' if the class has been registered.
+   */
+  static isChangeClassRegistered(inst) {
+    const id = __classes.indexOf(inst.constructor);
+    return id != -1
+  }
+
+  /**
+   * The getChangeClassName method.
+   * @param {object} inst - The instance of the Change class.
+   * @return {any} The return value.
+   */
+  static getChangeClassName(inst) {
+    const id = __classes.indexOf(inst.constructor);
+    if (__classNames[id]) return __classNames[id]
+    console.warn('Change not registered:', inst.constructor.name);
+    return ''
+  }
+
+  /**
+   * The registerChange method.
+   * @param {any} name - The name param.
+   * @param {any} cls - The cls param.
+   */
+  static registerChange(name, cls) {
+    if (__classes.indexOf(cls) != -1)
+      console.warn("Class already registered:", name);
+
+    const id = __classes.length;
+    __classes.push(cls);
+    __changeClasses[name] = cls;
+    __classNames[id] = name;
+  }
+}
+
+/** Class representing a change. */
+class Change extends zeaEngine.EventEmitter {
+  /**
+   * Create a change.
+   * @param {any} name - The name value.
+   */
+  constructor(name) {
+    super();
+    this.name = name ? name : UndoRedoManager.getChangeClassName(this);
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    throw new Error('Implement me')
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    throw new Error('Implement me')
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    throw new Error('Implement me')
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} context - The appData param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    return {}
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} context - The context param.
+   */
+  fromJSON(j, context) {}
+
+  /**
+   * The changeFromJSON method.
+   * @param {any} j - The j param.
+   */
+  changeFromJSON(j) {
+    // Many change objects can load json directly
+    // in the update method.
+    this.update(j);
+  }
+
+  /**
+   * The destroy method.
+   */
+  destroy() {}
+}
+
+// A Handle is a UI widget that lives in the scene.
+// Much like a slider, it translates a series of
+// mouse events into a higher level interaction.
+
+/** Class representing a scene widget.
+ * @extends TreeItem
+ */
+class Handle extends zeaEngine.TreeItem {
+  /**
+   * Create a scene widget.
+   * @param {any} name - The name value.
+   */
+  constructor(name) {
+    super(name);
+
+    this.captured = false;
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {}
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {}
+
+  /**
+   * The getManipulationPlane method.
+   * @return {any} The return value.
+   */
+  getManipulationPlane() {
+    const xfo = this.getGlobalXfo();
+    return new zeaEngine.Ray(xfo.tr, xfo.ori.getZaxis())
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The onMouseEnter method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseEnter(event) {
+    this.highlight();
+  }
+
+  /**
+   * The onMouseLeave method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseLeave(event) {
+    this.unhighlight();
+  }
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    event.setCapture(this);
+    event.stopPropagation();
+    this.captured = true;
+    if (event.viewport) this.handleMouseDown(event);
+    else if (event.vrviewport) this.onVRControllerButtonDown(event);
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseMove(event) {
+    if (this.captured) {
+      event.stopPropagation();
+      if (event.viewport) this.handleMouseMove(event);
+      else if (event.vrviewport) this.onVRPoseChanged(event);
+    }
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseUp(event) {
+    if (this.captured) {
+      event.releaseCapture();
+      event.stopPropagation();
+      this.captured = false;
+      if (event.viewport) this.handleMouseUp(event);
+      else if (event.vrviewport) this.onVRControllerButtonUp(event);
+    }
+  }
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   */
+  onWheel(event) {}
+
+  /**
+   * The handleMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseDown(event) {
+    this.gizmoRay = this.getManipulationPlane();
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.grabPos = event.mouseRay.pointAtDist(dist);
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The handleMouseMove method.
+   * @param {any} event - The event param.
+   */
+  handleMouseMove(event) {
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.holdPos = event.mouseRay.pointAtDist(dist);
+    this.onDrag(event);
+    return true
+  }
+
+  /**
+   * The handleMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseUp(event) {
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.releasePos = event.mouseRay.pointAtDist(dist);
+    this.onDragEnd(event);
+    return true
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    this.activeController = event.controller;
+    const xfo = this.activeController.getTipXfo().clone();
+
+    const gizmoRay = this.getManipulationPlane();
+    const offset = xfo.tr.subtract(gizmoRay.start);
+    const grabPos = xfo.tr.subtract(
+      gizmoRay.dir.scale(offset.dot(gizmoRay.dir))
+    );
+    event.grabPos = grabPos;
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (this.activeController) {
+      const xfo = this.activeController.getTipXfo();
+      const gizmoRay = this.getManipulationPlane();
+      const offset = xfo.tr.subtract(gizmoRay.start);
+      const holdPos = xfo.tr.subtract(
+        gizmoRay.dir.scale(offset.dot(gizmoRay.dir))
+      );
+      event.holdPos = holdPos;
+      this.onDrag(event);
+      return true
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (this.activeController == event.controller) {
+      const xfo = this.activeController.getTipXfo();
+      this.onDragEnd(event, xfo.tr);
+      this.activeController = undefined;
+      return true
+    }
+  }
+
+  // ///////////////////////////////////
+  // Interaction events
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    console.log('onDragStart', event);
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    console.log('onDrag', event);
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    console.log('onDragEnd', event);
+  }
+}
+
+/**
+ * Class representing a base linear movement scene widget.
+ * @extends Handle
+ */
+class BaseLinearMovementHandle extends Handle {
+  /**
+   * Create base linear movement scene widget.
+   * @param {any} name - The name value.
+   */
+  constructor(name) {
+    super(name);
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The handleMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseDown(event) {
+    this.gizmoRay = this.getManipulationPlane();
+    this.grabDist = event.mouseRay.intersectRayVector(this.gizmoRay)[1];
+    const grabPos = this.gizmoRay.pointAtDist(this.grabDist);
+    event.grabDist = this.grabDist;
+    event.grabPos = grabPos;
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The handleMouseMove method.
+   * @param {any} event - The event param.
+   */
+  handleMouseMove(event) {
+    const dist = event.mouseRay.intersectRayVector(this.gizmoRay)[1];
+    const holdPos = this.gizmoRay.pointAtDist(dist);
+    event.holdDist = dist;
+    event.holdPos = holdPos;
+    event.value = dist;
+    event.delta = dist - this.grabDist;
+    this.onDrag(event);
+  }
+
+  /**
+   * The handleMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseUp(event) {
+    const dist = event.mouseRay.intersectRayVector(this.gizmoRay)[1];
+    const releasePos = this.gizmoRay.pointAtDist(dist);
+    event.releasePos = releasePos;
+    this.onDragEnd(event);
+    return true
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    this.gizmoRay = this.getManipulationPlane();
+
+    this.activeController = event.controller;
+    const xfo = this.activeController.getTipXfo();
+    this.grabDist = xfo.tr.subtract(this.gizmoRay.start).dot(this.gizmoRay.dir);
+    const grabPos = this.gizmoRay.start.add(
+      this.gizmoRay.dir.scale(this.grabDist)
+    );
+    event.grabPos = grabPos;
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    const xfo = this.activeController.getTipXfo();
+    const dist = xfo.tr.subtract(this.gizmoRay.start).dot(this.gizmoRay.dir);
+    const holdPos = this.gizmoRay.start.add(this.gizmoRay.dir.scale(dist));
+    event.value = dist;
+    event.holdPos = holdPos;
+    event.delta = dist - this.grabDist;
+    this.onDrag(event);
+    return true
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (this.activeController == event.controller) {
+      // const xfo = this.activeController.getTipXfo()
+      this.onDragEnd();
+      this.activeController = undefined;
+      return true
+    }
+  }
+}
+
+/**
+ * Class representing a parameter value change.
+ * @extends Change
+ */
+class ParameterValueChange$1 extends Change {
+  /**
+   * Create a parameter value change.
+   * @param {object} param - The param value.
+   * @param {any} newValue - The newValue value.
+   * @param {number} mode - The mode value.
+   */
+  constructor(param, newValue, mode = zeaEngine.ValueSetMode.USER_SETVALUE) {
+    if (param) {
+      super(param ? param.getName() + ' Changed' : 'ParameterValueChange');
+      this.__prevValue = param.getValue();
+      this.__param = param;
+      this.__mode = mode;
+      if (newValue != undefined) {
+        this.__nextValue = newValue;
+        this.__param.setValue(this.__nextValue, mode);
+      }
+    } else {
+      super();
+    }
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    if (!this.__param) return
+    this.__param.setValue(this.__prevValue, this.__mode);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    if (!this.__param) return
+    this.__param.setValue(this.__nextValue, this.__mode);
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    if (!this.__param) return
+    this.__nextValue = updateData.value;
+    const mode = updateData.mode ? updateData.mode : this.__mode;
+    this.__param.setValue(this.__nextValue, mode);
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} context - The context param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = {
+      name: this.name,
+      paramPath: this.__param.getPath(),
+    };
+    if (this.__nextValue != undefined) {
+      if (this.__nextValue.toJSON) {
+        j.value = this.__nextValue.toJSON();
+      } else {
+        j.value = this.__nextValue;
+      }
+    }
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} context - The context param.
+   */
+  fromJSON(j, context) {
+    const param = context.appData.scene.getRoot().resolvePath(j.paramPath, 1);
+    if (!param || !(param instanceof zeaEngine.Parameter)) {
+      console.warn('resolvePath is unable to resolve', j.paramPath);
+      return
+    }
+    this.__param = param;
+    this.__prevValue = this.__param.getValue();
+    if (this.__prevValue.clone) this.__nextValue = this.__prevValue.clone();
+    else this.__nextValue = this.__prevValue;
+
+    this.name = j.name;
+    if (j.value != undefined) this.changeFromJSON(j);
+  }
+
+  /**
+   * The changeFromJSON method.
+   * @param {any} j - The j param.
+   */
+  changeFromJSON(j) {
+    if (!this.__param) return
+    if (this.__nextValue.fromJSON) this.__nextValue.fromJSON(j.value);
+    else this.__nextValue = j.value;
+    this.__param.setValue(this.__nextValue, zeaEngine.ValueSetMode.REMOTEUSER_SETVALUE);
+  }
+}
+
+UndoRedoManager.registerChange('ParameterValueChange', ParameterValueChange$1);
+
+/** Class representing a linear movement scene widget.
+ * @extends BaseLinearMovementHandle
+ */
+class LinearMovementHandle extends BaseLinearMovementHandle {
+  /**
+   * Create a linear movement scene widget.
+   * @param {any} name - The name value.
+   * @param {any} length - The length value.
+   * @param {any} thickness - The thickness value.
+   * @param {any} color - The color value.
+   */
+  constructor(name, length, thickness, color) {
+    super(name);
+
+    this.__color = color;
+    this.__hilightedColor = new zeaEngine.Color(1, 1, 1);
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('BaseColor', color));
+
+    const handleMat = new zeaEngine.Material('handle', 'HandleShader');
+    handleMat.getParameter('maintainScreenSize').setValue(1);
+    handleMat.replaceParameter(this.colorParam);
+    const handleGeom = new zeaEngine.Cylinder(thickness, length, 64);
+    handleGeom.getParameter('baseZAtZero').setValue(true);
+    const tipGeom = new zeaEngine.Cone(thickness * 4, thickness * 10, 64, true);
+    const handle = new zeaEngine.GeomItem('handle', handleGeom, handleMat);
+
+    const tip = new zeaEngine.GeomItem('tip', tipGeom, handleMat);
+    const tipXfo = new zeaEngine.Xfo();
+    tipXfo.tr.set(0, 0, length);
+    tipGeom.transformVertices(tipXfo);
+
+    // this.radiusParam.on('valueChanged', ()=>{
+    //   radius = this.radiusParam.getValue();
+    //   handleGeom.getParameter('radius').setValue(radius);
+    //   handleGeom.getParameter('height').setValue(radius * 0.02);
+    // })
+
+    this.addChild(handle);
+    this.addChild(tip);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.colorParam.setValue(this.__hilightedColor);
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.colorParam.setValue(this.__color);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The video param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.grabPos = event.grabPos;
+    const param = this.getTargetParam();
+    this.baseXfo = param.getValue();
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const dragVec = event.holdPos.subtract(this.grabPos);
+
+    const newXfo = this.baseXfo.clone();
+    newXfo.tr.addInPlace(dragVec);
+
+    if (this.change) {
+      this.change.update({
+        value: newXfo,
+      });
+    } else {
+      this.param.setValue(newXfo);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+  }
+}
+
+/** Class representing a planar movement scene widget.
+ * @extends Handle
+ */
+class PlanarMovementHandle extends Handle {
+  /**
+   * Create a planar movement scene widget.
+   * @param {any} name - The name value.
+   */
+  constructor(name) {
+    super(name);
+    this.fullXfoManipulationInVR = true;
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.grabPos = event.grabPos;
+    const param = this.getTargetParam();
+    this.baseXfo = param.getValue();
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const dragVec = event.holdPos.subtract(this.grabPos);
+
+    const newXfo = this.baseXfo.clone();
+    newXfo.tr.addInPlace(dragVec);
+
+    if (this.change) {
+      this.change.update({
+        value: newXfo,
+      });
+    } else {
+      const param = this.getTargetParam();
+      param.setValue(newXfo);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    if (this.fullXfoManipulationInVR) {
+      this.activeController = event.controller;
+      const xfo = this.activeController.getTipXfo();
+      const handleXfo = this.getGlobalXfo();
+      this.grabOffset = xfo.inverse().multiply(handleXfo);
+    } else {
+      super.onVRControllerButtonDown(event);
+    }
+    return true
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (this.fullXfoManipulationInVR) {
+      const xfo = this.activeController.getTipXfo();
+      const newXfo = xfo.multiply(this.grabOffset);
+      if (this.change) {
+        this.change.update({
+          value: newXfo,
+        });
+      } else {
+        const param = this.getTargetParam();
+        param.setValue(newXfo);
+      }
+    } else {
+      super.onVRPoseChanged(event);
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (this.fullXfoManipulationInVR) {
+      this.change = null;
+    } else {
+      super.onVRControllerButtonUp(event);
+    }
+  }
+}
+
+/**
+ * Class representing an axial rotation scene widget.
+ * @extends Handle
+ */
+class BaseAxialRotationHandle extends Handle {
+  /**
+   * Create an axial rotation scene widget.
+   * @param {any} name - The name value.
+   * @param {any} radius - The radius value.
+   * @param {any} thickness - The thickness value.
+   * @param {any} color - The color value.
+   */
+  constructor(name) {
+    super(name);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.baseXfo = this.getGlobalXfo().clone();
+    this.baseXfo.sc.set(1, 1, 1);
+    this.deltaXfo = new zeaEngine.Xfo();
+
+    const param = this.getTargetParam();
+    const paramXfo = param.getValue();
+    this.offsetXfo = this.baseXfo.inverse().multiply(paramXfo);
+
+    this.vec0 = event.grabPos.subtract(this.baseXfo.tr);
+    this.grabCircleRadius = this.vec0.length();
+    this.vec0.normalizeInPlace();
+
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const vec1 = event.holdPos.subtract(this.baseXfo.tr);
+    const dragCircleRadius = vec1.length();
+    vec1.normalizeInPlace();
+
+    // modulate the angle by the radius the mouse moves
+    // away from the center of the handle.
+    // This makes it possible to rotate the object more than
+    // 180 degrees in a single movement.
+    const modulator = dragCircleRadius / this.grabCircleRadius;
+    let angle = this.vec0.angleTo(vec1) * modulator;
+    if (this.vec0.cross(vec1).dot(this.baseXfo.ori.getZaxis()) < 0)
+      angle = -angle;
+
+    if (this.range) {
+      angle = Math.clamp(angle, this.range[0], this.range[1]);
+    }
+
+    if (event.shiftKey) {
+      // modulat the angle to X degree increments.
+      const increment = Math.degToRad(22.5);
+      angle = Math.floor(angle / increment) * increment;
+    }
+
+    this.deltaXfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 0, 1), angle);
+
+    const newXfo = this.baseXfo.multiply(this.deltaXfo);
+    const value = newXfo.multiply(this.offsetXfo);
+
+    if (this.change) {
+      this.change.update({
+        value,
+      });
+    } else {
+      const param = this.getTargetParam();
+      param.setValue(value);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+  }
+}
+
+/**
+ * Class representing an axial rotation scene widget.
+ * @extends BaseAxialRotationHandle
+ */
+class AxialRotationHandle extends BaseAxialRotationHandle {
+  /**
+   * Create an axial rotation scene widget.
+   * @param {any} name - The name value.
+   * @param {any} radius - The radius value.
+   * @param {any} thickness - The thickness value.
+   * @param {any} color - The color value.
+   */
+  constructor(name, radius, thickness, color) {
+    super(name);
+
+    this.__color = color;
+    this.__hilightedColor = new zeaEngine.Color(1, 1, 1);
+    this.radiusParam = this.addParameter(new zeaEngine.NumberParameter('radius', radius));
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('BaseColor', color));
+
+    const handleMat = new zeaEngine.Material('handle', 'HandleShader');
+    handleMat.getParameter('maintainScreenSize').setValue(1);
+    handleMat.replaceParameter(this.colorParam);
+
+    // const handleGeom = new Cylinder(radius, thickness * 2, 64, 2, false);
+    const handleGeom = new zeaEngine.Torus(thickness, radius, 64);
+    this.handle = new zeaEngine.GeomItem('handle', handleGeom, handleMat);
+    this.handleXfo = new zeaEngine.Xfo();
+
+    this.radiusParam.on('valueChanged', () => {
+      radius = this.radiusParam.getValue();
+      handleGeom.getParameter('radius').setValue(radius);
+      handleGeom.getParameter('height').setValue(radius * 0.02);
+    });
+
+    this.addChild(this.handle);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.colorParam.setValue(this.__hilightedColor);
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.colorParam.setValue(this.__color);
+  }
+
+  /**
+   * The getBaseXfo method.
+   */
+  getBaseXfo() {
+    return this.getParameter('GlobalXfo').getValue()
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    super.onDragStart(event);
+
+    // Hilight the material.
+    this.colorParam.setValue(new zeaEngine.Color(1, 1, 1));
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    super.onDrag(event);
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    super.onDragEnd(event);
+    this.colorParam.setValue(this.__color);
+  }
+}
+
+/** Class representing a linear scale scene widget.
+ * @extends BaseLinearMovementHandle
+ */
+class LinearScaleHandle extends BaseLinearMovementHandle {
+  /**
+   * Create a linear scale scene widget.
+   * @param {any} name - The name value.
+   * @param {any} length - The length value.
+   * @param {any} thickness - The thickness value.
+   * @param {any} color - The color value.
+   */
+  constructor(name, length, thickness, color) {
+    super(name);
+
+    this.__color = color;
+    this.__hilightedColor = new zeaEngine.Color(1, 1, 1);
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('BaseColor', color));
+
+    const handleMat = new zeaEngine.Material('handle', 'HandleShader');
+    handleMat.getParameter('maintainScreenSize').setValue(1);
+    handleMat.replaceParameter(this.colorParam);
+    const handleGeom = new zeaEngine.Cylinder(thickness, length - thickness * 10, 64);
+    handleGeom.getParameter('baseZAtZero').setValue(true);
+    const tipGeom = new zeaEngine.Cuboid(thickness * 10, thickness * 10, thickness * 10);
+    const handle = new zeaEngine.GeomItem('handle', handleGeom, handleMat);
+
+    const tip = new zeaEngine.GeomItem('tip', tipGeom, handleMat);
+    const tipXfo = new zeaEngine.Xfo();
+    tipXfo.tr.set(0, 0, length - thickness * 10);
+    // tipXfo.tr.set(0, 0, length);
+    // tip.setLocalXfo(tipXfo);
+    // Note: the constant screen size shader
+    // only works if all the handle geometries
+    // are centered on the middle of the XfoHandle.
+    tipGeom.transformVertices(tipXfo);
+
+    this.addChild(handle);
+    this.addChild(tip);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.colorParam.setValue(this.__hilightedColor);
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.colorParam.setValue(this.__color);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.grabDist = event.grabDist;
+    this.oriXfo = this.getGlobalXfo();
+    this.tmplocalXfo = this.getLocalXfo();
+    const param = this.getTargetParam();
+    this.baseXfo = param.getValue();
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    // const dragVec = event.holdPos.subtract(this.grabPos);
+
+    const newXfo = this.baseXfo.clone();
+    const sc = event.holdDist / this.grabDist;
+    if (sc < 0.0001) return
+
+    // const scAxis = this.oriXfo.ori.getZaxis();
+    // const scX = this.baseXfo.ori.getXaxis().dot(scAxis);
+    // const scY = this.baseXfo.ori.getYaxis().dot(scAxis);
+    // const scZ = this.baseXfo.ori.getZaxis().dot(scAxis);
+    // console.log("sc:", sc, " scX", scX, " scY:", scY, " scZ:", scZ)
+    // newXfo.sc.set(scX, scY, scZ);
+    newXfo.sc.set(
+      this.baseXfo.sc.x * sc,
+      this.baseXfo.sc.y * sc,
+      this.baseXfo.sc.z * sc
+    );
+
+    // Scale inheritance is disabled for handles.
+    // (XfoHandle throws away scale in _cleanGlobalXfo).
+    // This means we have to apply it here to see the scale
+    // widget change size.
+    this.tmplocalXfo.sc.set(1, 1, sc);
+    this.setLocalXfo(this.tmplocalXfo);
+
+    if (this.change) {
+      this.change.update({
+        value: newXfo,
+      });
+    } else {
+      this.param.setValue(newXfo);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+
+    this.tmplocalXfo.sc.set(1, 1, 1);
+    this.setLocalXfo(this.tmplocalXfo);
+
+    const tip = this.getChildByName('tip');
+    const tipXfo = tip.getLocalXfo();
+    tipXfo.sc.set(1, 1, 1);
+    tip.setLocalXfo(tipXfo);
+  }
+}
+
+// import ParameterValueChange from '../undoredo/ParameterValueChange.js';
+
+/**
+ * Class representing an axial rotation scene widget.
+ * @extends Handle
+ */
+class SphericalRotationHandle extends Handle {
+  /**
+   * Create an axial rotation scene widget.
+   * @param {any} name - The name value.
+   * @param {any} radius - The radius value.
+   * @param {any} thickness - The thickness value.
+   * @param {any} color - The color value.
+   */
+  constructor(name, radius, color) {
+    super(name);
+
+    this.radius = radius;
+    const maskMat = new zeaEngine.Material('mask', 'HandleShader');
+    maskMat.getParameter('maintainScreenSize').setValue(1);
+    maskMat.getParameter('BaseColor').setValue(color);
+    const maskGeom = new zeaEngine.Sphere(radius, 64);
+    const maskGeomItem = new zeaEngine.GeomItem('mask', maskGeom, maskMat);
+    this.addChild(maskGeomItem);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    // this.colorParam.setValue(this.__hilightedColor);
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    // this.colorParam.setValue(this.__color);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The handleMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseDown(event) {
+    // const xfo = this.getGlobalXfo();
+    // this.sphere = {
+    //   tr: xfo,
+    //   radius: this.radius,
+    // };
+    // const dist = event.mouseRay.intersectRaySphere(this.sphere);
+    // event.grabPos = event.mouseRay.pointAtDist(dist);
+    // this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The handleMouseMove method.
+   * @param {any} event - The event param.
+   */
+  handleMouseMove(event) {
+    // const dist = event.mouseRay.intersectRaySphere(this.sphere);
+    // event.holdPos = event.mouseRay.pointAtDist(dist);
+    // this.onDrag(event);
+    return true
+  }
+
+  /**
+   * The handleMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseUp(event) {
+    // const dist = event.mouseRay.intersectRaySphere(this.sphere);
+    // event.releasePos = event.mouseRay.pointAtDist(dist);
+    // this.onDragEnd(event);
+    return true
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.baseXfo = this.getGlobalXfo();
+    this.baseXfo.sc.set(1, 1, 1);
+    this.deltaXfo = new zeaEngine.Xfo();
+    const param = this.getTargetParam();
+    this.offsetXfo = this.baseXfo.inverse().multiply(param.getValue());
+
+    this.vec0 = event.grabPos.subtract(this.baseXfo.tr);
+    this.vec0.normalizeInPlace();
+
+    // Hilight the material.
+    this.colorParam.setValue(new zeaEngine.Color(1, 1, 1));
+
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const vec1 = event.holdPos.subtract(this.baseXfo.tr);
+    vec1.normalizeInPlace();
+
+    const angle = this.vec0.angleTo(vec1) * modulator;
+    const axis = this.vec0.cross(vec1).normalize();
+
+    this.deltaXfo.ori.setFromAxisAndAngle(axis, angle);
+
+    const newXfo = this.baseXfo.multiply(this.deltaXfo);
+    const value = newXfo.multiply(this.offsetXfo);
+
+    if (this.change) {
+      this.change.update({
+        value,
+      });
+    } else {
+      const param = this.getTargetParam();
+      param.setValue(newXfo);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+
+    this.colorParam.setValue(this.__color);
+  }
+}
+
+/** Class representing a planar movement scene widget.
+ * @extends Handle
+ */
+class XfoPlanarMovementHandle extends PlanarMovementHandle {
+  /**
+   * Create a planar movement scene widget.
+   * @param {any} name - The name value.
+   * @param {any} size - The size value.
+   * @param {any} color - The color value.
+   * @param {any} offset - The offset value.
+   */
+  constructor(name, size, color, offset) {
+    super(name);
+
+    this.__color = color;
+    this.__hilightedColor = new zeaEngine.Color(1, 1, 1);
+    this.sizeParam = this.addParameter(new zeaEngine.NumberParameter('size', size));
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('BaseColor', color));
+
+    const handleMat = new zeaEngine.Material('handle', 'HandleShader');
+    handleMat.getParameter('maintainScreenSize').setValue(1);
+    handleMat.replaceParameter(this.colorParam);
+
+    const handleGeom = new zeaEngine.Cuboid(size, size, size * 0.02);
+
+    const handleGeomXfo = new zeaEngine.Xfo();
+    handleGeomXfo.tr = offset;
+    handleGeom.transformVertices(handleGeomXfo);
+    this.handle = new zeaEngine.GeomItem('handle', handleGeom, handleMat);
+
+    this.sizeParam.on('valueChanged', () => {
+      size = this.sizeParam.getValue();
+      handleGeom.getParameter('size').setValue(size);
+      handleGeom.getParameter('height').setValue(size * 0.02);
+    });
+
+    this.addChild(this.handle);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.colorParam.setValue(this.__hilightedColor);
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.colorParam.setValue(this.__color);
+  }
+}
+
+/**
+ * Class representing an xfo handle.
+ * @extends TreeItem
+ */
+class XfoHandle extends zeaEngine.TreeItem {
+  /**
+   * Create an axial rotation scene widget.
+   * @param {any} size - The size value.
+   * @param {any} thickness - The thickness value.
+   */
+  constructor(size, thickness) {
+    super('XfoHandle');
+
+    // ////////////////////////////////
+    // LinearMovementHandle
+
+    const translationHandles = new zeaEngine.TreeItem('Translate');
+    translationHandles.setVisible(false);
+    this.addChild(translationHandles);
+
+    const red = new zeaEngine.Color(1, 0.1, 0.1);
+    const green = new zeaEngine.Color('#32CD32'); // limegreen https://www.rapidtables.com/web/color/green-color.html
+    const blue = new zeaEngine.Color('#1E90FF'); // dodgerblue https://www.rapidtables.com/web/color/blue-color.html
+    red.a = 0.8;
+    green.a = 0.8;
+    blue.a = 0.8;
+
+    {
+      const linearXWidget = new LinearMovementHandle(
+        'linearX',
+        size,
+        thickness,
+        red
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 1, 0), Math.PI * 0.5);
+      linearXWidget.getParameter('LocalXfo').setValue(xfo);
+      translationHandles.addChild(linearXWidget);
+    }
+    {
+      const linearYWidget = new LinearMovementHandle(
+        'linearY',
+        size,
+        thickness,
+        green
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * -0.5);
+      linearYWidget.getParameter('LocalXfo').setValue(xfo);
+      translationHandles.addChild(linearYWidget);
+    }
+    {
+      const linearZWidget = new LinearMovementHandle(
+        'linearZ',
+        size,
+        thickness,
+        blue
+      );
+      translationHandles.addChild(linearZWidget);
+    }
+
+    // ////////////////////////////////
+    // planarXYWidget
+    const planarSize = size * 0.35;
+    {
+      const planarXYWidget = new XfoPlanarMovementHandle(
+        'planarXY',
+        planarSize,
+        green,
+        new zeaEngine.Vec3(planarSize * 0.5, planarSize * 0.5, 0.0)
+      );
+      const xfo = new zeaEngine.Xfo();
+      planarXYWidget.getParameter('LocalXfo').setValue(xfo);
+      translationHandles.addChild(planarXYWidget);
+    }
+    {
+      const planarYZWidget = new XfoPlanarMovementHandle(
+        'planarYZ',
+        planarSize,
+        red,
+        new zeaEngine.Vec3(planarSize * -0.5, planarSize * 0.5, 0.0)
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 1, 0), Math.PI * 0.5);
+      planarYZWidget.getParameter('LocalXfo').setValue(xfo);
+      translationHandles.addChild(planarYZWidget);
+    }
+    {
+      const planarXZWidget = new XfoPlanarMovementHandle(
+        'planarXZ',
+        planarSize,
+        blue,
+        new zeaEngine.Vec3(planarSize * 0.5, planarSize * 0.5, 0.0)
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * 0.5);
+      planarXZWidget.getParameter('LocalXfo').setValue(xfo);
+      translationHandles.addChild(planarXZWidget);
+    }
+
+    // ////////////////////////////////
+    // Rotation
+    const rotationHandles = new zeaEngine.TreeItem('Rotate');
+    rotationHandles.setVisible(false);
+    this.addChild(rotationHandles);
+    {
+      const rotationWidget = new SphericalRotationHandle(
+        'rotation',
+        size - thickness,
+        new zeaEngine.Color(1, 1, 1, 0.4)
+      );
+      rotationHandles.addChild(rotationWidget);
+      // const maskMat = new Material('mask', 'HandleShader');
+      // maskMat
+      //   .getParameter('BaseColor')
+      //   .setValue(new Color(1, 1, 1, 0.4));
+      // const maskGeom = new Sphere(size - thickness, 64);
+      // const maskGeomItem = new GeomItem('mask', maskGeom, maskMat);
+      // rotationHandles.addChild(maskGeomItem);
+    }
+    {
+      const rotationXWidget = new AxialRotationHandle(
+        'rotationX',
+        size,
+        thickness,
+        red
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 1, 0), Math.PI * 0.5);
+      rotationXWidget.getParameter('LocalXfo').setValue(xfo);
+      rotationHandles.addChild(rotationXWidget);
+    }
+    {
+      const rotationYWidget = new AxialRotationHandle(
+        'rotationY',
+        size,
+        thickness,
+        green
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * 0.5);
+      rotationYWidget.getParameter('LocalXfo').setValue(xfo);
+      rotationHandles.addChild(rotationYWidget);
+    }
+    {
+      const rotationZWidget = new AxialRotationHandle(
+        'rotationZ',
+        size,
+        thickness,
+        blue
+      );
+      rotationHandles.addChild(rotationZWidget);
+    }
+
+    // ////////////////////////////////
+    // Scale - Not supported
+    const scaleHandles = new zeaEngine.TreeItem('Scale');
+    scaleHandles.setVisible(false);
+    this.addChild(scaleHandles);
+
+    const scaleHandleLength = size * 0.95;
+    {
+      const scaleXWidget = new LinearScaleHandle(
+        'scaleX',
+        scaleHandleLength,
+        thickness,
+        red
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 1, 0), Math.PI * 0.5);
+      scaleXWidget.getParameter('LocalXfo').setValue(xfo);
+      scaleHandles.addChild(scaleXWidget);
+    }
+    {
+      const scaleYWidget = new LinearScaleHandle(
+        'scaleY',
+        scaleHandleLength,
+        thickness,
+        green
+      );
+      const xfo = new zeaEngine.Xfo();
+      xfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * -0.5);
+      scaleYWidget.getParameter('LocalXfo').setValue(xfo);
+      scaleHandles.addChild(scaleYWidget);
+    }
+    {
+      const scaleZWidget = new LinearScaleHandle(
+        'scaleZ',
+        scaleHandleLength,
+        thickness,
+        blue
+      );
+      scaleHandles.addChild(scaleZWidget);
+    }
+  }
+
+  /**
+   * Calculate the global Xfo for the handls.
+   */
+  _cleanGlobalXfo(prevValue) {
+    const parentItem = this.getParentItem();
+    if (parentItem !== undefined) {
+      const parentXfo = parentItem.getGlobalXfo().clone();
+      parentXfo.sc.set(1, 1, 1);
+      return parentXfo.multiply(this.__localXfoParam.getValue())
+    } else return this.__localXfoParam.getValue()
+  }
+
+  /**
+   * The showHandles method.
+   * @param {any} name - The name param.
+   * @return {any} The return value.
+   */
+  showHandles(name) {
+    this.traverse((item) => {
+      if (item != this) {
+        item.setVisible(false);
+        return false
+      }
+    });
+
+    const child = this.getChildByName(name);
+    if (child) child.setVisible(true);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   */
+  setTargetParam(param) {
+    this.param = param;
+    this.traverse((item) => {
+      if (item instanceof Handle) item.setTargetParam(param, false);
+    });
+  }
+}
+
+/** Class representing a selection group */
+class SelectionGroup extends zeaEngine.Group {
+  constructor(options) {
+    super();
+
+    let selectionColor;
+    let subtreeColor;
+    if (options.selectionOutlineColor)
+      selectionColor = options.selectionOutlineColor;
+    else {
+      selectionColor = new zeaEngine.Color('#03E3AC');
+      selectionColor.a = 0.1;
+    }
+    if (options.branchSelectionOutlineColor)
+      subtreeColor = options.branchSelectionOutlineColor;
+    else {
+      subtreeColor = selectionColor.lerp(new zeaEngine.Color('white'), 0.5);
+      subtreeColor.a = 0.1;
+    }
+
+    this.getParameter('HighlightColor').setValue(selectionColor);
+    this.addParameter(new zeaEngine.ColorParameter('SubtreeHighlightColor', subtreeColor));
+
+    this.propagatingSelectionToItems = options.setItemsSelected != false;
+    this.getParameter('InitialXfoMode').setValue(
+      zeaEngine.Group.INITIAL_XFO_MODES.average
+    );
+    this.__itemsParam.setFilterFn((item) => item instanceof zeaEngine.BaseItem);
+  }
+
+  clone(flags) {
+    const cloned = new SelectionGroup();
+    cloned.copyFrom(this, flags);
+    return cloned
+  }
+
+  rebindInitialXfos() {
+    const items = Array.from(this.__itemsParam.getValue());
+    items.forEach((item, index) => {
+      if (item instanceof zeaEngine.TreeItem) {
+        this.__initialXfos[index] = item.getGlobalXfo();
+      }
+    });
+  }
+
+  /**
+   * The getSelectionOutlineColor method.
+   * @return {any} - The return value.
+  getSelectionOutlineColor() {
+    return this.selectionOutlineColor
+  }
+   */
+
+  /**
+   * The setSelectionOutlineColor method.
+   * @param {any} color - The color param.
+  setSelectionOutlineColor(color) {
+    this.selectionOutlineColor = color
+    subtreeColor = color.lerp(
+      new Color('white'),
+      0.5
+    )
+    subtreeColor.a = 0.1
+  }
+   */
+
+  // eslint-disable-next-line require-jsdoc
+  __bindItem(item, index) {
+    if (this.propagatingSelectionToItems) item.setSelected(this);
+
+    const signalIndices = {};
+
+    if (item instanceof zeaEngine.TreeItem) {
+      const highlightColor = this.getParameter('HighlightColor').getValue();
+      highlightColor.a = this.getParameter('HighlightFill').getValue();
+      const subTreeColor = this.getParameter('SubtreeHighlightColor').getValue();
+      item.addHighlight('selected' + this.getId(), highlightColor, false);
+      item.getChildren().forEach((childItem) => {
+        if (childItem instanceof zeaEngine.TreeItem)
+          childItem.addHighlight(
+            'branchselected' + this.getId(),
+            subTreeColor,
+            true
+          );
+      });
+
+      signalIndices.globalXfoChangedIndex = item.on('globalXfoChanged',
+        (mode) => {
+          // Then the item xfo changes, we update the group xfo.
+          if (!this.calculatingGroupXfo && !this.propagatingXfoToItems) {
+            this.__initialXfos[index] = item.getGlobalXfo();
+            this.groupXfoDirty = true;
+            this._setGlobalXfoDirty();
+          }
+          // else if (mode != ValueSetMode.OPERATOR_SETVALUE &&  mode != ValueSetMode.OPERATOR_DIRTIED)
+        }
+      );
+      this.__initialXfos[index] = item.getGlobalXfo();
+      this.groupXfoDirty = true;
+    }
+
+    this.__signalIndices[index] = signalIndices;
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __unbindItem(item, index) {
+    if (this.propagatingSelectionToItems) item.setSelected(false);
+
+    if (item instanceof zeaEngine.TreeItem) {
+      item.removeHighlight('selected' + this.getId());
+      item.getChildren().forEach((childItem) => {
+        if (childItem instanceof zeaEngine.TreeItem)
+          childItem.removeHighlight('branchselected' + this.getId(), true);
+      });
+
+      item.removeListenerById('globalXfoChanged',
+        this.__signalIndices[index].globalXfoChangedIndex
+      );
+
+      this.__initialXfos.splice(index, 1);
+      this.groupXfoDirty = true;
+    }
+
+    this.__signalIndices.splice(index, 1);
+  }
+
+  /**
+   * The _propagateDirtyXfoToItems method.
+   * @private
+   */
+  _propagateDirtyXfoToItems() {
+    if (this.groupXfoDirty || this.calculatingGroupXfo) return
+
+    const items = Array.from(this.__itemsParam.getValue());
+    // Only after all the items are resolved do we have an invXfo and we can tranform our items.
+    if (
+      !this.calculatingGroupXfo &&
+      items.length > 0 &&
+      this.invGroupXfo &&
+      !this.dirty
+    ) {
+      const xfo = this.__globalXfoParam.getValue();
+      const delta = xfo.multiply(this.invGroupXfo);
+
+      this.propagatingXfoToItems = true; // Note: selection group needs this set.
+      const setGlobal = (item, initialXfo) => {
+        const param = item.getParameter('GlobalXfo');
+        const result = delta.multiply(initialXfo);
+        param.setValue(result);
+      };
+      items.forEach((item, index) => {
+        if (item instanceof zeaEngine.TreeItem) {
+          setGlobal(item, this.__initialXfos[index]);
+        }
+      });
+      this.propagatingXfoToItems = false;
+    }
+  }
+}
+
+/** Class representing a selection change.
+ * @extends Change
+ */
+class SelectionChange extends Change {
+  /**
+   * Create a selection change.
+   * @param {any} selectionManager - The selectionManager value.
+   * @param {any} prevSelection - The prevSelection value.
+   * @param {any} newSelection - The newSelection value.
+   */
+  constructor(selectionManager, prevSelection, newSelection) {
+    super('SelectionChange');
+    this.__selectionManager = selectionManager;
+    this.__prevSelection = prevSelection;
+    this.__newSelection = newSelection;
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    this.__selectionManager.setSelection(this.__prevSelection, false);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    this.__selectionManager.setSelection(this.__newSelection, false);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} appData - The appData param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = super.toJSON(context);
+
+    const itemPaths = [];
+    for (const treeItem of this.__newSelection) {
+      itemPaths.push(treeItem.getPath());
+    }
+    j.itemPaths = itemPaths;
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} context - The context param.
+   */
+  fromJSON(j, context) {
+    super.fromJSON(j, context);
+
+    this.__selectionManager = context.appData.selectionManager;
+    this.__prevSelection = new Set(this.__selectionManager.getSelection());
+
+    const sceneRoot = context.appData.scene.getRoot();
+    const newSelection = new Set();
+    for (const itemPath of j.itemPaths) {
+      newSelection.add(sceneRoot.resolvePath(itemPath, 1));
+    }
+    this.__newSelection = newSelection;
+
+    this.__selectionManager.setSelection(this.__newSelection, false);
+  }
+}
+
+UndoRedoManager.registerChange('SelectionChange', SelectionChange);
+
+/** Class representing a toggle selection visibility.
+ * @extends Change
+ */
+class ToggleSelectionVisibility extends Change {
+  /**
+   * Create a toggle selection visibilit.
+   * @param {any} selection - The selection value.
+   * @param {any} state - The state value.
+   */
+  constructor(selection, state) {
+    super('Selection Visibility Change');
+    this.selection = selection;
+    this.state = state;
+    this.do(this.state);
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    this.do(!this.state);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    this.do(this.state);
+  }
+
+  /**
+   * The do method.
+   * @param {any} state - The state param.
+   */
+  do(state) {
+    for (const treeItem of this.selection) {
+      treeItem.getParameter('Visible').setValue(state);
+    }
+  }
+}
+
+UndoRedoManager.registerChange(
+  'ToggleSelectionVisibility',
+  ToggleSelectionVisibility
+);
+
+/** Class representing a selection manager */
+class SelectionManager extends zeaEngine.EventEmitter {
+  /**
+   * Create a selection manager.
+   * @param {object} options - The options object.
+   * @param {object} appData - The appData value.
+   */
+  constructor(appData, options = {}) {
+    super();
+    this.appData = appData;
+    this.leadSelection = undefined;
+    this.selectionGroup = new SelectionGroup(options);
+
+    if (options.enableXfoHandles === true) {
+      const size = 0.1;
+      const thickness = size * 0.02;
+      this.xfoHandle = new XfoHandle(size, thickness);
+      this.xfoHandle.setTargetParam(
+        this.selectionGroup.getParameter('GlobalXfo'),
+        false
+      );
+      this.xfoHandle.setVisible(false);
+      // this.xfoHandle.showHandles('Translate')
+      // this.xfoHandle.showHandles('Rotate')
+      // this.xfoHandle.showHandles('Scale')
+      this.selectionGroup.addChild(this.xfoHandle);
+    }
+
+    if (this.appData.renderer) {
+      this.setRenderer(this.appData.renderer);
+    }
+  }
+  
+  /**
+   * The setRenderer method.
+   * @param {any} renderer - The renderer param.
+   */
+  setRenderer(renderer) {
+    this.__renderer = renderer;
+    this.__renderer.addTreeItem(this.selectionGroup);
+  }
+
+
+  /**
+   * The setRenderer method.
+   * @param {any} renderer - The renderer param.
+   */
+  setXfoMode(mode) {
+    if (this.xfoHandle) {
+      this.selectionGroup.rebindInitialXfos();
+      this.selectionGroup.getParameter('InitialXfoMode').setValue(mode);
+    }
+  }
+
+  
+  /**
+   * The setRenderer method.
+   * @param {any} renderer - The renderer param.
+   */
+  showHandles(mode) {
+    if (this.xfoHandle && this.currMode != mode) {
+      this.currMode = mode;
+      // eslint-disable-next-line guard-for-in
+      for (const key in this.handleGroup) {
+        this.handleGroup[key].emit(mode == key);
+      }
+      this.xfoHandle.showHandles(mode);
+    }
+  };
+
+  /**
+   * updateHandleVisiblity determines of the Xfo Manipulation
+   * handle should be displayed or not.
+   */
+  updateHandleVisiblity() {
+    if (!this.xfoHandle) return
+    const selection = this.selectionGroup.getItems();
+    const visible = Array.from(selection).length > 0;
+    this.xfoHandle.setVisible(visible);
+    this.__renderer.requestRedraw();
+  }
+
+  /**
+   * The getSelection method.
+   * @return {any} The return value.
+   */
+  getSelection() {
+    return this.selectionGroup.getItems()
+  }
+
+  /**
+   * The setSelection method.
+   * @param {any} newSelection - The newSelection param.
+   */
+  setSelection(newSelection, createUndo = true) {
+    const selection = new Set(this.selectionGroup.getItems());
+    const prevSelection = new Set(selection);
+    for (const treeItem of newSelection) {
+      if (!selection.has(treeItem)) {
+        // treeItem.setSelected(true);
+        selection.add(treeItem);
+      }
+    }
+    for (const treeItem of selection) {
+      if (!newSelection.has(treeItem)) {
+        // treeItem.setSelected(false);
+        selection.delete(treeItem);
+      }
+    }
+
+    this.selectionGroup.setItems(selection);
+
+    // Deselecting can change the lead selected item.
+    if (selection.size > 0)
+      this.__setLeadSelection(selection.values().next().value);
+    else this.__setLeadSelection();
+    this.updateHandleVisiblity();
+
+    if (createUndo) {
+      const change = new SelectionChange(this, prevSelection, selection);
+      if (this.appData.undoRedoManager)
+        this.appData.undoRedoManager.addChange(change);
+    }
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __setLeadSelection(treeItem) {
+    if (this.leadSelection != treeItem) {
+      this.leadSelection = treeItem;
+      this.emit('leadSelectionChanged', { treeItem });
+    }
+  }
+
+  /**
+   * The toggleItemSelection method.
+   * @param {any} treeItem - The treeItem param.
+   * @param {boolean} replaceSelection - The replaceSelection param.
+   */
+  toggleItemSelection(treeItem, replaceSelection = true) {
+    const selection = new Set(this.selectionGroup.getItems());
+    const prevSelection = new Set(selection);
+
+    // Avoid clearing the selection when we have the
+    // item already selected and are deselecting it.
+    // (to clear all selection)
+    if (replaceSelection && !(selection.size == 1 && selection.has(treeItem))) {
+      let clear = true;
+      if (selection.has(treeItem)) {
+        let count = 1;
+        treeItem.traverse((subTreeItem) => {
+          if (selection.has(subTreeItem)) {
+            count++;
+          }
+        });
+        // Note: In some cases, the item is currently selected, and
+        // its children make up all the selected items. In that case
+        // the user intends to deselect the item and all its children.
+        // Avoid cleaning here, so the deselection can occur.
+        clear = count != selection.size;
+      }
+
+      if (clear) {
+        // Array.from(selection).forEach(item => {
+        //   item.setSelected(false);
+        // });
+        selection.clear();
+      }
+    }
+
+    let sel;
+    if (!selection.has(treeItem)) {
+      // treeItem.setSelected(true);
+      selection.add(treeItem);
+      sel = true;
+    } else {
+      // treeItem.setSelected(false);
+      selection.delete(treeItem);
+      sel = false;
+    }
+
+    // const preExpandSelSize = selection.size;
+
+    // Now expand the selection to the subtree.
+    // treeItem.traverse((subTreeItem)=>{
+    //   if (sel) {
+    //     if(!selection.has(subTreeItem)) {
+    //       // subTreeItem.setSelected(true);
+    //       selection.add(subTreeItem);
+    //       // this.selectionGroup.addItem(treeItem);
+    //     }
+    //   }
+    //   else {
+    //     if(selection.has(subTreeItem)) {
+    //       subTreeItem.setSelected(false);
+    //       selection.delete(subTreeItem);
+    //       // this.selectionGroup.removeItem(treeItem);
+    //     }
+    //   }
+    // })
+
+    this.selectionGroup.setItems(selection);
+
+    if (sel && selection.size === 1) {
+      this.__setLeadSelection(treeItem);
+    } else if (!sel) {
+      // Deselecting can change the lead selected item.
+      if (selection.size === 1)
+        this.__setLeadSelection(selection.values().next().value);
+      else if (selection.size === 0) this.__setLeadSelection();
+    }
+
+    const change = new SelectionChange(this, prevSelection, selection);
+    if (this.appData.undoRedoManager)
+      this.appData.undoRedoManager.addChange(change);
+
+    this.updateHandleVisiblity();
+    this.emit('selectionChanged', { prevSelection, selection });
+  }
+
+  /**
+   * The clearSelection method.
+   * @param {boolean} newChange - The newChange param.
+   * @return {any} The return value.
+   */
+  clearSelection(newChange = true) {
+    const selection = new Set(this.selectionGroup.getItems());
+    if (selection.size == 0) return false
+    let prevSelection;
+    if (newChange) {
+      prevSelection = new Set(selection);
+    }
+    // for (const treeItem of selection) {
+    //   treeItem.setSelected(false);
+    // }
+    selection.clear();
+    this.selectionGroup.setItems(selection);
+    this.updateHandleVisiblity();
+    if (newChange) {
+      const change = new SelectionChange(this, prevSelection, selection);
+      if (this.appData.undoRedoManager)
+        this.appData.undoRedoManager.addChange(change);
+      this.emit('selectionChanged', { selection, prevSelection });
+    }
+    return true
+  }
+
+  /**
+   * The selectItems method.
+   * @param {any} treeItems - The treeItems param.
+   * @param {boolean} replaceSelection - The replaceSelection param.
+   */
+  selectItems(treeItems, replaceSelection = true) {
+    const selection = new Set(this.selectionGroup.getItems());
+    const prevSelection = new Set(selection);
+
+    if (replaceSelection) {
+      selection.clear();
+    }
+
+    for (const treeItem of treeItems) {
+      if (!treeItem.getSelected()) {
+        selection.add(treeItem);
+      }
+    }
+
+    const change = new SelectionChange(this, prevSelection, selection);
+
+    if (this.appData.undoRedoManager)
+      this.appData.undoRedoManager.addChange(change);
+
+    this.selectionGroup.setItems(selection);
+    if (selection.size === 1) {
+      this.__setLeadSelection(selection.values().next().value);
+    } else if (selection.size === 0) {
+      this.__setLeadSelection();
+    }
+    this.updateHandleVisiblity();
+    this.emit('selectionChanged', { prevSelection, selection });
+  }
+
+  /**
+   * The deselectItems method.
+   * @param {any} treeItems - The treeItems param.
+   */
+  deselectItems(treeItems) {
+    const selection = this.selectionGroup.getItems();
+    const prevSelection = new Set(selection);
+
+    for (const treeItem of treeItems) {
+      if (treeItem.getSelected()) {
+        // treeItem.setSelected(false);
+        selection.delete(selectedParam);
+        // treeItem.traverse((subTreeItem)=>{
+        //   if(!selection.has(subTreeItem)) {
+        //     subTreeItem.setSelected(false);
+        //     selection.delete(treeItem);
+        //   }
+        // })
+      }
+    }
+
+    this.selectionGroup.setItems(selection);
+    const change = new SelectionChange(this, prevSelection, selection);
+
+    if (this.appData.undoRedoManager)
+      this.appData.undoRedoManager.addChange(change);
+
+    if (selection.size === 1) {
+      this.__setLeadSelection(selection.values().next().value);
+    } else if (selection.size === 0) {
+      this.__setLeadSelection();
+    }
+    this.updateHandleVisiblity();
+    this.emit('selectionChanged', { prevSelection, selection });
+  }
+
+  /**
+   * The toggleSelectionVisiblity method.
+   */
+  toggleSelectionVisiblity() {
+    if (this.leadSelection) {
+      const selection = this.selectionGroup.getItems();
+      const state = !this.leadSelection.getVisible();
+      const change = new ToggleSelectionVisibility(selection, state);
+      if (this.appData.undoRedoManager)
+        this.appData.undoRedoManager.addChange(change);
+    }
+  }
+
+  // ////////////////////////////////////
+  //
+
+  /**
+   * The startPickingMode method.
+   * @param {any} label - The label param.
+   * @param {any} fn - The fn param.
+   * @param {any} filterFn - The filterFn param.
+   * @param {any} count - The count param.
+   */
+  startPickingMode(label, fn, filterFn, count) {
+    // Display this in a status bar.
+    console.log(label);
+    this.__pickCB = fn;
+    this.__pickFilter = filterFn;
+    this.__pickCount = count;
+    this.__picked = [];
+  }
+
+  /**
+   * The pickingFilter method.
+   * @param {any} item - The item param.
+   * @return {any} The return value.
+   */
+  pickingFilter(item) {
+    return this.__pickFilter(item)
+  }
+
+  /**
+   * The pickingModeActive method.
+   * @return {any} The return value.
+   */
+  pickingModeActive() {
+    return this.__pickCB != undefined
+  }
+
+  /**
+   * The cancelPickingMode method.
+   */
+  cancelPickingMode() {
+    this.__pickCB = undefined;
+  }
+
+  /**
+   * The pick method.
+   * @param {any} item - The item param.
+   */
+  pick(item) {
+    if (this.__pickCB) {
+      if (Array.isArray(item)) {
+        if (this.__pickFilter)
+          this.__picked = this.__picked.concat(item.filter(this.__pickFilter));
+        else this.__picked = this.__picked.concat(item);
+      } else {
+        if (this.__pickFilter && !this.__pickFilter(item)) return
+        this.__picked.push(item);
+      }
+      if (this.__picked.length == this.__pickCount) {
+        this.__pickCB(this.__picked);
+        this.__pickCB = undefined;
+      }
+    }
+  }
+}
+
+/**
+ * Class representing a treeItemeter value change.
+ * @extends Change
+ */
+class TreeItemAddChange extends Change {
+  /**
+   * Create a TreeItemAddChange.
+   * @treeItem {any} treeItem - The treeItem value.
+   * @treeItem {any} newValue - The newValue value.
+   */
+  constructor(treeItem, owner, selectionManager) {
+    if (treeItem) {
+      super(treeItem.getName() + ' Added');
+      this.treeItem = treeItem;
+      this.owner = owner;
+      this.selectionManager = selectionManager;
+      this.prevSelection = new Set(this.selectionManager.getSelection());
+      this.treeItemIndex = this.owner.addChild(this.treeItem);
+      this.selectionManager.setSelection(new Set([this.treeItem]), false);
+
+      this.treeItem.addRef(this);
+    } else {
+      super();
+    }
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    if (this.treeItem instanceof zeaEngine.Operator) {
+      const op = this.treeItem;
+      op.detach();
+    } else if (this.treeItem instanceof zeaEngine.TreeItem) {
+      this.treeItem.traverse((subTreeItem) => {
+        if (subTreeItem instanceof zeaEngine.Operator) {
+          const op = subTreeItem;
+          op.detach();
+        }
+      }, false);
+    }
+    this.owner.removeChild(this.treeItemIndex);
+    if (this.selectionManager)
+      this.selectionManager.setSelection(this.prevSelection, false);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    // Now re-attach all the detached operators.
+    if (this.treeItem instanceof zeaEngine.Operator) {
+      const op = this.treeItem;
+      op.reattach();
+    } else if (subTreeItem instanceof zeaEngine.TreeItem) {
+      this.treeItem.traverse((subTreeItem) => {
+        if (subTreeItem instanceof zeaEngine.Operator) {
+          const op = subTreeItem;
+          op.reattach();
+        }
+      }, false);
+    }
+    this.owner.addChild(this.treeItem);
+    if (this.selectionManager)
+      this.selectionManager.setSelection(new Set([this.treeItem]), false);
+  }
+
+  /**
+   * The toJSON method.
+   * @treeItem {any} context - The context treeItem.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = {
+      name: this.name,
+      treeItem: this.treeItem.toJSON(context),
+      treeItemPath: this.treeItem.getPath(),
+      treeItemIndex: this.treeItemIndex,
+    };
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @treeItem {any} j - The j treeItem.
+   * @treeItem {any} context - The context treeItem.
+   */
+  fromJSON(j, context) {
+    const treeItem = zeaEngine.sgFactory.constructClass(j.treeItem.type);
+    if (!treeItem) {
+      console.warn('resolvePath is unable to conostruct', j.treeItem);
+      return
+    }
+    this.name = j.name;
+    this.treeItem = treeItem;
+    this.treeItem.addRef(this);
+
+    this.treeItem.fromJSON(j.treeItem, context);
+    this.treeItemIndex = this.owner.addChild(this.treeItem, false, false);
+  }
+
+  destroy() {
+    this.treeItem.removeRef(this);
+  }
+}
+
+UndoRedoManager.registerChange('TreeItemAddChange', TreeItemAddChange);
+
+/**
+ * Class representing a treeItemeter value change.
+ * @extends Change
+ */
+class TreeItemsRemoveChange extends Change {
+  /**
+   * Create a TreeItemsRemoveChange.
+   * @treeItem {any} treeItem - The treeItem value.
+   * @treeItem {any} newValue - The newValue value.
+   */
+  constructor(items, appData) {
+    super();
+    this.items = [];
+    this.itemOwners = [];
+    this.itemPaths = [];
+    this.itemIndices = [];
+    if (items) {
+      this.selectionManager = appData.selectionManager;
+      this.prevSelection = new Set(this.selectionManager.getSelection());
+      this.items = items;
+      this.newSelection = new Set(this.prevSelection);
+
+      const itemNames = [];
+      this.items.forEach((item) => {
+        const owner = item.getOwner();
+        const itemIndex = owner.getChildIndex(item);
+        itemNames.push(item.getName());
+        item.addRef(this);
+        this.itemOwners.push(owner);
+        this.itemPaths.push(item.getPath());
+        this.itemIndices.push(itemIndex);
+
+        if (this.selectionManager && this.newSelection.has(item))
+          this.newSelection.delete(item);
+        if (item instanceof zeaEngine.Operator) {
+          const op = item;
+          op.detach();
+        } else if (item instanceof zeaEngine.TreeItem) {
+          item.traverse((subTreeItem) => {
+            if (subTreeItem instanceof zeaEngine.Operator) {
+              const op = subTreeItem;
+              op.detach();
+            }
+            if (this.selectionManager && this.newSelection.has(subTreeItem))
+              this.newSelection.delete(subTreeItem);
+          }, false);
+        }
+
+        owner.removeChild(itemIndex);
+      });
+      this.selectionManager.setSelection(this.newSelection, false);
+
+      this.name = itemNames + ' Deleted';
+    }
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    this.items.forEach((item, index) => {
+      this.itemOwners[index].insertChild(
+        item,
+        this.itemIndices[index],
+        false,
+        false
+      );
+
+      // Now re-attach all the detached operators.
+      if (item instanceof zeaEngine.Operator) {
+        const op = item;
+        op.reattach();
+      } else if (subTreeItem instanceof zeaEngine.TreeItem) {
+        item.traverse((subTreeItem) => {
+          if (subTreeItem instanceof zeaEngine.Operator) {
+            const op = subTreeItem;
+            op.reattach();
+          }
+        }, false);
+      }
+    });
+    if (this.selectionManager)
+      this.selectionManager.setSelection(this.prevSelection, false);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    if (this.selectionManager)
+      this.selectionManager.setSelection(this.newSelection, false);
+
+    // Now re-detach all the operators.
+    this.items.forEach((item, index) => {
+      this.itemOwners[index].removeChild(this.itemIndices[index]);
+
+      if (item instanceof zeaEngine.Operator) {
+        const op = item;
+        op.detach();
+      } else if (subTreeItem instanceof zeaEngine.TreeItem) {
+        item.traverse((subTreeItem) => {
+          if (subTreeItem instanceof zeaEngine.Operator) {
+            const op = subTreeItem;
+            op.detach();
+          }
+        }, false);
+      }
+    });
+  }
+
+  /**
+   * The toJSON method.
+   * @treeItem {any} appData - The appData treeItem.
+   * @return {any} The return value.
+   */
+  toJSON(appData) {
+    const j = {
+      name: this.name,
+      items: [],
+      itemPaths: this.itemPaths,
+      itemIndices: this.itemIndices,
+    };
+    this.items.forEach((item) => {
+      j.items.push(item.toJSON());
+    });
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @treeItem {any} j - The j treeItem.
+   * @treeItem {any} appData - The appData treeItem.
+   */
+  fromJSON(j, appData) {
+    this.name = j.name;
+    j.itemPaths.forEach((itemPath) => {
+      const item = appData.scene.getRoot().resolvePath(itemPath, 1);
+      if (!item) {
+        console.warn('resolvePath is unable to resolve', itemPath);
+        return
+      }
+      const owner = item.getOwner();
+      this.itemOwners.push(owner);
+      this.itemPaths.push(item.getPath());
+      this.itemIndices.push(owner.getChildIndex(item));
+    });
+  }
+
+  /**
+   * The destroy method cleans up any data requiring manual cleanup.
+   * Deleted items still on the undo stack are then flushed and any
+   * GPU resoruces cleaned up.
+   */
+  destroy() {
+    this.items.forEach((item) => item.removeRef(this));
+  }
+}
+
+UndoRedoManager.registerChange('TreeItemsRemoveChange', TreeItemsRemoveChange);
+
+/**
+ * Class representing a treeItemeter value change.
+ * @extends Change
+ */
+class TreeItemMoveChange extends Change {
+  /**
+   * Create a TreeItemMoveChange.
+   * @treeItem {any} treeItem - The treeItem value.
+   * @treeItem {any} newOwner - The newOwner value.
+   */
+  constructor(treeItem, newOwner) {
+    if (treeItem) {
+      console.log('TreeItemMoveChange');
+      super(treeItem.getName() + ' Added');
+      this.treeItem = treeItem;
+      this.oldOwner = this.treeItem.getOwner();
+      this.oldOwnerIndex = this.oldOwner.getChildIndex(this.treeItem);
+      this.newOwner = newOwner;
+      this.newOwner.addChild(this.treeItem, true);
+    } else {
+      super();
+    }
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    this.oldOwner.insertChild(this.treeItem, this.oldOwnerIndex, true);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    this.newOwner.addChild(this.treeItem, true);
+  }
+
+  /**
+   * The toJSON method.
+   * @treeItem {any} context - The context treeItem.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = {
+      name: this.name,
+      treeItemPath: this.treeItem.getPath(),
+      newOwnerPath: this.newOwner.getPath(),
+    };
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @treeItem {any} j - The j treeItem.
+   * @treeItem {any} context - The context treeItem.
+   */
+  fromJSON(j, context) {
+    const treeItem = appData.scene.getRoot().resolvePath(j.treeItemPath, 1);
+    if (!treeItem) {
+      console.warn('resolvePath is unable to resolve', j.treeItemPath);
+      return
+    }
+    const newOwner = appData.scene.getRoot().resolvePath(j.newOwnerPath, 1);
+    if (!newOwner) {
+      console.warn('resolvePath is unable to resolve', j.newOwnerPath);
+      return
+    }
+    this.name = j.name;
+    this.treeItem = treeItem;
+    this.newOwner = newOwner;
+
+    this.oldOwner = this.treeItem.getOwner();
+    this.oldOwnerIndex = this.oldOwner.getChildIndex(this.treeItem);
+    this.newOwner.addChild(this.treeItem, true);
+  }
+}
+
+UndoRedoManager.registerChange('TreeItemMoveChange', TreeItemMoveChange);
+
+/** Class representing a tool manager. */
+class ToolManager {
+  /**
+   * Create a tool manager.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    this.__toolStack = [];
+    this.appData = appData;
+
+    this.avatarPointerVisible = false;
+    this.avatarPointerHighlighted = false;
+  }
+
+  /**
+   * The insertTool method.
+   * @param {any} tool - The tool param.
+   * @param {any} index - The index param.
+   */
+  insertTool(tool, index) {
+    this.__toolStack.splice(index, 0, tool);
+    tool.install(index);
+  }
+
+  /**
+   * The insertToolBefore method.
+   * @param {any} tool - The tool param.
+   * @param {any} beforeTool - The beforeTool param.
+   * @return {any} The return value.
+   */
+  insertToolBefore(tool, beforeTool) {
+    // Note: when activating new tools in VR, we
+    // can insert the new tool below the VRUI tool,
+    // so that once the VR UI is closed, it becomes
+    // the new active tool.
+    const index = this.__toolStack.indexOf(beforeTool) + 1;
+    this.__toolStack.splice(index - 1, 0, tool);
+    tool.install(index);
+    return index
+  }
+
+  /**
+   * The insertToolAfter method.
+   * @param {any} tool - The tool param.
+   * @param {any} afterTool - The afterTool param.
+   * @return {any} The return value.
+   */
+  insertToolAfter(tool, afterTool) {
+    const index = this.__toolStack.indexOf(afterTool) + 1;
+    this.__toolStack.splice(index, 0, tool);
+    tool.install(index);
+    if (index == this.__toolStack.length) {
+      tool.activateTool();
+    }
+    return index
+  }
+
+  /**
+   * The getToolIndex method.
+   * @param {any} tool - The tool param.
+   * @return {any} The return value.
+   */
+  getToolIndex(tool) {
+    return this.__toolStack.indexOf(tool)
+  }
+
+  /**
+   * The removeTool method.
+   * @param {any} index - The index param.
+   */
+  removeTool(index) {
+    const tool = this.__toolStack[index];
+    this.__toolStack.splice(index, 1);
+    tool.uninstall();
+    if (index == this.__toolStack.length) {
+      tool.deactivateTool();
+
+      const nextTool = this.currTool();
+      if (nextTool) nextTool.activateTool();
+      else {
+        // Make sure to reset the pointer in case any tool
+        // didn't close correctly.
+        this.appData.renderer.getDiv().style.cursor = 'pointer';
+      }
+    }
+  }
+
+  /**
+   * The removeToolByHandle method.
+   * @param {any} tool - The tool param.
+   */
+  removeToolByHandle(tool) {
+    this.removeTool(this.getToolIndex(tool));
+  }
+
+  /**
+   * The pushTool method.
+   * @param {any} tool - The tool param.
+   * @return {any} The return value.
+   */
+  pushTool(tool) {
+    const prevTool = this.currTool();
+    if (prevTool) {
+      if (tool == prevTool) {
+        console.warn('Tool Already Pushed on the stack:', tool.constructor.name);
+        return
+      } else {
+        // Note: only the lead tool is 'active' and displaying an icon.
+        // A tool can recieve events even if not active, if it is on
+        // the stack.
+        prevTool.deactivateTool();
+      }
+    }
+
+    this.__toolStack.push(tool);
+    tool.install(this.__toolStack.length - 1);
+    tool.activateTool();
+
+    console.log('ToolManager.pushTool:', tool.constructor.name);
+
+    return this.__toolStack.length - 1
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __removeCurrTool() {
+    if (this.__toolStack.length > 0) {
+      const prevTool = this.__toolStack.pop();
+      prevTool.deactivateTool();
+      prevTool.uninstall();
+    }
+  }
+
+  /**
+   * The popTool method.
+   */
+  popTool() {
+    this.__removeCurrTool();
+    const tool = this.currTool();
+    if (tool) tool.activateTool();
+    // console.log("ToolManager.popTool:", prevTool.constructor.name, (tool ? tool.constructor.name : ''))
+  }
+
+  /**
+   * The replaceCurrentTool method.
+   * @param {any} tool - The tool param.
+   */
+  replaceCurrentTool(tool) {
+    this.__removeCurrTool();
+    this.__toolStack.push(tool);
+    tool.install(this.__toolStack.length - 1);
+    tool.activateTool();
+  }
+
+  /**
+   * The currTool method.
+   * @return {any} The return value.
+   */
+  currTool() {
+    return this.__toolStack[this.__toolStack.length - 1]
+  }
+
+  /**
+   * The currToolName method.
+   * @return {any} The return value.
+   */
+  currToolName() {
+    return this.__toolStack[this.__toolStack.length - 1].getName()
+  }
+
+  /**
+   * The bind method.
+   * @param {any} renderer - The renderer param.
+   */
+  bind(renderer) {
+    const viewport = renderer.getViewport();
+
+    this.mouseDownId = viewport.on('mouseDown', this.onMouseDown.bind(this));
+    this.mouseMoveId = viewport.on('mouseMove', this.onMouseMove.bind(this));
+    this.mouseUpId = viewport.on('mouseUp', this.onMouseUp.bind(this));
+    this.mouseLeaveId = viewport.on('mouseLeave', 
+      this.onMouseLeave.bind(this)
+    );
+    this.mouseDoubleClickedId = viewport.on('mouseDoubleClicked', 
+      this.onDoubleClick.bind(this)
+    );
+    this.mouseWheelId = viewport.on('mouseWheel', this.onWheel.bind(this));
+
+    // ///////////////////////////////////
+    // Keyboard events
+    this.keyDownId = viewport.on('keyDown', this.onKeyDown.bind(this));
+    this.keyUpId = viewport.on('keyUp', this.onKeyUp.bind(this));
+    this.keyPressedId = viewport.on('keyPressed', 
+      this.onKeyPressed.bind(this)
+    );
+
+    // ///////////////////////////////////
+    // Touch events
+    this.touchStartId = viewport.on('touchStart', 
+      this.onTouchStart.bind(this)
+    );
+    this.touchMoveId = viewport.on('touchMove', this.onTouchMove.bind(this));
+    this.touchEndId = viewport.on('touchEnd', this.onTouchEnd.bind(this));
+    this.touchCancelId = viewport.on('touchCancel', 
+      this.onTouchCancel.bind(this)
+    );
+    this.doubleTappedId = viewport.on('doubleTapped', 
+      this.onDoubleTap.bind(this)
+    );
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // ///////////////////////////////////
+      // VRController events
+      this.controllerDownId = xrvp.on('controllerButtonDown', 
+        this.onVRControllerButtonDown.bind(this)
+      );
+      this.controllerUpId = xrvp.on('controllerButtonUp', 
+        this.onVRControllerButtonUp.bind(this)
+      );
+      this.controllerDoubleClickId = xrvp.on('controllerDoubleClicked', 
+        this.onVRControllerDoubleClicked.bind(this)
+      );
+      this.onVRPoseChangedId = xrvp.on('viewChanged', 
+        this.onVRPoseChanged.bind(this)
+      );
+    });
+  }
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   */
+  onMouseDown(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    event.showPointerOnAvatar = true;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onMouseDown(event) == true) break
+    }
+
+    if (event.showPointerOnAvatar == true) {
+      if (!this.avatarPointerVisible) {
+        this.emit('movePointer', event);
+        this.avatarPointerVisible = true;
+      }
+      if (!this.avatarPointerHighlighted) {
+        this.emit('hilightPointer', event);
+        this.avatarPointerHighlighted = true;
+      }
+    } else if (this.avatarPointerVisible) {
+      this.avatarPointerVisible = false;
+      this.emit('hidePointer');
+    }
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   */
+  onMouseMove(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    event.showPointerOnAvatar = true;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onMouseMove(event) == true) break
+    }
+    if (event.showPointerOnAvatar == true) {
+      this.emit('movePointer', event);
+      this.avatarPointerVisible = true;
+    } else if (this.avatarPointerVisible) {
+      this.avatarPointerVisible = false;
+      this.emit('hidePointer');
+    }
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   */
+  onMouseUp(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    event.showPointerOnAvatar = true;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onMouseUp(event) == true) break
+    }
+    if (event.showPointerOnAvatar == true) {
+      if (this.avatarPointerHighlighted) {
+        this.emit('unhilightPointer', event);
+        this.avatarPointerHighlighted = false;
+      }
+    } else if (this.avatarPointerVisible) {
+      this.avatarPointerVisible = false;
+      this.emit('hidePointer');
+    }
+  }
+
+  /**
+   * The onMouseLeave method.
+   * @param {any} event - The event param.
+   */
+  onMouseLeave(event) {
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onMouseLeave && tool.onMouseLeave(event) == true) break
+    }
+    if (this.avatarPointerVisible) {
+      this.avatarPointerVisible = false;
+      this.emit('hidePointer');
+    }
+  }
+
+  /**
+   * The onDoubleClick method.
+   * @param {any} event - The event param.
+   */
+  onDoubleClick(event) {
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onDoubleClick(event) == true) break
+    }
+  }
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   */
+  onWheel(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onWheel(event) == true) break
+    }
+  }
+
+  // ///////////////////////////////////
+  // Keyboard events
+
+  /**
+   * The onKeyPressed method.
+   * @param {any} key - The event param.
+   * @param {any} event - The event param.
+   */
+  onKeyPressed(key, event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onKeyPressed(event, event, viewport) == true) break
+    }
+  }
+
+  /**
+   * The onKeyDown method.
+   * @param {any} key - The event param.
+   * @param {any} event - The event param.
+   */
+  onKeyDown(key, event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onKeyDown(key, event) == true) break
+    }
+  }
+
+  /**
+   * The onKeyUp method.
+   * @param {any} key - The event param.
+   * @param {any} event - The event param.
+   */
+  onKeyUp(key, event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onKeyUp(key, event) == true) break
+    }
+  }
+
+  // ///////////////////////////////////
+  // Touch events
+
+  /**
+   * The onTouchStart method.
+   * @param {any} event - The event param.
+   */
+  onTouchStart(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onTouchStart(event) == true) break
+    }
+  }
+
+  /**
+   * The onTouchMove method.
+   * @param {any} event - The event param.
+   */
+  onTouchMove(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onTouchMove(event) == true) break
+    }
+  }
+
+  /**
+   * The onTouchEnd method.
+   * @param {any} event - The event param.
+   */
+  onTouchEnd(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onTouchEnd(event) == true) break
+    }
+  }
+
+  /**
+   * The onTouchCancel method.
+   * @param {any} event - The event param.
+   */
+  onTouchCancel(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onTouchCancel(event) == true) break
+    }
+  }
+
+  /**
+   * The onDoubleTap method.
+   * @param {any} event - The event param.
+   */
+  onDoubleTap(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onDoubleTap(event) == true) break
+    }
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The __prepareEvent method.
+   * @param {any} event - The event that occurs.
+   * @private
+   */
+  __prepareEvent(event) {
+    event.undoRedoManager = this.appData.undoRedoManager;
+    event.propagating = true;
+    event.stopPropagation = () => {
+      event.propagating = false;
+    };
+  }
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonDown(event) {
+    this.__prepareEvent(event);
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onVRControllerButtonDown(event) == true) break
+      if (!event.propagating) break
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonUp(event) {
+    this.__prepareEvent(event);
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onVRControllerButtonUp(event) == true) break
+      if (!event.propagating) break
+    }
+  }
+
+  /**
+   * The onVRControllerDoubleClicked method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerDoubleClicked(event) {
+    this.__prepareEvent(event);
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onVRControllerDoubleClicked(event) == true) break
+      if (!event.propagating) break
+    }
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   */
+  onVRPoseChanged(event) {
+    this.__prepareEvent(event);
+    let i = this.__toolStack.length;
+    while (i--) {
+      const tool = this.__toolStack[i];
+      if (tool && tool.onVRPoseChanged(event) == true) break
+      if (!event.propagating) break
+    }
+  }
+
+  /**
+   * The destroy method.
+   */
+  destroy() {
+    const viewport = this.appData.renderer.getViewport();
+
+    viewport.removeListenerById('mouseDown', this.mouseDownId);
+    viewport.removeListenerById('mouseMove', this.mouseMoveId);
+    viewport.removeListenerById('mouseUp', this.mouseUpId);
+    viewport.removeListenerById('mouseLeave', this.mouseUpId);
+    viewport.removeListenerById('mouseWheel', this.mouseWheelId);
+
+    // ///////////////////////////////////
+    // Keyboard events
+    viewport.removeListenerById('keyDown', this.keyDownId);
+    viewport.removeListenerById('keyUp', this.keyUpId);
+    viewport.removeListenerById('keyPressed', this.keyPressedId);
+
+    // ///////////////////////////////////
+    // Touch events
+    viewport.removeListenerById('touchStart', this.touchStartId);
+    viewport.removeListenerById('touchMove', this.touchMoveId);
+    viewport.removeListenerById('touchEnd', this.touchEndId);
+    viewport.removeListenerById('touchCancel', this.touchCancelId);
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // ///////////////////////////////////
+      // VRController events
+      viewport.removeListenerById('controllerDown', this.controllerDownId);
+      viewport.removeListenerById('controllerUp', this.controllerUpId);
+      viewport.removeListenerById('viewChanged', this.onVRPoseChangedId);
+    });
+  }
+}
+
+/**
+ * Class representing a base tool.
+ * @extends ParameterOwner
+ */
+class BaseTool extends zeaEngine.ParameterOwner {
+  /**
+   * Create a base tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super();
+    if (!appData) console.error('App data not provided to tool');
+    this.appData = appData;
+
+    this.__params = [];
+    this.__installed = false;
+    this.__activated = false;
+  }
+
+  /**
+   * The getName method.
+   * @return {any} The return value.
+   */
+  getName() {
+    return this.constructor.name
+  }
+
+  /**
+   * The isPrimaryTool method.
+   * @return {any} The return value.
+   */
+  isPrimaryTool() {
+    return false
+  }
+
+  // ///////////////////////////////////
+  // Tools on the tool stack.
+
+  /**
+   * The installed method.
+   * @return {any} The return value.
+   */
+  installed() {
+    return this.__installed
+  }
+
+  /**
+   * The install method.
+   * @param {any} index - The index param.
+   */
+  install(index) {
+    if (this.__installed) throw new Error('Tool already installed')
+    this.index = index;
+    this.__installed = true;
+    this.emit('installChanged', { installed: this.__installed });
+  }
+
+  /**
+   * The uninstall method.
+   */
+  uninstall() {
+    this.__installed = false;
+    this.emit('installChanged', { installed: this.__installed });
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    if (this.__activated) throw new Error('Tool already activate')
+    this.__activated = true;
+    this.emit('activatedChanged', { activated: this.__activated });
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    this.__activated = false;
+    this.emit('activatedChanged', { activated: this.__activated });
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   */
+  onMouseDown(event) {}
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   */
+  onMouseMove(event) {}
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   */
+  onMouseUp(event) {}
+
+  /**
+   * The onDoubleClick method.
+   * @param {any} event - The event param.
+   */
+  onDoubleClick(event) {}
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   */
+  onWheel(event) {}
+
+  // ///////////////////////////////////
+  // Keyboard events
+
+  /**
+   * The onKeyPressed method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyPressed(key, event) {}
+
+  /**
+   * The onKeyDown method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyDown(key, event) {}
+
+  /**
+   * The onKeyUp method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyUp(key, event) {}
+
+  // ///////////////////////////////////
+  // Touch events
+
+  /**
+   * The onTouchStart method.
+   * @param {any} event - The event param.
+   */
+  onTouchStart(event) {}
+
+  /**
+   * The onTouchMove method.
+   * @param {any} event - The event param.
+   */
+  onTouchMove(event) {}
+
+  /**
+   * The onTouchEnd method.
+   * @param {any} event - The event param.
+   */
+  onTouchEnd(event) {}
+
+  /**
+   * The onTouchCancel method.
+   * @param {any} event - The event param.
+   */
+  onTouchCancel(event) {}
+
+  /**
+   * The onDoubleTap method.
+   * @param {any} event - The event param.
+   */
+  onDoubleTap(event) {}
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonDown(event) {}
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonUp(event) {}
+
+  /**
+   * The onVRControllerDoubleClicked method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerDoubleClicked(event) {}
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   */
+  onVRPoseChanged(event) {}
+}
+
+const VIEW_TOOL_MODELS = {
+  VIEWER: 0,
+  DCC: 1,
+};
+
+/**
+ * Class representing a view tool
+ * @extends BaseTool
+ */
+class ViewTool extends BaseTool {
+  /**
+   * Create an axial rotation scene widget.
+   * @param {any} appData - The appData value.
+   * @param {any} maipulationModel - The maipulationModel value.
+   */
+  constructor(appData, maipulationModel = VIEW_TOOL_MODELS.VIEWER) {
+    super(appData);
+    console.log('ViewTool:', maipulationModel);
+
+    this.__maipulationModel = maipulationModel;
+    this.__defaultMode = 'orbit';
+    this.__mode = this.__defaultMode;
+
+    this.__mouseDragDelta = new zeaEngine.Vec2();
+    this.__keyboardMovement = false;
+    this.__keysPressed = [];
+    this.__maxVel = 0.002;
+    this.__velocity = new zeaEngine.Vec3();
+
+    this.__ongoingTouches = {};
+
+    this.__orbitRateParam = this.addParameter(
+      new zeaEngine.NumberParameter('orbitRate', 1)
+    );
+    this.__dollySpeedParam = this.addParameter(
+      new zeaEngine.NumberParameter('dollySpeed', 0.02)
+    );
+    this.__mouseWheelDollySpeedParam = this.addParameter(
+      new zeaEngine.NumberParameter('mouseWheelDollySpeed', 0.002)
+    );
+
+    this.__controllerTriggersHeld = [];
+
+  }
+
+  // /////////////////////////////////////
+  //
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+    console.log('activateTool.ViewTool');
+
+    this.appData.renderer.getDiv().style.cursor = 'default';
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      if (!this.vrControllerToolTip) {
+        this.vrControllerToolTip = new zeaEngine.Sphere(0.02 * 0.75);
+        this.vrControllerToolTipMat = new zeaEngine.Material('Cross', 'FlatSurfaceShader');
+        this.vrControllerToolTipMat
+          .getParameter('BaseColor')
+          .setValue(new zeaEngine.Color('#03E3AC'));
+        this.vrControllerToolTipMat.visibleInGeomDataBuffer = false;
+      }
+      const addIconToController = (controller) => {
+        const geomItem = new zeaEngine.GeomItem(
+          'HandleToolTip',
+          this.vrControllerToolTip,
+          this.vrControllerToolTipMat
+        );
+        controller.getTipItem().removeAllChildren();
+        controller.getTipItem().addChild(geomItem, false);
+      };
+      for (const controller of xrvp.getControllers()) {
+        addIconToController(controller);
+      }
+      this.addIconToControllerId = xrvp.on('controllerAdded', 
+        addIconToController
+      );
+    });
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // if(this.vrControllerToolTip) {
+      //   // for(let controller of xrvp.getControllers()) {
+      //   //   controller.getTipItem().removeAllChildren();
+      //   // }
+      // }
+      xrvp.removeListenerById('controllerAdded', this.addIconToControllerId);
+    });
+  }
+
+  // /////////////////////////////////////
+  //
+
+  /**
+   * The setDefaultMode method.
+   * @param {any} mode - The mode param.
+   */
+  setDefaultMode(mode) {
+    this.__defaultMode = mode;
+  }
+
+  /**
+   * The look method.
+   * @param {any} dragVec - The dragVec param.
+   * @param {any} viewport - The viewport param.
+   */
+  look(dragVec, viewport) {
+    const focalDistance = viewport.getCamera().getFocalDistance();
+    const orbitRate =
+      this.__orbitRateParam.getValue() * zeaEngine.SystemDesc.isMobileDevice ? -1 : 1;
+
+    if (this.__keyboardMovement) {
+      const globalXfo = viewport.getCamera().getGlobalXfo();
+      this.__mouseDownCameraXfo = globalXfo.clone();
+      this.__mouseDownZaxis = globalXfo.ori.getZaxis();
+      const targetOffset = this.__mouseDownZaxis.scale(-focalDistance);
+      this.__mouseDownCameraTarget = globalXfo.tr.add(targetOffset);
+    }
+
+    const globalXfo = this.__mouseDownCameraXfo.clone();
+
+    // Orbit
+    const orbit = new zeaEngine.Quat();
+    orbit.rotateZ((dragVec.x / viewport.getWidth()) * Math.PI * orbitRate);
+    globalXfo.ori = orbit.multiply(globalXfo.ori);
+
+    // Pitch
+    const pitch = new zeaEngine.Quat();
+    pitch.rotateX((dragVec.y / viewport.getHeight()) * Math.PI * orbitRate);
+    globalXfo.ori.multiplyInPlace(pitch);
+
+    if (this.__keyboardMovement) {
+      // TODO: debug this potential regression. we now use the generic method which emits a signal.
+      // Avoid generating a signal because we have an animation frame occuring.
+      // see: onKeyPressed
+      viewport.getCamera().setGlobalXfo(globalXfo);
+    } else {
+      viewport.getCamera().setGlobalXfo(globalXfo);
+    }
+  }
+
+  /**
+   * The orbit method.
+   * @param {any} dragVec - The dragVec param.
+   * @param {any} viewport - The viewport param.
+   */
+  orbit(dragVec, viewport) {
+    const focalDistance = viewport.getCamera().getFocalDistance();
+    const orbitRate =
+      this.__orbitRateParam.getValue() * zeaEngine.SystemDesc.isMobileDevice ? -1 : 1;
+
+    if (this.__keyboardMovement) {
+      const globalXfo = viewport.getCamera().getGlobalXfo();
+      this.__mouseDownCameraXfo = globalXfo.clone();
+      this.__mouseDownZaxis = globalXfo.ori.getZaxis();
+      const targetOffset = this.__mouseDownZaxis.scale(-focalDistance);
+      this.__mouseDownCameraTarget = globalXfo.tr.add(targetOffset);
+    }
+
+    const globalXfo = this.__mouseDownCameraXfo.clone();
+
+    // Orbit
+    const orbit = new zeaEngine.Quat();
+    orbit.rotateZ((dragVec.x / viewport.getWidth()) * 2 * Math.PI * -orbitRate);
+    globalXfo.ori = orbit.multiply(globalXfo.ori);
+
+    // Pitch
+    const pitch = new zeaEngine.Quat();
+    pitch.rotateX((dragVec.y / viewport.getHeight()) * Math.PI * -orbitRate);
+    globalXfo.ori.multiplyInPlace(pitch);
+
+    globalXfo.tr = this.__mouseDownCameraTarget.add(
+      globalXfo.ori.getZaxis().scale(focalDistance)
+    );
+
+    if (this.__keyboardMovement) {
+      // TODO: debug this potential regression. we now use the generic method which emits a signal.
+      // Avoid generating a signal because we have an animation frame occuring.
+      // see: onKeyPressed
+      viewport.getCamera().setGlobalXfo(globalXfo);
+    } else {
+      viewport.getCamera().setGlobalXfo(globalXfo);
+    }
+  }
+
+  /**
+   * The pan method.
+   * @param {any} dragVec - The dragVec param.
+   * @param {any} viewport - The viewport param.
+   */
+  pan(dragVec, viewport) {
+    const focalDistance = viewport.getCamera().getFocalDistance();
+    const fovY = viewport.getCamera().getFov();
+    const xAxis = new zeaEngine.Vec3(1, 0, 0);
+    const yAxis = new zeaEngine.Vec3(0, 1, 0);
+
+    const cameraPlaneHeight = 2.0 * focalDistance * Math.tan(0.5 * fovY);
+    const cameraPlaneWidth =
+      cameraPlaneHeight * (viewport.getWidth() / viewport.getHeight());
+    const delta = new zeaEngine.Xfo();
+    delta.tr = xAxis.scale(
+      -(dragVec.x / viewport.getWidth()) * cameraPlaneWidth
+    );
+    delta.tr.addInPlace(
+      yAxis.scale((dragVec.y / viewport.getHeight()) * cameraPlaneHeight)
+    );
+
+    viewport.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(delta));
+  }
+
+  /**
+   * The dolly method.
+   * @param {any} dragVec - The dragVec param.
+   * @param {any} viewport - The viewport param.
+   */
+  dolly(dragVec, viewport) {
+    const dollyDist = dragVec.x * this.__dollySpeedParam.getValue();
+    const delta = new zeaEngine.Xfo();
+    delta.tr.set(0, 0, dollyDist);
+    viewport.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(delta));
+  }
+
+  /**
+   * The panAndZoom method.
+   * @param {any} panDelta - The panDelta param.
+   * @param {any} dragDist - The dragDist param.
+   * @param {any} viewport - The viewport param.
+   */
+  panAndZoom(panDelta, dragDist, viewport) {
+    const focalDistance = viewport.getCamera().getFocalDistance();
+    const fovY = viewport.getCamera().getFov();
+
+    const xAxis = new zeaEngine.Vec3(1, 0, 0);
+    const yAxis = new zeaEngine.Vec3(0, 1, 0);
+
+    const cameraPlaneHeight = 2.0 * focalDistance * Math.tan(0.5 * fovY);
+    const cameraPlaneWidth =
+      cameraPlaneHeight * (viewport.getWidth() / viewport.getHeight());
+    const delta = new zeaEngine.Xfo();
+    delta.tr = xAxis.scale(
+      -(panDelta.x / viewport.getWidth()) * cameraPlaneWidth
+    );
+    delta.tr.addInPlace(
+      yAxis.scale((panDelta.y / viewport.getHeight()) * cameraPlaneHeight)
+    );
+
+    const zoomDist = dragDist * focalDistance;
+    viewport.getCamera().setFocalDistance(this.__mouseDownFocalDist + zoomDist);
+    delta.tr.z += zoomDist;
+    viewport.getCamera().setGlobalXfo(this.__mouseDownCameraXfo.multiply(delta));
+  }
+
+  /**
+   * The initDrag method.
+   * @param {any} viewport - The viewport param.
+   */
+  initDrag(viewport) {
+    const focalDistance = viewport.getCamera().getFocalDistance();
+    this.__mouseDragDelta.set(0, 0);
+    this.__mouseDownCameraXfo = viewport.getCamera().getGlobalXfo().clone();
+    this.__mouseDownZaxis = viewport.getCamera().getGlobalXfo().ori.getZaxis();
+    const targetOffset = this.__mouseDownZaxis.scale(-focalDistance);
+    this.__mouseDownCameraTarget = viewport
+      .getCamera()
+      .getGlobalXfo()
+      .tr.add(targetOffset);
+    this.__mouseDownFocalDist = focalDistance;
+  }
+
+  /**
+   * The aimFocus method.
+   * @param {any} camera - The camera param.
+   * @param {any} pos - The pos param.
+   */
+  aimFocus(camera, pos) {
+    if (this.__focusIntervalId) clearInterval(this.__focusIntervalId);
+
+    const count = 20;
+    let i = 0;
+    const applyMovement = () => {
+      const initlalGlobalXfo = camera.getGlobalXfo();
+      const initlalDist = camera.getFocalDistance();
+      const dir = pos.subtract(initlalGlobalXfo.tr);
+      const dist = dir.normalizeInPlace();
+
+      const orbit = new zeaEngine.Quat();
+      const pitch = new zeaEngine.Quat();
+
+      // Orbit
+      {
+        const currDir = initlalGlobalXfo.ori.getZaxis().clone();
+        currDir.z = 0;
+        const newDir = dir.negate();
+        newDir.z = 0;
+
+        orbit.setFrom2Vectors(currDir, newDir);
+      }
+
+      // Pitch
+      {
+        const currDir = initlalGlobalXfo.ori.getZaxis().clone();
+        const newDir = dir.negate();
+        currDir.x = newDir.x;
+        currDir.y = newDir.y;
+        currDir.normalizeInPlace();
+
+        if (currDir.cross(newDir).dot(initlalGlobalXfo.ori.getXaxis()) > 0.0)
+          pitch.rotateX(currDir.angleTo(newDir));
+        else pitch.rotateX(-currDir.angleTo(newDir));
+      }
+
+      const targetGlobalXfo = initlalGlobalXfo.clone();
+      targetGlobalXfo.ori = orbit.multiply(targetGlobalXfo.ori);
+      targetGlobalXfo.ori.multiplyInPlace(pitch);
+
+      // With each iteraction we get closer to our goal
+      // and on the final iteration we should aim perfectly at
+      // the target.
+      const t = Math.pow(i / count, 2);
+      const globalXfo = initlalGlobalXfo.clone();
+      globalXfo.ori = initlalGlobalXfo.ori.lerp(targetGlobalXfo.ori, t);
+
+      camera.setFocalDistance(initlalDist + (dist - initlalDist) * t);
+      camera.setGlobalXfo(globalXfo);
+
+      i++;
+      if (i <= count) {
+        this.__focusIntervalId = setTimeout(applyMovement, 20);
+      } else {
+        this.__focusIntervalId = undefined;
+        this.emit('movementFinished');
+      }
+    };
+    applyMovement();
+
+    this.__manipulationState = 'focussing';
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   */
+  onMouseMove(event) {}
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.__mouseDownPos = event.mousePos;
+    this.initDrag(event.viewport);
+
+    if (event.button == 2) {
+      this.__mode = 'pan';
+    } else if (event.ctrlKey && event.button == 2) {
+      this.__mode = 'dolly';
+    } else if (event.shiftKey || event.button == 2) {
+      this.__mode = 'look';
+    } else {
+      this.__mode = this.__defaultMode;
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    // During requestPointerLock, the offsetX/Y values are not updated.
+    // Instead we get a relative delta that we use to compute the total
+    // delta for the drag.
+    // if(this.__keyboardMovement){
+    //     this.__mouseDragDelta.x = event.movementX;
+    //     this.__mouseDragDelta.y = event.movementY;
+    // }
+    // else{
+    //     this.__mouseDragDelta.x += event.movementX;
+    //     this.__mouseDragDelta.y += event.movementY;
+    // }
+    if (this.__keyboardMovement) {
+      this.__mouseDragDelta = event.mousePos;
+    } else {
+      this.__mouseDragDelta = event.mousePos.subtract(this.__mouseDownPos);
+    }
+    switch (this.__mode) {
+      case 'orbit':
+        this.orbit(this.__mouseDragDelta, event.viewport);
+        break
+      case 'look':
+        this.look(this.__mouseDragDelta, event.viewport);
+        break
+      case 'pan':
+        this.pan(this.__mouseDragDelta, event.viewport);
+        break
+      case 'dolly':
+        this.dolly(this.__mouseDragDelta, event.viewport);
+        break
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onDragEnd(event) {
+    // event.viewport.renderGeomDataFbo();
+    this.emit('movementFinished');
+    return false
+  }
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    if (this.__maipulationModel == VIEW_TOOL_MODELS.DCC && !event.altKey)
+      return false
+
+    this.dragging = true;
+    this.__mouseDownPos = event.mousePos;
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseUp(event) {
+    if (this.dragging) {
+      this.onDragEnd(event);
+      this.dragging = false;
+      return true
+    }
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseMove(event) {
+    if (this.dragging) {
+      this.onDrag(event);
+      event.showPointerOnAvatar = false;
+      return true
+    }
+  }
+
+  /**
+   * The onDoubleClick method.
+   * @param {any} event - The event param.
+   */
+  onDoubleClick(event) {
+    if (event.intersectionData) {
+      const viewport = event.viewport;
+      const camera = viewport.getCamera();
+      const pos = camera
+        .getGlobalXfo()
+        .tr.add(
+          event.intersectionData.mouseRay.dir.scale(event.intersectionData.dist)
+        );
+      this.aimFocus(camera, pos);
+    }
+  }
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onWheel(event) {
+    if (this.__maipulationModel == VIEW_TOOL_MODELS.DCC && !event.altKey)
+      return false
+
+    const viewport = event.viewport;
+    const xfo = viewport.getCamera().getGlobalXfo();
+    const vec = xfo.ori.getZaxis();
+    if (this.__mouseWheelZoomIntervalId)
+      clearInterval(this.__mouseWheelZoomIntervalId);
+    let count = 0;
+    const applyMovement = () => {
+      const focalDistance = viewport.getCamera().getFocalDistance();
+      const mouseWheelDollySpeed = this.__mouseWheelDollySpeedParam.getValue();
+      const zoomDist = event.deltaY * mouseWheelDollySpeed * focalDistance * 0.2;
+      xfo.tr.addInPlace(vec.scale(zoomDist));
+      if (this.__defaultMode == 'orbit')
+        viewport.getCamera().setFocalDistance(focalDistance + zoomDist);
+      viewport.getCamera().setGlobalXfo(xfo);
+
+      count++;
+      if (count < 5) {
+        this.__mouseWheelZoomIntervalId = setTimeout(applyMovement, 20);
+      } else {
+        this.__mouseWheelZoomIntervalId = undefined;
+        this.emit('movementFinished');
+        event.viewport.renderGeomDataFbo();
+      }
+    };
+    applyMovement();
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __integrateVelocityChange(velChange, viewport) {
+    const delta = new zeaEngine.Xfo();
+    delta.tr = this.__velocity.normalize().scale(this.__maxVel);
+    viewport
+      .getCamera()
+      .setGlobalXfo(viewport.getCamera().getGlobalXfo().multiply(delta));
+  }
+
+  /**
+   * The onKeyPressed method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onKeyPressed(key, event) {
+    // Note: onKeyPressed is called intiallly only once, and then we
+    // get a series of calls. Here we ignore subsequent events.
+    // (TODO: move this logic to a special controller)
+    /*
+    switch (key) {
+      case 'w':
+        if (this.__keysPressed.indexOf(key) != -1)
+          return false;
+        this.__velocity.z -= 1.0;
+        break;
+      case 's':
+        if (this.__keysPressed.indexOf(key) != -1)
+          return false;
+        this.__velocity.z += 1.0;
+        break;
+      case 'a':
+        if (this.__keysPressed.indexOf(key) != -1)
+          return false;
+        this.__velocity.x -= 1.0;
+        break;
+      case 'd':
+        if (this.__keysPressed.indexOf(key) != -1)
+          return false;
+        this.__velocity.x += 1.0;
+        break;
+      default:
+        return false;
+    }
+    this.__keysPressed.push(key);
+    if (!this.__keyboardMovement) {
+      this.__keyboardMovement = true;
+      let animationFrame = ()=>{
+        this.__integrateVelocityChange()
+        if (this.__keyboardMovement)
+          window.requestAnimationFrame(animationFrame);
+      }
+      window.requestAnimationFrame(animationFrame);
+    }
+    */
+    return false // no keys handled
+  }
+
+  /**
+   * The onKeyDown method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyDown(key, event) {}
+
+  /**
+   * The onKeyUp method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onKeyUp(key, event) {
+    // (TODO: move this logic to a special controller)
+    /*
+    switch (key) {
+      case 'w':
+        this.__velocity.z += 1.0;
+        break;
+      case 's':
+        this.__velocity.z -= 1.0;
+        break;
+      case 'a':
+        this.__velocity.x += 1.0;
+        break;
+      case 'd':
+        this.__velocity.x -= 1.0;
+        break;
+      default:
+        return false;
+    }
+    let keyIndex = this.__keysPressed.indexOf(key);
+    this.__keysPressed.splice(keyIndex, 1);
+    if (this.__keysPressed.length == 0)
+      this.__keyboardMovement = false;
+    */
+    return true
+  }
+
+  // ///////////////////////////////////
+  // Touch events
+
+  // eslint-disable-next-line require-jsdoc
+  __startTouch(touch, viewport) {
+    this.__ongoingTouches[touch.identifier] = {
+      identifier: touch.identifier,
+      pos: new zeaEngine.Vec2(touch.pageX, touch.pageY),
+    };
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __endTouch(touch, viewport) {
+    // const idx = this.__ongoingTouchIndexById(touch.identifier);
+    // this.__ongoingTouches.splice(idx, 1); // remove it; we're done
+    delete this.__ongoingTouches[touch.identifier];
+  }
+
+  /**
+   * The onTouchStart method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onTouchStart(event) {
+    // console.log("onTouchStart");
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (Object.keys(this.__ongoingTouches).length == 0)
+      this.__manipMode = undefined;
+
+    const touches = event.changedTouches;
+    for (let i = 0; i < touches.length; i++) {
+      this.__startTouch(touches[i]);
+    }
+    this.initDrag(event.viewport);
+    return true
+  }
+
+  /**
+   * The onTouchMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onTouchMove(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    // console.log("this.__manipMode:" + this.__manipMode);
+
+    const touches = event.changedTouches;
+    if (touches.length == 1 && this.__manipMode != 'panAndZoom') {
+      const touch = touches[0];
+      const touchPos = new zeaEngine.Vec2(touch.pageX, touch.pageY);
+      const touchData = this.__ongoingTouches[touch.identifier];
+      const dragVec = touchData.pos.subtract(touchPos);
+      if (this.__defaultMode == 'look') {
+        // TODO: scale panning here.
+        dragVec.scaleInPlace(6.0);
+        this.look(dragVec, event.viewport);
+      } else {
+        this.orbit(dragVec, event.viewport);
+      }
+      this.__manipMode = 'orbit';
+      return true
+    } else if (touches.length == 2) {
+      const touch0 = touches[0];
+      const touchData0 = this.__ongoingTouches[touch0.identifier];
+      const touch1 = touches[1];
+      const touchData1 = this.__ongoingTouches[touch1.identifier];
+
+      const touch0Pos = new zeaEngine.Vec2(touch0.pageX, touch0.pageY);
+      const touch1Pos = new zeaEngine.Vec2(touch1.pageX, touch1.pageY);
+      const startSeparation = touchData1.pos.subtract(touchData0.pos).length();
+      const dragSeparation = touch1Pos.subtract(touch0Pos).length();
+      const separationDist = startSeparation - dragSeparation;
+
+      const touch0Drag = touch0Pos.subtract(touchData0.pos);
+      const touch1Drag = touch1Pos.subtract(touchData1.pos);
+      const dragVec = touch0Drag.add(touch1Drag);
+      // TODO: scale panning here.
+      dragVec.scaleInPlace(0.5);
+      this.panAndZoom(dragVec, separationDist * 0.002, event.viewport);
+      this.__manipMode = 'panAndZoom';
+      return true
+    }
+  }
+
+  /**
+   * The onTouchEnd method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onTouchEnd(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const touches = event.changedTouches;
+    switch (this.__manipMode) {
+      case 'orbit':
+      case 'panAndZoom':
+        this.emit('movementFinished');
+        break
+    }
+    for (let i = 0; i < touches.length; i++) {
+      this.__endTouch(touches[i]);
+    }
+    if (Object.keys(this.__ongoingTouches).length == 0)
+      this.__manipMode = undefined;
+    return true
+  }
+
+  /**
+   * The onTouchCancel method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onTouchCancel(event) {
+    console.log('touchcancel.');
+    const touches = event.changedTouches;
+    for (let i = 0; i < touches.length; i++) {
+      this.__endTouch(touches[i]);
+    }
+    return true
+  }
+
+  /**
+   * The onDoubleTap method.
+   * @param {any} event - The event param.
+   */
+  onDoubleTap(event) {
+    const touches = event.changedTouches;
+    for (let i = 0; i < touches.length; i++) {
+      this.__startTouch(touches[i]);
+    }
+    if (event.intersectionData) {
+      const viewport = event.viewport;
+      const camera = viewport.getCamera();
+      const pos = camera
+        .getGlobalXfo()
+        .tr.add(
+          event.intersectionData.mouseRay.dir.scale(event.intersectionData.dist)
+        );
+      this.aimFocus(camera, pos);
+    }
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  // eslint-disable-next-line require-jsdoc
+  __initMoveStage(vrviewport) {
+    if (this.__controllerTriggersHeld.length == 1) {
+      this.__grabPos = this.__controllerTriggersHeld[0]
+        .getControllerTipStageLocalXfo()
+        .tr.clone();
+      this.stageXfo__GrabStart = vrviewport.getXfo().clone();
+      this.__invOri = this.stageXfo__GrabStart.ori.inverse();
+    } else if (this.__controllerTriggersHeld.length == 2) {
+      const p0 = this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo()
+        .tr;
+      const p1 = this.__controllerTriggersHeld[1].getControllerTipStageLocalXfo()
+        .tr;
+      this.__grabDir = p1.subtract(p0);
+      this.__grabPos = p0.lerp(p1, 0.5);
+      this.__grabDir.y = 0.0;
+      this.__grabDist = this.__grabDir.length();
+      this.__grabDir.scaleInPlace(1 / this.__grabDist);
+      this.stageXfo__GrabStart = vrviewport.getXfo().clone();
+      this.__grab_to_stage = this.__grabPos.subtract(
+        this.stageXfo__GrabStart.tr
+      );
+    }
+  }
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    if (event.button != 1) return
+    this.__controllerTriggersHeld.push(event.controller);
+    this.__initMoveStage(event.vrviewport);
+    return true
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (event.button != 1) return
+    const index = this.__controllerTriggersHeld.indexOf(event.controller);
+    this.__controllerTriggersHeld.splice(index, 1);
+    this.__initMoveStage(event.vrviewport);
+    return true
+  }
+
+  /**
+   * The onVRControllerDoubleClicked method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerDoubleClicked(event) {
+    console.log(
+      'onVRControllerDoubleClicked:',
+      this.__controllerTriggersHeld.length
+    );
+
+    const stageXfo = event.vrviewport.getXfo().clone();
+    stageXfo.sc.set(1, 1, 1);
+    event.vrviewport.setXfo(stageXfo);
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (this.__controllerTriggersHeld.length == 1) {
+      const grabPos = this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo()
+        .tr;
+
+      const deltaXfo = new zeaEngine.Xfo();
+      deltaXfo.tr = this.__grabPos.subtract(grabPos);
+
+      // //////////////
+      // Update the stage Xfo
+      const stageXfo = this.stageXfo__GrabStart.multiply(deltaXfo);
+      event.vrviewport.setXfo(stageXfo);
+      return true
+    } else if (this.__controllerTriggersHeld.length == 2) {
+      const p0 = this.__controllerTriggersHeld[0].getControllerTipStageLocalXfo()
+        .tr;
+      const p1 = this.__controllerTriggersHeld[1].getControllerTipStageLocalXfo()
+        .tr;
+
+      const grabPos = p0.lerp(p1, 0.5);
+      const grabDir = p1.subtract(p0);
+      grabDir.y = 0.0;
+      const grabDist = grabDir.length();
+      grabDir.scaleInPlace(1 / grabDist);
+
+      const deltaXfo = new zeaEngine.Xfo();
+
+      // //////////////
+      // Compute sc
+      // Limit to a 10x change in scale per grab.
+      const sc = Math.max(Math.min(this.__grabDist / grabDist, 10.0), 0.1);
+
+      // Avoid causing a scale that would make the user < 1.0 scale factor.
+      // if(stageSc < 1.0){
+      //     sc = 1.0 / this.stageXfo__GrabStart.sc.x;
+      // }
+      deltaXfo.sc.set(sc, sc, sc);
+
+      // //////////////
+      // Compute ori
+      let angle = this.__grabDir.angleTo(grabDir);
+      if (this.__grabDir.cross(grabDir).y > 0.0) {
+        angle = -angle;
+      }
+      deltaXfo.ori.rotateY(angle);
+
+      // Rotate around the point between the hands.
+      const oriTrDelta = deltaXfo.ori.rotateVec3(this.__grabPos);
+      deltaXfo.tr.addInPlace(this.__grabPos.subtract(oriTrDelta));
+
+      // Scale around the point between the hands.
+      const deltaSc = this.__grabPos.scale(1.0 - sc);
+      deltaXfo.tr.addInPlace(deltaXfo.ori.rotateVec3(deltaSc));
+
+      // //////////////
+      // Compute tr
+      // Not quite working.....
+      const deltaTr = this.__grabPos.subtract(grabPos).scale(sc);
+      deltaXfo.tr.addInPlace(deltaXfo.ori.rotateVec3(deltaTr));
+
+      // //////////////
+      // Update the stage Xfo
+      const stageXfo = this.stageXfo__GrabStart.multiply(deltaXfo);
+      event.vrviewport.setXfo(stageXfo);
+
+      return true
+    }
+  }
+}
+
+/**
+ * Class representing a selection tool.
+ * @extends BaseTool
+ */
+class SelectionTool extends BaseTool {
+  /**
+   * Create a selection tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.dragging = false;
+
+    this.selectionRect = new zeaEngine.Rect(1, 1);
+    this.selectionRectMat = new zeaEngine.Material('marker', 'ScreenSpaceShader');
+    this.selectionRectMat
+      .getParameter('BaseColor')
+      .setValue(new zeaEngine.Color('#03E3AC'));
+    this.selectionRectXfo = new zeaEngine.Xfo();
+    this.selectionRectXfo.tr.set(0.5, 0.5, 0);
+    this.selectionRectXfo.sc.set(0, 0, 0);
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+
+    if (!this.rectItem) {
+      this.rectItem = new zeaEngine.GeomItem(
+        'selectionRect',
+        this.selectionRect,
+        this.selectionRectMat
+      );
+      this.rectItem.getParameter('Visible').setValue(false);
+      this.appData.renderer.addTreeItem(this.rectItem);
+    }
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+    this.selectionRectXfo.sc.set(0, 0, 0);
+    this.rectItem.setGlobalXfo(this.selectionRectXfo);
+  }
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    if (event.button == 0 && !event.altKey) {
+      console.log('onMouseDown');
+      this.mouseDownPos = event.mousePos;
+      this.dragging = false;
+      return true
+    }
+    return false
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __resizeRect(viewport, delta) {
+    const sc = new zeaEngine.Vec2(
+      (1 / viewport.getWidth()) * 2,
+      (1 / viewport.getHeight()) * 2
+    );
+    const size = delta.multiply(sc);
+    this.selectionRectXfo.sc.set(Math.abs(size.x), Math.abs(size.y), 1);
+
+    const center = this.mouseDownPos.subtract(delta.scale(0.5));
+    const tr = center.multiply(sc).subtract(new zeaEngine.Vec2(1, 1));
+
+    this.selectionRectXfo.tr.x = tr.x;
+    this.selectionRectXfo.tr.y = -tr.y;
+    this.rectItem.setGlobalXfo(this.selectionRectXfo);
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseMove(event) {
+    if (this.mouseDownPos) {
+      const delta = this.mouseDownPos.subtract(event.mousePos);
+      if (this.dragging) {
+        this.__resizeRect(event.viewport, delta);
+      }
+      const dist = delta.length();
+      // dragging only is activated after 4 pixels.
+      // This is to avoid causing as rect selection for nothing.
+      if (dist > 4) {
+        this.dragging = true;
+        // Start drawing the selection rectangle on screen.
+        this.rectItem.getParameter('Visible').setValue(true);
+        this.__resizeRect(event.viewport, delta);
+      }
+    }
+    return true
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseUp(event) {
+    if (this.mouseDownPos) {
+      // event.viewport.renderGeomDataFbo();
+      if (this.dragging) {
+        this.rectItem.getParameter('Visible').setValue(false);
+        const mouseUpPos = event.mousePos;
+        const tl = new zeaEngine.Vec2(
+          Math.min(this.mouseDownPos.x, mouseUpPos.x),
+          Math.min(this.mouseDownPos.y, mouseUpPos.y)
+        );
+        const br = new zeaEngine.Vec2(
+          Math.max(this.mouseDownPos.x, mouseUpPos.x),
+          Math.max(this.mouseDownPos.y, mouseUpPos.y)
+        );
+        const geomItems = event.viewport.getGeomItemsInRect(tl, br);
+
+        if (this.appData.selectionManager.pickingModeActive()) {
+          this.appData.selectionManager.pick(geomItems);
+        } else {
+          // Remove all the scene widgets. (UI elements should not be selectable.)
+          const regularGeomItems = new Set(
+            [...geomItems].filter((x) => !(x.getOwner() instanceof Handle))
+          );
+
+          if (!event.shiftKey) {
+            this.appData.selectionManager.selectItems(
+              regularGeomItems,
+              !event.ctrlKey
+            );
+          } else {
+            this.appData.selectionManager.deselectItems(regularGeomItems);
+          }
+
+          this.selectionRectXfo.sc.set(0, 0, 0);
+          this.rectItem.setGlobalXfo(this.selectionRectXfo);
+        }
+      } else {
+        const intersectionData = event.viewport.getGeomDataAtPos(event.mousePos);
+        if (
+          intersectionData != undefined &&
+          !(intersectionData.geomItem.getOwner() instanceof Handle)
+        ) {
+          if (this.appData.selectionManager.pickingModeActive()) {
+            this.appData.selectionManager.pick(intersectionData.geomItem);
+          } else {
+            if (!event.shiftKey) {
+              this.appData.selectionManager.toggleItemSelection(
+                intersectionData.geomItem,
+                !event.ctrlKey
+              );
+            } else {
+              const items = new Set();
+              items.add(intersectionData.geomItem);
+              this.appData.selectionManager.deselectItems(items);
+            }
+          }
+        } else {
+          this.appData.selectionManager.clearSelection();
+        }
+      }
+
+      this.mouseDownPos = undefined;
+      return true
+    }
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    if (event.button == 1) {
+      const intersectionData = event.controller.getGeomItemAtTip();
+      if (
+        intersectionData != undefined &&
+        !(intersectionData.geomItem.getOwner() instanceof Handle)
+      ) {
+        this.appData.selectionManager.toggleItemSelection(
+          intersectionData.geomItem
+        );
+        return true
+      }
+    }
+  }
+
+  // onVRPoseChanged(event) {
+  // }
+
+  // onVRControllerButtonUp(event) {
+
+  //   if (event.button == 1 && this.activeController == event.controller) {
+  //     const controllerUpPos = event.controller.getTipXfo();
+  //     if(this.controllerDownPos.distanceTo(controllerUpPos) < 0.1) {
+  //       const intersectionData = event.controller.getGeomItemAtTip();
+  //       if (intersectionData != undefined && !(intersectionData.geomItem instanceof Handle)) {
+  //         this.appData.selectionManager.toggleItemSelection(intersectionData.geomItem);
+  //         return true;
+  //       }
+  //     }
+  //   }
+  // }
+}
+
+UndoRedoManager.registerChange('SelectionTool', SelectionTool);
+
+/**
+ * Class representing an open VR UI tool.
+ * @extends BaseTool
+ */
+class OpenVRUITool extends BaseTool {
+  /**
+   * Create an open VR UI tool.
+   * @param {any} appData - The appData value.
+   * @param {any} vrUITool - The vrUITool value.
+   */
+  constructor(appData, vrUITool) {
+    super(appData);
+
+    this.vrUITool = vrUITool;
+    this.uiToolIndex = -1;
+    this.__stayClosed = false;
+  }
+
+  /**
+   * The uninstall method.
+   */
+  uninstall() {
+    super.uninstall();
+
+    // Also remove the UI tool
+    if (this.uiToolIndex > 0)
+      this.appData.toolManager.removeToolByHandle(this.vrUITool);
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonDown(event) {}
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   */
+  onVRControllerButtonUp(event) {}
+
+  /**
+   * The stayClosed method.
+   */
+  stayClosed() {
+    this.__stayClosed = true;
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (this.vrUITool.installed()) return
+
+    // Controller coordinate system
+    // X = Horizontal.
+    // Y = Up.
+    // Z = Towards handle base.
+    const headXfo = event.viewXfo;
+    const checkControllers = (ctrlA, ctrlB) => {
+      if (!ctrlA) return false
+      const xfoA = ctrlA.getTreeItem().getGlobalXfo();
+      const headToCtrlA = xfoA.tr.subtract(headXfo.tr);
+      headToCtrlA.normalizeInPlace();
+      if (headToCtrlA.angleTo(xfoA.ori.getYaxis()) < Math.PI * 0.25) {
+        // Stay closed as a subsequent tool has just caused the UI to be
+        // closed while interacting with the UI. (see: VRUITool.deactivateTool)
+        if (!this.__stayClosed) {
+          this.vrUITool.setUIControllers(this, ctrlA, ctrlB, headXfo);
+          this.uiToolIndex = this.appData.toolManager.pushTool(this.vrUITool);
+        }
+        return true
+      }
+    };
+
+    if (event.controllers.length > 0) {
+      if (checkControllers(event.controllers[0], event.controllers[1]))
+        return true
+      if (checkControllers(event.controllers[1], event.controllers[0]))
+        return true
+    }
+    this.uiToolIndex = -1;
+    this.__stayClosed = false;
+  }
+}
+
+const util = newUtil();
+const inliner = newInliner();
+const fontFaces = newFontFaces();
+const images = newImages();
+
+// Default impl options
+const defaultOptions = {
+  // Default is to fail on error, no placeholder
+  imagePlaceholder: undefined,
+  // Default cache bust is false, it will use the cache
+  cacheBust: false,
+};
+
+const domtoimage = {
+  toSvg: toSvg,
+  toPng: toPng,
+  toJpeg: toJpeg,
+  toBlob: toBlob,
+  toPixelData: toPixelData,
+  toCanvas: toCanvas,
+  impl: {
+    fontFaces: fontFaces,
+    images: images,
+    util: util,
+    inliner: inliner,
+    options: {},
+  },
+};
+
+/**
+     * @param {Node} node - The DOM Node object to render
+     * @param {Object} options - Rendering options
+     * @param {Function} options.filter - Should return true if passed node should be included in the output
+     *          (excluding node means excluding it's children as well). Not called on the root node.
+     * @param {string} options.bgcolor - color for the background, any valid CSS color value.
+     * @param {number} options.width - width to be applied to node before rendering.
+     * @param {number} options.height - height to be applied to node before rendering.
+     * @param {Object} options.style - an object whose properties to be copied to node's style before rendering.
+     * @param {number} options.quality - a Number between 0 and 1 indicating image quality (applicable to JPEG only),
+                defaults to 1.0.
+     * @param {string} options.imagePlaceholder - dataURL to use as a placeholder for failed images, default behaviour is to fail fast on images we can't fetch
+     * @param {boolean} options.cacheBust - set to true to cache bust by appending the time to the request url
+     * @return {Promise} - A promise that is fulfilled with a SVG image data URL
+     * */
+function toSvg(node, options) {
+  options = options || {};
+  copyOptions(options);
+  return Promise.resolve(node)
+    .then(function (node) {
+      return cloneNode(node, options.filter, true)
+    })
+    .then(embedFonts)
+    .then(inlineImages)
+    .then(applyOptions)
+    .then(function (clone) {
+      return makeSvgDataUri(
+        clone,
+        options.width || util.width(node),
+        options.height || util.height(node)
+      )
+    })
+
+  function applyOptions(clone) {
+    if (options.bgcolor) clone.style.backgroundColor = options.bgcolor;
+
+    if (options.width) clone.style.width = options.width + 'px';
+    if (options.height) clone.style.height = options.height + 'px';
+
+    if (options.style)
+      Object.keys(options.style).forEach(function (property) {
+        clone.style[property] = options.style[property];
+      });
+
+    return clone
+  }
+}
+
+/**
+ * @param {Node} node - The DOM Node object to render
+ * @param {Object} options - Rendering options, @see {@link toSvg}
+ * @return {Promise} - A promise that is fulfilled with a Uint8Array containing RGBA pixel data.
+ * */
+function toPixelData(node, options) {
+  return draw(node, options || {}).then(function (canvas) {
+    return canvas
+      .getContext('2d')
+      .getImageData(0, 0, util.width(node), util.height(node)).data
+  })
+}
+
+/**
+ * @param {Node} node - The DOM Node object to render
+ * @param {Object} options - Rendering options, @see {@link toSvg}
+ * @return {Promise} - A promise that is fulfilled with a Uint8Array containing RGBA pixel data.
+ * */
+function toCanvas(node, options) {
+  return draw(node, options || {}).then(function (canvas) {
+    return canvas
+  })
+}
+
+/**
+ * @param {Node} node - The DOM Node object to render
+ * @param {Object} options - Rendering options, @see {@link toSvg}
+ * @return {Promise} - A promise that is fulfilled with a PNG image data URL
+ * */
+function toPng(node, options) {
+  return draw(node, options || {}).then(function (canvas) {
+    return canvas.toDataURL()
+  })
+}
+
+/**
+ * @param {Node} node - The DOM Node object to render
+ * @param {Object} options - Rendering options, @see {@link toSvg}
+ * @return {Promise} - A promise that is fulfilled with a JPEG image data URL
+ * */
+function toJpeg(node, options) {
+  options = options || {};
+  return draw(node, options).then(function (canvas) {
+    return canvas.toDataURL('image/jpeg', options.quality || 1.0)
+  })
+}
+
+/**
+ * @param {Node} node - The DOM Node object to render
+ * @param {Object} options - Rendering options, @see {@link toSvg}
+ * @return {Promise} - A promise that is fulfilled with a PNG image blob
+ * */
+function toBlob(node, options) {
+  return draw(node, options || {}).then(util.canvasToBlob)
+}
+
+function copyOptions(options) {
+  // Copy options to impl options for use in impl
+  if (typeof options.imagePlaceholder === 'undefined') {
+    domtoimage.impl.options.imagePlaceholder = defaultOptions.imagePlaceholder;
+  } else {
+    domtoimage.impl.options.imagePlaceholder = options.imagePlaceholder;
+  }
+
+  if (typeof options.cacheBust === 'undefined') {
+    domtoimage.impl.options.cacheBust = defaultOptions.cacheBust;
+  } else {
+    domtoimage.impl.options.cacheBust = options.cacheBust;
+  }
+}
+
+function draw(domNode, options) {
+  return toSvg(domNode, options)
+    .then(util.makeImage)
+    .then(util.delay(100))
+    .then(function (image) {
+      const canvas = newCanvas(domNode);
+      canvas.getContext('2d').drawImage(image, 0, 0);
+      return canvas
+    })
+
+  function newCanvas(domNode) {
+    const canvas = document.createElement('canvas');
+    canvas.width = options.width || util.width(domNode);
+    canvas.height = options.height || util.height(domNode);
+
+    if (options.bgcolor) {
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = options.bgcolor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    return canvas
+  }
+}
+
+function cloneNode(node, filter, root) {
+  if (!root && filter && !filter(node)) return Promise.resolve()
+
+  return Promise.resolve(node)
+    .then(makeNodeCopy)
+    .then(function (clone) {
+      return cloneChildren(node, clone, filter)
+    })
+    .then(function (clone) {
+      return processClone(node, clone)
+    })
+
+  function makeNodeCopy(node) {
+    if (node instanceof HTMLCanvasElement)
+      return util.makeImage(node.toDataURL())
+    return node.cloneNode(false)
+  }
+
+  function cloneChildren(original, clone, filter) {
+    const children = original.childNodes;
+    if (children.length === 0) return Promise.resolve(clone)
+
+    return cloneChildrenInOrder(clone, util.asArray(children), filter).then(
+      function () {
+        return clone
+      }
+    )
+
+    function cloneChildrenInOrder(parent, children, filter) {
+      let done = Promise.resolve();
+      children.forEach(function (child) {
+        done = done
+          .then(function () {
+            return cloneNode(child, filter)
+          })
+          .then(function (childClone) {
+            if (childClone) parent.appendChild(childClone);
+          });
+      });
+      return done
+    }
+  }
+
+  function processClone(original, clone) {
+    if (!(clone instanceof Element)) return clone
+
+    return Promise.resolve()
+      .then(cloneStyle)
+      .then(clonePseudoElements)
+      .then(copyUserInput)
+      .then(fixSvg)
+      .then(function () {
+        return clone
+      })
+
+    function cloneStyle() {
+      copyStyle(window.getComputedStyle(original), clone.style);
+
+      function copyStyle(source, target) {
+        if (source.cssText) target.cssText = source.cssText;
+        else copyProperties(source, target);
+
+        function copyProperties(source, target) {
+          util.asArray(source).forEach(function (name) {
+            target.setProperty(
+              name,
+              source.getPropertyValue(name),
+              source.getPropertyPriority(name)
+            );
+          });
+        }
+      }
+    }
+
+    function clonePseudoElements() {
+[':before', ':after'].forEach(function (element) {
+        clonePseudoElement(element);
+      });
+
+      function clonePseudoElement(element) {
+        const style = window.getComputedStyle(original, element);
+        const content = style.getPropertyValue('content');
+
+        if (content === '' || content === 'none') return
+
+        const className = util.uid();
+        clone.className = clone.className + ' ' + className;
+        const styleElement = document.createElement('style');
+        styleElement.appendChild(
+          formatPseudoElementStyle(className, element, style)
+        );
+        clone.appendChild(styleElement);
+
+        function formatPseudoElementStyle(className, element, style) {
+          const selector = '.' + className + ':' + element;
+          const cssText = style.cssText
+            ? formatCssText(style)
+            : formatCssProperties(style);
+          return document.createTextNode(selector + '{' + cssText + '}')
+
+          function formatCssText(style) {
+            const content = style.getPropertyValue('content');
+            return style.cssText + ' content: ' + content + ';'
+          }
+
+          function formatCssProperties(style) {
+            return util.asArray(style).map(formatProperty).join('; ') + ';'
+
+            function formatProperty(name) {
+              return (
+                name +
+                ': ' +
+                style.getPropertyValue(name) +
+                (style.getPropertyPriority(name) ? ' !important' : '')
+              )
+            }
+          }
+        }
+      }
+    }
+
+    function copyUserInput() {
+      if (original instanceof HTMLTextAreaElement)
+        clone.innerHTML = original.value;
+      if (original instanceof HTMLInputElement)
+        clone.setAttribute('value', original.value);
+    }
+
+    function fixSvg() {
+      if (!(clone instanceof SVGElement)) return
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+      if (!(clone instanceof SVGRectElement)) return
+      ;['width', 'height'].forEach(function (attribute) {
+        const value = clone.getAttribute(attribute);
+        if (!value) return
+
+        clone.style.setProperty(attribute, value);
+      });
+    }
+  }
+}
+
+function embedFonts(node) {
+  return fontFaces.resolveAll().then(function (cssText) {
+    const styleNode = document.createElement('style');
+    node.appendChild(styleNode);
+    styleNode.appendChild(document.createTextNode(cssText));
+    return node
+  })
+}
+
+function inlineImages(node) {
+  return images.inlineAll(node).then(function () {
+    return node
+  })
+}
+
+function makeSvgDataUri(node, width, height) {
+  return Promise.resolve(node)
+    .then(function (node) {
+      node.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      return new XMLSerializer().serializeToString(node)
+    })
+    .then(util.escapeXhtml)
+    .then(function (xhtml) {
+      return (
+        '<foreignObject x="0" y="0" width="100%" height="100%">' +
+        xhtml +
+        '</foreignObject>'
+      )
+    })
+    .then(function (foreignObject) {
+      return (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="' +
+        width +
+        '" height="' +
+        height +
+        '">' +
+        foreignObject +
+        '</svg>'
+      )
+    })
+    .then(function (svg) {
+      return 'data:image/svg+xml;charset=utf-8,' + svg
+    })
+}
+
+function newUtil() {
+  return {
+    escape: escape,
+    parseExtension: parseExtension,
+    mimeType: mimeType,
+    dataAsUrl: dataAsUrl,
+    isDataUrl: isDataUrl,
+    canvasToBlob: canvasToBlob,
+    resolveUrl: resolveUrl,
+    getAndEncode: getAndEncode,
+    uid: uid(),
+    delay: delay,
+    asArray: asArray,
+    escapeXhtml: escapeXhtml,
+    makeImage: makeImage,
+    width: width,
+    height: height,
+  }
+
+  function mimes() {
+    /*
+     * Only WOFF and EOT mime types for fonts are 'real'
+     * see http://www.iana.org/assignments/media-types/media-types.xhtml
+     */
+    const WOFF = 'application/font-woff';
+    const JPEG = 'image/jpeg';
+
+    return {
+      woff: WOFF,
+      woff2: WOFF,
+      ttf: 'application/font-truetype',
+      eot: 'application/vnd.ms-fontobject',
+      png: 'image/png',
+      jpg: JPEG,
+      jpeg: JPEG,
+      gif: 'image/gif',
+      tiff: 'image/tiff',
+      svg: 'image/svg+xml',
+    }
+  }
+
+  function parseExtension(url) {
+    const match = /\.([^\.\/]*?)$/g.exec(url);
+    if (match) return match[1]
+    else return ''
+  }
+
+  function mimeType(url) {
+    const extension = parseExtension(url).toLowerCase();
+    return mimes()[extension] || ''
+  }
+
+  function isDataUrl(url) {
+    return url.search(/^(data:)/) !== -1
+  }
+
+  function toBlob(canvas) {
+    return new Promise(function (resolve) {
+      const binaryString = window.atob(canvas.toDataURL().split(',')[1]);
+      const length = binaryString.length;
+      const binaryArray = new Uint8Array(length);
+
+      for (let i = 0; i < length; i++)
+        binaryArray[i] = binaryString.charCodeAt(i);
+
+      resolve(
+        new Blob([binaryArray], {
+          type: 'image/png',
+        })
+      );
+    })
+  }
+
+  function canvasToBlob(canvas) {
+    if (canvas.toBlob)
+      return new Promise(function (resolve) {
+        canvas.toBlob(resolve);
+      })
+
+    return toBlob(canvas)
+  }
+
+  function resolveUrl(url, baseUrl) {
+    const doc = document.implementation.createHTMLDocument();
+    const base = doc.createElement('base');
+    doc.head.appendChild(base);
+    const a = doc.createElement('a');
+    doc.body.appendChild(a);
+    base.href = baseUrl;
+    a.href = url;
+    return a.href
+  }
+
+  function uid() {
+    let index = 0;
+
+    return function () {
+      return 'u' + fourRandomChars() + index++
+
+      function fourRandomChars() {
+        /* see http://stackoverflow.com/a/6248722/2519373 */
+        return (
+          '0000' + ((Math.random() * Math.pow(36, 4)) << 0).toString(36)
+        ).slice(-4)
+      }
+    }
+  }
+
+  function makeImage(uri) {
+    return new Promise(function (resolve, reject) {
+      const image = new Image();
+      image.onload = function () {
+        resolve(image);
+      };
+      image.onerror = reject;
+      image.src = uri;
+    })
+  }
+
+  function getAndEncode(url) {
+    const TIMEOUT = 30000;
+    if (domtoimage.impl.options.cacheBust) {
+      // Cache bypass so we dont have CORS issues with cached images
+      // Source: https://developer.mozilla.org/en/docs/Web/API/XMLHttpRequest/Using_XMLHttpRequest#Bypassing_the_cache
+      url += (/\?/.test(url) ? '&' : '?') + new Date().getTime();
+    }
+
+    return new Promise(function (resolve) {
+      const request = new XMLHttpRequest();
+
+      request.onreadystatechange = done;
+      request.ontimeout = timeout;
+      request.responseType = 'blob';
+      request.timeout = TIMEOUT;
+      request.open('GET', url, true);
+      request.send();
+
+      let placeholder;
+      if (domtoimage.impl.options.imagePlaceholder) {
+        const split = domtoimage.impl.options.imagePlaceholder.split(/,/);
+        if (split && split[1]) {
+          placeholder = split[1];
+        }
+      }
+
+      function done() {
+        if (request.readyState !== 4) return
+
+        if (request.status !== 200) {
+          if (placeholder) {
+            resolve(placeholder);
+          } else {
+            fail(
+              'cannot fetch resource: ' + url + ', status: ' + request.status
+            );
+          }
+
+          return
+        }
+
+        const encoder = new FileReader();
+        encoder.onloadend = function () {
+          const content = encoder.result.split(/,/)[1];
+          resolve(content);
+        };
+        encoder.readAsDataURL(request.response);
+      }
+
+      function timeout() {
+        if (placeholder) {
+          resolve(placeholder);
+        } else {
+          fail(
+            'timeout of ' +
+              TIMEOUT +
+              'ms occured while fetching resource: ' +
+              url
+          );
+        }
+      }
+
+      function fail(message) {
+        console.error(message);
+        resolve('');
+      }
+    })
+  }
+
+  function dataAsUrl(content, type) {
+    return 'data:' + type + ';base64,' + content
+  }
+
+  function escape(string) {
+    return string.replace(/([.*+?^${}()|\[\]\/\\])/g, '\\$1')
+  }
+
+  function delay(ms) {
+    return function (arg) {
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve(arg);
+        }, ms);
+      })
+    }
+  }
+
+  function asArray(arrayLike) {
+    const array = [];
+    const length = arrayLike.length;
+    for (let i = 0; i < length; i++) array.push(arrayLike[i]);
+    return array
+  }
+
+  function escapeXhtml(string) {
+    return string.replace(/#/g, '%23').replace(/\n/g, '%0A')
+  }
+
+  function width(node) {
+    const leftBorder = px(node, 'border-left-width');
+    const rightBorder = px(node, 'border-right-width');
+    return node.scrollWidth + leftBorder + rightBorder
+  }
+
+  function height(node) {
+    const topBorder = px(node, 'border-top-width');
+    const bottomBorder = px(node, 'border-bottom-width');
+    return node.scrollHeight + topBorder + bottomBorder
+  }
+
+  function px(node, styleProperty) {
+    const value = window.getComputedStyle(node).getPropertyValue(styleProperty);
+    return parseFloat(value.replace('px', ''))
+  }
+}
+
+function newInliner() {
+  const URL_REGEX = /url\(['"]?([^'"]+?)['"]?\)/g;
+
+  return {
+    inlineAll: inlineAll,
+    shouldProcess: shouldProcess,
+    impl: {
+      readUrls: readUrls,
+      inline: inline,
+    },
+  }
+
+  function shouldProcess(string) {
+    return string.search(URL_REGEX) !== -1
+  }
+
+  function readUrls(string) {
+    const result = [];
+    let match;
+    while ((match = URL_REGEX.exec(string)) !== null) {
+      result.push(match[1]);
+    }
+    return result.filter(function (url) {
+      return !util.isDataUrl(url)
+    })
+  }
+
+  function inline(string, url, baseUrl, get) {
+    return Promise.resolve(url)
+      .then(function (url) {
+        return baseUrl ? util.resolveUrl(url, baseUrl) : url
+      })
+      .then(get || util.getAndEncode)
+      .then(function (data) {
+        return util.dataAsUrl(data, util.mimeType(url))
+      })
+      .then(function (dataUrl) {
+        return string.replace(urlAsRegex(url), '$1' + dataUrl + '$3')
+      })
+
+    function urlAsRegex(url) {
+      return new RegExp(
+        '(url\\([\'"]?)(' + util.escape(url) + ')([\'"]?\\))',
+        'g'
+      )
+    }
+  }
+
+  function inlineAll(string, baseUrl, get) {
+    if (nothingToInline()) return Promise.resolve(string)
+
+    return Promise.resolve(string)
+      .then(readUrls)
+      .then(function (urls) {
+        let done = Promise.resolve(string);
+        urls.forEach(function (url) {
+          done = done.then(function (string) {
+            return inline(string, url, baseUrl, get)
+          });
+        });
+        return done
+      })
+
+    function nothingToInline() {
+      return !shouldProcess(string)
+    }
+  }
+}
+
+function newFontFaces() {
+  return {
+    resolveAll: resolveAll,
+    impl: {
+      readAll: readAll,
+    },
+  }
+
+  function resolveAll() {
+    return readAll()
+      .then(function (webFonts) {
+        return Promise.all(
+          webFonts.map(function (webFont) {
+            return webFont.resolve()
+          })
+        )
+      })
+      .then(function (cssStrings) {
+        return cssStrings.join('\n')
+      })
+  }
+
+  function readAll() {
+    return Promise.resolve(util.asArray(document.styleSheets))
+      .then(getCssRules)
+      .then(selectWebFontRules)
+      .then(function (rules) {
+        return rules.map(newWebFont)
+      })
+
+    function selectWebFontRules(cssRules) {
+      return cssRules
+        .filter(function (rule) {
+          return rule.type === CSSRule.FONT_FACE_RULE
+        })
+        .filter(function (rule) {
+          return inliner.shouldProcess(rule.style.getPropertyValue('src'))
+        })
+    }
+
+    function getCssRules(styleSheets) {
+      const cssRules = [];
+      styleSheets.forEach(function (sheet) {
+        try {
+          util
+            .asArray(sheet.cssRules || [])
+            .forEach(cssRules.push.bind(cssRules));
+        } catch (e) {
+          console.log(
+            'Error while reading CSS rules from ' + sheet.href,
+            e.toString()
+          );
+        }
+      });
+      return cssRules
+    }
+
+    function newWebFont(webFontRule) {
+      return {
+        resolve: function resolve() {
+          const baseUrl = (webFontRule.parentStyleSheet || {}).href;
+          return inliner.inlineAll(webFontRule.cssText, baseUrl)
+        },
+        src: function () {
+          return webFontRule.style.getPropertyValue('src')
+        },
+      }
+    }
+  }
+}
+
+function newImages() {
+  return {
+    inlineAll: inlineAll,
+    impl: {
+      newImage: newImage,
+    },
+  }
+
+  function newImage(element) {
+    return {
+      inline: inline,
+    }
+
+    function inline(get) {
+      if (util.isDataUrl(element.src)) return Promise.resolve()
+
+      return Promise.resolve(element.src)
+        .then(get || util.getAndEncode)
+        .then(function (data) {
+          return util.dataAsUrl(data, util.mimeType(element.src))
+        })
+        .then(function (dataUrl) {
+          return new Promise(function (resolve, reject) {
+            element.onload = resolve;
+            element.onerror = reject;
+            element.src = dataUrl;
+          })
+        })
+    }
+  }
+
+  function inlineAll(node) {
+    if (!(node instanceof Element)) return Promise.resolve(node)
+
+    return inlineBackground(node).then(function () {
+      if (node instanceof HTMLImageElement) return newImage(node).inline()
+      else
+        return Promise.all(
+          util.asArray(node.childNodes).map(function (child) {
+            return inlineAll(child)
+          })
+        )
+    })
+
+    function inlineBackground(node) {
+      const background = node.style.getPropertyValue('background');
+
+      if (!background) return Promise.resolve(node)
+
+      return inliner
+        .inlineAll(background)
+        .then(function (inlined) {
+          node.style.setProperty(
+            'background',
+            inlined,
+            node.style.getPropertyPriority('background')
+          );
+        })
+        .then(function () {
+          return node
+        })
+    }
+  }
+}
+
+const VR_UI_ELEM_CLASS = 'VRUIElement';
+
+/**
+ * Class representing a VR controller UI.
+ * @extends GeomItem
+ */
+class VRControllerUI extends zeaEngine.GeomItem {
+  /**
+   * Create a VR controller UI.
+   * @param {any} appData - The appData value.
+   * @param {any} vrUIDOMHolderElement - The vrUIDOMHolderElement value.
+   * @param {any} vrUIDOMElement - The vrUIDOMElement value.
+   */
+  constructor(appData, vrUIDOMHolderElement, vrUIDOMElement) {
+    const uimat = new zeaEngine.Material('uimat', 'FlatSurfaceShader');
+    uimat.visibleInGeomDataBuffer = false;
+
+    super('VRControllerUI', new zeaEngine.Plane(1, 1), uimat);
+
+    this.appData = appData;
+    this.__vrUIDOMHolderElement = vrUIDOMHolderElement;
+    this.__vrUIDOMElement = vrUIDOMElement;
+
+    this.__uiimage = new zeaEngine.DataImage();
+    // uimat.getParameter('BaseColor').setValue(new Color(0.3, 0.3, 0.3));
+    uimat.getParameter('BaseColor').setValue(this.__uiimage);
+
+    this.__uiGeomOffsetXfo = new zeaEngine.Xfo();
+    this.__uiGeomOffsetXfo.sc.set(0, 0, 1);
+    this.__rect = { width: 0, height: 0 };
+
+    // Flip it over so we see the front.
+    this.__uiGeomOffsetXfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(0, 1, 0), Math.PI);
+    this.setGeomOffsetXfo(this.__uiGeomOffsetXfo);
+
+    let renderRequestedId;
+    let mutatedElems = [];
+    const processMutatedElems = () => {
+      renderRequestedId = null;
+      const promises = mutatedElems.map((elem) => {
+        return this.updateElemInAtlas(elem)
+      });
+      Promise.all(promises).then(() => {
+        this.updateUIImage();
+        // console.log("Update Time:", performance.now() - start, mutatedElems.length);
+        mutatedElems = [];
+      });
+    };
+    this.__mutationObserver = new MutationObserver((mutations) => {
+      if (!this.mainCtx) {
+        this.renderUIToImage();
+        return
+      }
+      // console.log("mutations:", mutations.length)
+      mutations.some((mutation) => {
+        let elem = mutation.target;
+        while (elem.parentNode) {
+          if (elem == this.__vrUIDOMElement) {
+            this.renderUIToImage();
+            mutatedElems = [];
+            return false
+          }
+          // console.log(elem.classList)
+          if (
+            elem.classList.contains(VR_UI_ELEM_CLASS) ||
+            elem == this.__vrUIDOMElement
+          ) {
+            if (mutatedElems.indexOf(elem) == -1) mutatedElems.push(elem);
+            break
+          }
+          elem = elem.parentNode;
+        }
+        return true
+      });
+
+      // Batch the changes.
+      if (renderRequestedId) clearTimeout(renderRequestedId);
+      renderRequestedId = setTimeout(processMutatedElems, 50);
+    });
+
+    this.__active = false;
+    this.__renderRequested = false;
+  }
+
+  // ///////////////////////////////////
+
+  /**
+   * The activate method.
+   */
+  activate() {
+    this.__vrUIDOMHolderElement.style.display = 'block';
+    this.__active = true;
+
+    this.__mutationObserver.observe(this.__vrUIDOMElement, {
+      attributes: true,
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    this.renderUIToImage();
+  }
+
+  /**
+   * The deactivate method.
+   */
+  deactivate() {
+    this.__vrUIDOMHolderElement.style.display = 'none';
+    this.__active = true;
+    this.__mutationObserver.disconnect();
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The updateElemInAtlas method.
+   * @param {any} elem - The elem param.
+   * @return {any} The return value.
+   */
+  updateElemInAtlas(elem) {
+    return new Promise((resolve, reject) => {
+      domtoimage.toCanvas(elem).then((canvas) => {
+        const rect = elem.getBoundingClientRect();
+        // Sometimes a render request occurs as the UI is being hidden.
+        if (rect.width * rect.height == 0) {
+          resolve();
+          return
+        }
+        // console.log(rect.width, rect.height, rect.x, rect.y)
+        // this.mainCtx.clearRect(rect.x, rect.y, rect.width, rect.height);
+        this.mainCtx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        this.mainCtx.drawImage(canvas, rect.x, rect.y);
+        resolve();
+      });
+    })
+  }
+
+  /**
+   * The updateUIImage method.
+   */
+  updateUIImage() {
+    const imageData = this.mainCtx.getImageData(
+      0,
+      0,
+      this.__rect.width,
+      this.__rect.height
+    );
+    this.__uiimage.setData(
+      this.__rect.width,
+      this.__rect.height,
+      new Uint8Array(imageData.data.buffer)
+    );
+  }
+
+  /**
+   * The renderUIToImage method.
+   */
+  renderUIToImage() {
+    domtoimage.toCanvas(this.__vrUIDOMElement).then((canvas) => {
+      this.mainCtx = canvas.getContext('2d');
+      this.mainCtx.fillStyle = '#FFFFFF';
+
+      const rect = this.__vrUIDOMElement.getBoundingClientRect();
+      // Sometimes a rendeer request occurs as the UI is being hidden.
+      if (rect.width * rect.height == 0) return
+
+      // const dpm = 0.0003; //dots-per-meter (1 each 1/2mm)
+      if (
+        rect.width != this.__rect.width ||
+        rect.height != this.__rect.height
+      ) {
+        this.__rect = rect;
+        const dpm = 0.0007; // dots-per-meter (1 each 1/2mm)
+        this.__uiGeomOffsetXfo.sc.set(
+          this.__rect.width * dpm,
+          this.__rect.height * dpm,
+          1.0
+        );
+        this.setGeomOffsetXfo(this.__uiGeomOffsetXfo);
+
+        this.appData.session.pub('pose-message', {
+          interfaceType: 'VR',
+          updateUIPanel: {
+            size: this.__uiGeomOffsetXfo.sc.toJSON(),
+          },
+        });
+      }
+      this.updateUIImage();
+    });
+  }
+
+  /**
+   * The sendMouseEvent method.
+   * @param {any} eventName - The eventName param.
+   * @param {any} args - The args param.
+   * @param {any} element - The element param.
+   * @return {any} The return value.
+   */
+  sendMouseEvent(eventName, args, element) {
+    // console.log(eventName, element)
+
+    // if (eventName == 'mousedown')
+    //   console.log("clientX:" + args.clientX + " clientY:" + args.clientY);
+
+    const event = new MouseEvent(
+      eventName,
+      Object.assign(
+        {
+          target: element,
+          view: window,
+          bubbles: true,
+          // composed: true,
+          cancelable: true,
+        },
+        args
+      )
+    );
+
+    // Dispatch the event to a leaf item in the DOM tree.
+    element.dispatchEvent(event);
+
+    // The event is re-cycled to generate a 'click' event on mouse down.
+    return event
+  }
+}
+
+/**
+ * Class representing a VR UI tool.
+ * @extends BaseTool
+ */
+class VRUITool extends BaseTool {
+  /**
+   * Create a VR UI tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.__vrUIDOMHolderElement = document.createElement('div');
+    this.__vrUIDOMHolderElement.className = 'vrUIHolder';
+    this.__vrUIDOMElement = document.createElement('div');
+    this.__vrUIDOMElement.className = 'vrUI';
+    document.body.appendChild(this.__vrUIDOMHolderElement);
+
+    this.controllerUI = new VRControllerUI(
+      appData,
+      this.__vrUIDOMHolderElement,
+      this.__vrUIDOMElement
+    );
+    this.controllerUI.addRef(this);
+
+    appData.renderer.addTreeItem(this.controllerUI);
+
+    this.__uiLocalXfo = new zeaEngine.Xfo();
+    this.__uiLocalXfo.ori.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * -0.6);
+
+    const pointermat = new zeaEngine.Material('pointermat', 'LinesShader');
+    pointermat.visibleInGeomDataBuffer = false;
+    pointermat.getParameter('Color').setValue(new zeaEngine.Color(1.2, 0, 0));
+
+    const line = new zeaEngine.Lines();
+    line.setNumVertices(2);
+    line.setNumSegments(1);
+    line.setSegment(0, 0, 1);
+    line.getVertex(0).set(0.0, 0.0, 0.0);
+    line.getVertex(1).set(0.0, 0.0, -1.0);
+    line.setBoundingBoxDirty();
+    this.__pointerLocalXfo = new zeaEngine.Xfo();
+    this.__pointerLocalXfo.sc.set(1, 1, 0.1);
+    this.__pointerLocalXfo.ori.setFromAxisAndAngle(
+      new zeaEngine.Vec3(1, 0, 0),
+      Math.PI * -0.2
+    );
+
+    this.__uiPointerItem = new zeaEngine.GeomItem('VRControllerPointer', line, pointermat);
+    this.__uiPointerItem.addRef(this);
+
+    this.__triggerHeld = false;
+  }
+
+  /**
+   * The getName method.
+   * @return {any} The return value.
+   */
+  getName() {
+    return 'VRUITool'
+  }
+
+  // ///////////////////////////////////
+
+  /**
+   * The setUIControllers method.
+   * @param {any} openUITool - The openUITool param.
+   * @param {any} uiController - The uiController param.
+   * @param {any} pointerController - The pointerController param.
+   * @param {any} headXfo - The headXfo param.
+   */
+  setUIControllers(openUITool, uiController, pointerController, headXfo) {
+    this.openUITool = openUITool;
+    this.uiController = uiController;
+    this.pointerController = pointerController;
+
+    const xfoA = this.uiController.getTreeItem().getGlobalXfo();
+    if (this.pointerController) {
+      const xfoB = this.pointerController.getTreeItem().getGlobalXfo();
+      const headToCtrlA = xfoA.tr.subtract(headXfo.tr);
+      const headToCtrlB = xfoB.tr.subtract(headXfo.tr);
+      if (headToCtrlA.cross(headToCtrlB).dot(headXfo.ori.getYaxis()) > 0.0) {
+        this.__uiLocalXfo.tr.set(0.05, -0.05, 0.08);
+      } else {
+        this.__uiLocalXfo.tr.set(-0.05, -0.05, 0.08);
+      }
+    } else {
+      this.__uiLocalXfo.tr.set(0, -0.05, 0.08);
+    }
+
+    this.controllerUI.setLocalXfo(this.__uiLocalXfo);
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+
+    this.controllerUI.activate();
+
+    if (this.uiController) {
+      this.uiController.getTipItem().addChild(this.controllerUI, false);
+      if (this.pointerController)
+        this.pointerController
+          .getTipItem()
+          .addChild(this.__uiPointerItem, false);
+
+      this.appData.session.pub('pose-message', {
+        interfaceType: 'VR',
+        showUIPanel: {
+          controllerId: this.uiController.getId(),
+          localXfo: this.__uiLocalXfo.toJSON(),
+          size: this.controllerUI.getGeomOffsetXfo().sc.toJSON(),
+        },
+      });
+    }
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+
+    this.controllerUI.deactivate();
+
+    if (this.uiController) {
+      this.uiController.getTipItem().removeChildByHandle(this.controllerUI);
+      if (this.pointerController) {
+        this.pointerController
+          .getTipItem()
+          .removeChildByHandle(this.__uiPointerItem);
+      }
+
+      this.appData.session.pub('pose-message', {
+        interfaceType: 'VR',
+        hideUIPanel: {
+          controllerId: this.uiController.getId(),
+        },
+      });
+    }
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The setPointerLength method.
+   * @param {any} length - The length param.
+   */
+  setPointerLength(length) {
+    this.__pointerLocalXfo.sc.set(1, 1, length);
+    this.__uiPointerItem.setLocalXfo(this.__pointerLocalXfo);
+  }
+
+  /**
+   * The calcUIIntersection method.
+   * @return {any} The return value.
+   */
+  calcUIIntersection() {
+    const pointerXfo = this.__uiPointerItem.getGlobalXfo();
+    const pointervec = pointerXfo.ori.getZaxis().negate();
+    const ray = new zeaEngine.Ray(pointerXfo.tr, pointervec);
+
+    const planeXfo = this.controllerUI.getGlobalXfo();
+    const planeSize = this.controllerUI.getGeomOffsetXfo().sc;
+    const plane = new zeaEngine.Ray(planeXfo.tr, planeXfo.ori.getZaxis().negate());
+    const res = ray.intersectRayPlane(plane);
+    if (res <= 0) {
+      // Let the pointer shine right past the UI.
+      this.setPointerLength(0.5);
+      return
+    }
+    const hitOffset = pointerXfo.tr
+      .add(pointervec.scale(res))
+      .subtract(plane.start);
+    const x = hitOffset.dot(planeXfo.ori.getXaxis()) / planeSize.x;
+    const y = hitOffset.dot(planeXfo.ori.getYaxis()) / planeSize.y;
+    if (Math.abs(x) > 0.5 || Math.abs(y) > 0.5) {
+      // Let the pointer shine right past the UI.
+      this.setPointerLength(0.5);
+      return
+    }
+    this.setPointerLength(res);
+    const rect = this.__vrUIDOMElement.getBoundingClientRect();
+    return {
+      clientX: Math.round(x * rect.width + rect.width / 2),
+      clientY: Math.round(y * -rect.height + rect.height / 2),
+    }
+  }
+
+  /**
+   * The sendEventToUI method.
+   * @param {any} eventName - The eventName param.
+   * @param {any} args - The args param.
+   * @return {any} The return value.
+   */
+  sendEventToUI(eventName, args) {
+    const hit = this.calcUIIntersection();
+    if (hit) {
+      hit.offsetX = hit.pageX = hit.pageX = hit.screenX = hit.clientX;
+      hit.offsetY = hit.pageY = hit.pageY = hit.screenY = hit.clientY;
+      const element = document.elementFromPoint(hit.clientX, hit.clientY);
+      if (element != this._element) {
+        if (this._element)
+          this.controllerUI.sendMouseEvent(
+            'mouseleave',
+            Object.assign(args, hit),
+            this._element
+          );
+        this._element = element;
+        this.controllerUI.sendMouseEvent(
+          'mouseenter',
+          Object.assign(args, hit),
+          this._element
+        );
+      }
+      this.controllerUI.sendMouseEvent(
+        eventName,
+        Object.assign(args, hit),
+        this._element
+      );
+      return this._element
+    } else if (this._element) {
+      this.controllerUI.sendMouseEvent(
+        'mouseleave',
+        Object.assign(args, hit),
+        this._element
+      );
+      this._element = null;
+    }
+  }
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    if (event.controller == this.pointerController) {
+      this.__triggerHeld = true;
+      const target = this.sendEventToUI('mousedown', {
+        button: event.button - 1,
+      });
+      if (target) {
+        this.__triggerDownElem = target;
+      } else {
+        this.__triggerDownElem = null;
+      }
+    }
+
+    // While the UI is open, no other tools get events.
+    return true
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (event.controller == this.pointerController) {
+      this.__triggerHeld = false;
+      const target = this.sendEventToUI('mouseup', {
+        button: event.button - 1,
+      });
+      if (target && this.__triggerDownElem == target) {
+        this.sendEventToUI('click', {
+          button: event.button - 1,
+        });
+      }
+      this.__triggerDownElem = null;
+    }
+
+    // While the UI is open, no other tools get events.
+    return true
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    // Controller coordinate system
+    // X = Horizontal.
+    // Y = Up.
+    // Z = Towards handle base.
+    const headXfo = event.viewXfo;
+    const checkControllers = () => {
+      const xfoA = this.uiController.getTreeItem().getGlobalXfo();
+      const headToCtrlA = xfoA.tr.subtract(headXfo.tr);
+      headToCtrlA.normalizeInPlace();
+      if (headToCtrlA.angleTo(xfoA.ori.getYaxis()) > Math.PI * 0.5) {
+        // Remove ourself from the system.
+        this.appData.toolManager.removeToolByHandle(this);
+        return false
+      }
+      return true
+    };
+
+    // if (!this.__triggerHeld) {
+    //   if(checkControllers()){
+    //     this.calcUIIntersection();
+    //   }
+    // } else {
+    if (checkControllers()) {
+      this.sendEventToUI('mousemove', {});
+    }
+
+    // While the UI is open, no other tools get events.
+    return true
+  }
+}
+
+/**
+ * Class representing a hold objects change.
+ * @extends Change
+ */
+class HoldObjectsChange extends Change {
+  /**
+   * Create a hold objects change.
+   * @param {any} data - The data value.
+   */
+  constructor(data) {
+    super('HoldObjectsChange');
+
+    this.__selection = [];
+    this.__prevXfos = [];
+    this.__newXfos = [];
+
+    if (data) this.update(data);
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    for (let i = 0; i < this.__selection.length; i++) {
+      if (this.__selection[i]) {
+        this.__selection[i].setGlobalXfo(this.__prevXfos[i]);
+      }
+    }
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    for (let i = 0; i < this.__selection.length; i++) {
+      if (this.__selection[i]) {
+        this.__selection[i].setGlobalXfo(this.__newXfos[i]);
+      }
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    if (updateData.newItem) {
+      this.__selection[updateData.newItemId] = updateData.newItem;
+      this.__prevXfos[updateData.newItemId] = updateData.newItem.getGlobalXfo();
+    } else if (updateData.changeXfos) {
+      for (let i = 0; i < updateData.changeXfoIds.length; i++) {
+        const gidx = updateData.changeXfoIds[i];
+        if (!this.__selection[gidx]) continue
+        this.__selection[gidx].setGlobalXfo(updateData.changeXfos[i]);
+        this.__newXfos[gidx] = updateData.changeXfos[i];
+      }
+    }
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} context - The context param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = super.toJSON(context);
+
+    const itemPaths = [];
+    for (let i = 0; i < this.__selection.length; i++) {
+      if (this.__selection[i]) {
+        itemPaths[i] = this.__selection[i].getPath();
+      } else {
+        itemPaths.push(null);
+      }
+    }
+    j.itemPaths = itemPaths;
+
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} context - The context param.
+   */
+  fromJSON(j, context) {
+    super.fromJSON(j, context);
+
+    const sceneRoot = context.appData.scene.getRoot();
+    const newSelection = [];
+    for (let i = 0; i < j.itemPaths.length; i++) {
+      const itemPath = j.itemPaths[i];
+      if (itemPath) {
+        newSelection[i] = sceneRoot.resolvePath(itemPath, 1);
+      }
+    }
+    this.__selection = newSelection;
+  }
+
+  // changeFromJSON(j) {
+
+  //   if(updateData.newItem) {
+  //     this.__selection[updateData.newItemId] = updateData.newItem;
+  //     this.__prevXfos[updateData.newItemId] = updateData.newItem.getGlobalXfo();
+  //   }
+  //   else if(updateData.changeXfos) {
+  //     for(let i=0; i<updateData.changeXfoIds.length; i++){
+  //       const gidx = updateData.changeXfoIds[i];
+  //       if(!this.__selection[gidx])
+  //         continue;
+  //       this.__selection[gidx].setGlobalXfo(
+  //         updateData.changeXfos[i],
+  //         ValueSetMode.REMOTEUSER_SETVALUE);
+  //       this.__newXfos[gidx] = updateData.changeXfos[i];
+  //     }
+  //   }
+  //   this.emit('updated', updateData);
+  // }
+}
+
+UndoRedoManager.registerChange('HoldObjectsChange', HoldObjectsChange);
+
+/**
+ * Class representing a VR hold objects tool.
+ * @extends BaseTool
+ */
+class VRHoldObjectsTool extends BaseTool {
+  /**
+   * Create a VR hold objects tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.__pressedButtonCount = 0;
+
+    this.__freeIndices = [];
+    this.__vrControllers = [];
+    this.__heldObjectCount = 0;
+    this.__heldGeomItems = [];
+    this.__heldGeomItemIds = []; // controller id to held goem id.
+    this.__heldGeomItemRefs = [];
+    this.__heldGeomItemOffsets = [];
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+    console.log('activateTool.VRHoldObjectsTool');
+
+    this.appData.renderer.getDiv().style.cursor = 'crosshair';
+
+    const addIconToController = (controller) => {
+      // The tool might already be deactivated.
+      if (!this.__activated) return
+      const cross = new zeaEngine.Cross(0.03);
+      const mat = new zeaEngine.Material('Cross', 'FlatSurfaceShader');
+      mat.getParameter('BaseColor').setValue(new zeaEngine.Color('#03E3AC'));
+      mat.visibleInGeomDataBuffer = false;
+      const geomItem = new zeaEngine.GeomItem('HandleToolTip', cross, mat);
+      controller.getTipItem().removeAllChildren();
+      controller.getTipItem().addChild(geomItem, false);
+    };
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      for (const controller of xrvp.getControllers())
+        addIconToController(controller);
+      this.addIconToControllerId = xrvp.on('controllerAdded', 
+        addIconToController
+      );
+    });
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // for(let controller of xrvp.getControllers()) {
+      //   controller.getTipItem().removeAllChildren();
+      // }
+      xrvp.removeListenerById('controllerAdded', this.addIconToControllerId);
+    });
+  }
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The computeGrabXfo method.
+   * @param {any} refs - The refs param.
+   * @return {any} The return value.
+   */
+  computeGrabXfo(refs) {
+    let grabXfo;
+    if (refs.length == 1) {
+      grabXfo = this.__vrControllers[refs[0]].getTipXfo();
+    } else if (refs.length == 2) {
+      const xfo0 = this.__vrControllers[refs[0]].getTipXfo();
+      const xfo1 = this.__vrControllers[refs[1]].getTipXfo();
+
+      xfo0.ori.alignWith(xfo1.ori);
+
+      grabXfo = new zeaEngine.Xfo();
+      grabXfo.tr = xfo0.tr.lerp(xfo1.tr, 0.5);
+      grabXfo.ori = xfo0.ori.lerp(xfo1.ori, 0.5);
+
+      let vec0 = xfo1.tr.subtract(xfo0.tr);
+      vec0.normalizeInPlace();
+      const vec1 = grabXfo.ori.getXaxis();
+      if (vec0.dot(vec1) < 0.0) vec0 = vec0.negate();
+
+      const angle = vec0.angleTo(vec1);
+      if (angle > 0) {
+        const axis = vec1.cross(vec0);
+        axis.normalizeInPlace();
+        const align = new zeaEngine.Quat();
+        align.setFromAxisAndAngle(axis, angle);
+        grabXfo.ori = align.multiply(grabXfo.ori);
+      }
+    }
+    return grabXfo
+  }
+
+  /**
+   * The initAction method.
+   */
+  initAction() {
+    for (let i = 0; i < this.__heldGeomItems.length; i++) {
+      const heldGeom = this.__heldGeomItems[i];
+      if (!heldGeom) continue
+      const grabXfo = this.computeGrabXfo(this.__heldGeomItemRefs[i]);
+      this.__heldGeomItemOffsets[i] = grabXfo
+        .inverse()
+        .multiply(heldGeom.getGlobalXfo());
+    }
+  }
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    const id = event.controller.getId();
+    this.__vrControllers[id] = event.controller;
+
+    const intersectionData = event.controller.getGeomItemAtTip();
+    if (intersectionData) {
+      if (intersectionData.geomItem.getOwner() instanceof Handle) return false
+
+      // console.log("onMouseDown on Geom"); // + " Material:" + geomItem.getMaterial().name);
+      // console.log(intersectionData.geomItem.getPath()); // + " Material:" + geomItem.getMaterial().name);
+      event.intersectionData = intersectionData;
+      intersectionData.geomItem.onMouseDown(event, intersectionData);
+      if (!event.propagating) return false
+
+      let gidx = this.__heldGeomItems.indexOf(intersectionData.geomItem);
+      if (gidx == -1) {
+        gidx = this.__heldGeomItems.length;
+        this.__heldObjectCount++;
+        this.__heldGeomItems.push(intersectionData.geomItem);
+        this.__heldGeomItemRefs[gidx] = [id];
+        this.__heldGeomItemIds[id] = gidx;
+
+        const changeData = {
+          newItem: intersectionData.geomItem,
+          newItemId: gidx,
+        };
+        if (!this.change) {
+          this.change = new HoldObjectsChange(changeData);
+          this.appData.undoRedoManager.addChange(this.change);
+        } else {
+          this.change.update(changeData);
+        }
+      } else {
+        this.__heldGeomItemIds[id] = gidx;
+        this.__heldGeomItemRefs[gidx].push(id);
+      }
+      this.initAction();
+      return true
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    const id = event.controller.getId();
+
+    this.__pressedButtonCount--;
+    if (this.__heldGeomItemIds[id] !== undefined) {
+      const gidx = this.__heldGeomItemIds[id];
+      const refs = this.__heldGeomItemRefs[gidx];
+      refs.splice(refs.indexOf(id), 1);
+      if (refs.length == 0) {
+        this.__heldObjectCount--;
+        this.__heldGeomItems[gidx] = undefined;
+
+        this.change = undefined;
+      }
+      this.__heldGeomItemIds[id] = undefined;
+      this.initAction();
+      return true
+    }
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (!this.change) return false
+
+    const changeXfos = [];
+    const changeXfoIds = [];
+    for (let i = 0; i < this.__heldGeomItems.length; i++) {
+      const heldGeom = this.__heldGeomItems[i];
+      if (!heldGeom) continue
+      const grabXfo = this.computeGrabXfo(this.__heldGeomItemRefs[i]);
+      changeXfos.push(grabXfo.multiply(this.__heldGeomItemOffsets[i]));
+      changeXfoIds.push(i);
+    }
+
+    this.change.update({ changeXfos, changeXfoIds });
+
+    return true
+  }
+}
+
+/**
+ * Class representing base create tool.
+ * @extends BaseTool
+ */
+class BaseCreateTool extends BaseTool {
+  /**
+   * Create a base create tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+  }
+
+  /**
+   * The isPrimaryTool method.
+   * @return {any} The return value.
+   */
+  isPrimaryTool() {
+    return true
+  }
+}
+
+/**
+ * Class representing a create geom change.
+ * @extends Change
+ */
+class CreateGeomChange extends Change {
+  /**
+   * Create a create circle change.
+   * @param {any} name - The name value.
+   */
+  constructor(name) {
+    super(name);
+  }
+
+  /**
+   * The setParentAndXfo method.
+   * @param {any} parentItem - The parentItem param.
+   * @param {any} xfo - The xfo param.
+   */
+  setParentAndXfo(parentItem, xfo) {
+    this.parentItem = parentItem;
+    const name = this.parentItem.generateUniqueName(this.geomItem.getName());
+    this.geomItem.setName(name);
+    this.geomItem.setGlobalXfo(xfo);
+    this.childIndex = this.parentItem.addChild(this.geomItem, true);
+
+    this.geomItem.addRef(this); // keep a ref to stop it being destroyed
+  }
+
+  /**
+   * The undo method.
+   */
+  undo() {
+    this.parentItem.removeChild(this.childIndex);
+  }
+
+  /**
+   * The redo method.
+   */
+  redo() {
+    this.parentItem.addChild(this.geomItem, false, false);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} appData - The appData param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = super.toJSON(context);
+    j.parentItemPath = this.parentItem.getPath();
+    j.geomItemName = this.geomItem.getName();
+    j.geomItemXfo = this.geomItem.getParameter('LocalXfo').getValue();
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} appData - The appData param.
+   */
+  fromJSON(j, context) {
+    const sceneRoot = context.appData.scene.getRoot();
+    this.parentItem = sceneRoot.resolvePath(j.parentItemPath, 1);
+    this.geomItem.setName(this.parentItem.generateUniqueName(j.geomItemName));
+    const xfo = new zeaEngine.Xfo();
+    xfo.fromJSON(j.geomItemXfo);
+    this.geomItem.setLocalXfo(xfo);
+    this.childIndex = this.parentItem.addChild(this.geomItem, false);
+  }
+
+  // changeFromJSON(j) {
+  //   if (this.__newValue.fromJSON)
+  //     this.__newValue.fromJSON(j.value);
+  //   else
+  //     this.__newValue = j.value;
+  // }
+
+  /**
+   * The destroy method.
+   */
+  destroy() {
+    this.geomItem.removeRef(this); // remove the tmp ref.
+  }
+}
+
+/**
+ * Class representing a create geom tool.
+ * @extends BaseCreateTool
+ */
+class CreateGeomTool extends BaseCreateTool {
+  /**
+   * Create a create geom tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.stage = 0;
+    this.removeToolOnRightClick = true;
+
+    this.cp = this.addParameter(
+      new zeaEngine.ColorParameter('Line Color', new zeaEngine.Color(0.7, 0.2, 0.2))
+    );
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+
+    this.appData.renderer.getDiv().style.cursor = 'crosshair';
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      if (!this.vrControllerToolTip) {
+        this.vrControllerToolTip = new zeaEngine.Cross(0.05);
+        this.vrControllerToolTipMat = new zeaEngine.Material(
+          'VRController Cross',
+          'LinesShader'
+        );
+        this.vrControllerToolTipMat
+          .getParameter('Color')
+          .setValue(this.cp.getValue());
+        this.vrControllerToolTipMat.visibleInGeomDataBuffer = false;
+      }
+      const addIconToController = (controller) => {
+        const geomItem = new zeaEngine.GeomItem(
+          'CreateGeomToolTip',
+          this.vrControllerToolTip,
+          this.vrControllerToolTipMat
+        );
+        controller.getTipItem().removeAllChildren();
+        controller.getTipItem().addChild(geomItem, false);
+      };
+      for (const controller of xrvp.getControllers()) {
+        addIconToController(controller);
+      }
+      this.addIconToControllerId = xrvp.on('controllerAdded', 
+        addIconToController
+      );
+    });
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+
+    this.appData.renderer.getDiv().style.cursor = 'pointer';
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // for(let controller of xrvp.getControllers()) {
+      //   controller.getTipItem().removeAllChildren();
+      // }
+      xrvp.removeListenerById('controllerAdded', this.addIconToControllerId);
+    });
+  }
+
+  /**
+   * The screenPosToXfo method.
+   * @param {any} screenPos - The screenPos param.
+   * @param {any} viewport - The viewport param.
+   * @return {any} The return value.
+   */
+  screenPosToXfo(screenPos, viewport) {
+    //
+
+    const ray = viewport.calcRayFromScreenPos(screenPos);
+
+    // Raycast any working planes.
+    const planeRay = new zeaEngine.Ray(
+      this.constructionPlane.tr,
+      this.constructionPlane.ori.getZaxis()
+    );
+    const dist = ray.intersectRayPlane(planeRay);
+    if (dist > 0.0) {
+      const xfo = this.constructionPlane.clone();
+      xfo.tr = ray.pointAtDist(dist);
+      return xfo
+    }
+
+    // else project based on focal dist.
+    const camera = viewport.getCamera();
+    const xfo = camera.getGlobalXfo().clone();
+    xfo.tr = ray.pointAtDist(camera.getFocalDistance());
+    return xfo
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.stage = 1;
+  }
+
+  /**
+   * The createPoint method.
+   * @param {any} pt - The pt param.
+   */
+  createPoint(pt) {}
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {}
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   */
+  createRelease(pt) {}
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    //
+    if (this.stage == 0) {
+      if (event.button == 0) {
+        this.constructionPlane = new zeaEngine.Xfo();
+
+        const xfo = this.screenPosToXfo(event.mousePos, event.viewport);
+        this.createStart(xfo, this.appData.scene.getRoot());
+      } else if (event.button == 2) {
+        // Cancel the tool.
+        if (this.removeToolOnRightClick)
+          this.appData.toolManager.removeTool(this.index);
+      }
+      return true
+    } else if (event.button == 2) {
+      this.appData.undoRedoManager.undo(false);
+      this.stage = 0;
+      return true
+    }
+    return true
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseMove(event) {
+    if (this.stage > 0) {
+      const xfo = this.screenPosToXfo(event.mousePos, event.viewport);
+      this.createMove(xfo.tr);
+      return true
+    }
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseUp(event) {
+    if (this.stage > 0) {
+      const xfo = this.screenPosToXfo(event.mousePos, event.viewport);
+      this.createRelease(xfo.tr);
+      return true
+    }
+  }
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   */
+  onWheel(event) {}
+
+  // ///////////////////////////////////
+  // Keyboard events
+
+  /**
+   * The onKeyPressed method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyPressed(key, event) {}
+
+  /**
+   * The onKeyDown method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyDown(key, event) {}
+
+  /**
+   * The onKeyUp method.
+   * @param {any} key - The key param.
+   * @param {any} event - The event param.
+   */
+  onKeyUp(key, event) {}
+
+  // ///////////////////////////////////
+  // Touch events
+
+  /**
+   * The onTouchStart method.
+   * @param {any} event - The event param.
+   */
+  onTouchStart(event) {}
+
+  /**
+   * The onTouchMove method.
+   * @param {any} event - The event param.
+   */
+  onTouchMove(event) {}
+
+  /**
+   * The onTouchEnd method.
+   * @param {any} event - The event param.
+   */
+  onTouchEnd(event) {}
+
+  /**
+   * The onTouchCancel method.
+   * @param {any} event - The event param.
+   */
+  onTouchCancel(event) {}
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    if (!this.__activeController) {
+      // TODO: Snap the Xfo to any nearby construction planes.
+      this.__activeController = event.controller;
+      this.constructionPlane = new zeaEngine.Xfo();
+      const xfo = this.constructionPlane.clone();
+      xfo.tr = this.__activeController.getTipXfo().tr;
+      this.createStart(xfo, this.appData.scene.getRoot());
+    }
+    return true
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    if (this.__activeController && this.stage > 0) {
+      // TODO: Snap the Xfo to any nearby construction planes.
+      const xfo = this.__activeController.getTipXfo();
+      this.createMove(xfo.tr);
+      return true
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    if (this.stage > 0) {
+      if (this.__activeController == event.controller) {
+        const xfo = this.__activeController.getTipXfo();
+        this.createRelease(xfo.tr);
+        if (this.stage == 0) this.__activeController = undefined;
+        return true
+      }
+    }
+  }
+}
+
+/**
+ * Class representing a create line change.
+ * @extends CreateGeomChange
+ */
+class CreateLineChange extends CreateGeomChange {
+  /**
+   * Create a create line change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   * @param {any} color - The color value.
+   * @param {any} thickness - The thickness value.
+   */
+  constructor(parentItem, xfo, color, thickness) {
+    super('Create Line');
+
+    this.line = new zeaEngine.Lines(0.0);
+    this.line.setNumVertices(2);
+    this.line.setNumSegments(1);
+    this.line.setSegment(0, 0, 1);
+    const material = new zeaEngine.Material('Line', 'LinesShader');
+    material.getParameter('Color').setValue(new zeaEngine.Color(0.7, 0.2, 0.2));
+    this.geomItem = new zeaEngine.GeomItem('Line');
+    this.geomItem.setGeometry(this.line);
+    this.geomItem.setMaterial(material);
+
+    if (color) {
+      material.getParameter('Color').setValue(color);
+    }
+
+    if (thickness) {
+      this.line.lineThickness = thickness;
+      // this.line.addVertexAttribute('lineThickness', Float32, 0.0);
+    }
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    if (updateData.p1) {
+      this.line.getVertex(1).setFromOther(updateData.p1);
+      this.line.geomDataChanged.emit();
+    }
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} context - The context param.
+   */
+  fromJSON(j, context) {
+    super.fromJSON(j, context);
+    if (j.color) {
+      const color = new zeaEngine.Color();
+      color.fromJSON(j.color);
+      material.getParameter('Color').setValue(color);
+    }
+
+    if (j.thickness) {
+      this.line.lineThickness = j.thickness;
+      // this.line.addVertexAttribute('lineThickness', Float32, 0.0);
+    }
+  }
+}
+UndoRedoManager.registerChange('CreateLineChange', CreateLineChange);
+
+/**
+ * Class representing a create line tool.
+ * @extends CreateGeomTool
+ */
+class CreateLineTool extends CreateGeomTool {
+  /**
+   * Create a create line tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.tp = this.addParameter(
+      new zeaEngine.NumberParameter('Line Thickness', 0.06, [0, 0.1])
+    ); // 1cm.
+  }
+
+  // activateTool() {
+  //   super.activateTool();
+
+  //   this.appData.renderer.getDiv().style.cursor = "crosshair";
+
+  //   this.appData.renderer.getXRViewport().then(xrvp => {
+  //     if(!this.vrControllerToolTip) {
+  //       this.vrControllerToolTip = new Sphere(this.tp.getValue(), 64);
+  //       this.vrControllerToolTipMat = new Material('marker', 'FlatSurfaceShader');
+  //       this.vrControllerToolTipMat.getParameter('BaseColor').setValue(this.cp.getValue());
+  //     }
+  //     const addIconToController = (controller) => {
+  //       // The tool might already be deactivated.
+  //       if(!this.__activated)
+  //         return;
+  //       const geomItem = new GeomItem('VRControllerTip', this.vrControllerToolTip, this.vrControllerToolTipMat);
+  //       controller.getTipItem().removeAllChildren();
+  //       controller.getTipItem().addChild(geomItem, false);
+  //     }
+  //     for(let controller of xrvp.getControllers()) {
+  //       addIconToController(controller)
+  //     }
+  //     this.addIconToControllerId = xrvp.on('controllerAdded', addIconToController);
+  //   });
+
+  // }
+
+  // deactivateTool() {
+  //   super.deactivateTool();
+
+  //   this.appData.renderer.getDiv().style.cursor = "pointer";
+
+  //   this.appData.renderer.getXRViewport().then(xrvp => {
+  //     // for(let controller of xrvp.getControllers()) {
+  //     //   controller.getTipItem().removeAllChildren();
+  //     // }
+  //     xrvp.removeListenerById('controllerAdded', this.addIconToControllerId);
+  //   });
+  // }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.change = new CreateLineChange(parentItem, xfo);
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo.inverse();
+    this.stage = 1;
+    this.length = 0.0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    const offet = this.xfo.transformVec3(pt);
+    this.length = offet.length();
+    this.change.update({ p1: offet });
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   */
+  createRelease(pt) {
+    if (this.length == 0) {
+      this.appData.undoRedoManager.undo(false);
+    }
+    this.stage = 0;
+    this.emit('actionFinished');
+  }
+}
+
+/**
+ * Class representing a create circle change.
+ * @extends CreateGeomChange
+ */
+class CreateCircleChange extends CreateGeomChange {
+  /**
+   * Create a create circle change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   */
+  constructor(parentItem, xfo) {
+    super('Create Circle', parentItem);
+
+    this.circle = new zeaEngine.Circle(0, 64);
+    this.circle.lineThickness = 0.05;
+    // const material = new Material('circle', 'LinesShader');
+    const material = new zeaEngine.Material('circle', 'FatLinesShader');
+    material.getParameter('Color').setValue(new zeaEngine.Color(0.7, 0.2, 0.2));
+    this.geomItem = new zeaEngine.GeomItem('Circle');
+    this.geomItem.setGeometry(this.circle);
+    this.geomItem.setMaterial(material);
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    this.circle.getParameter('Radius').setValue(updateData.radius);
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The toJSON method.
+   * @return {any} The return value.
+   */
+  toJSON() {
+    const j = super.toJSON();
+    j.radius = this.circle.getParameter('Radius').getValue();
+    return j
+  }
+
+  /**
+   * The changeFromJSON method.
+   * @param {any} j - The j param.
+   */
+  changeFromJSON(j) {
+    console.log('CreateCircleChange:', j);
+    if (j.radius) this.circle.getParameter('Radius').setValue(j.radius);
+  }
+}
+UndoRedoManager.registerChange('CreateCircleChange', CreateCircleChange);
+
+/**
+ * Class representing a create circle tool.
+ * @extends CreateGeomTool
+ */
+class CreateCircleTool extends CreateGeomTool {
+  /**
+   * Create a create circle tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.change = new CreateCircleChange(parentItem, xfo);
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo;
+    this.stage = 1;
+    this.radius = 0.0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    this.radius = pt.distanceTo(this.xfo.tr);
+    this.change.update({ radius: this.radius });
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   */
+  createRelease(pt) {
+    if (this.radius == 0) {
+      this.appData.undoRedoManager.undo(false);
+    }
+    this.change = null;
+    this.stage = 0;
+    this.emit('actionFinished');
+  }
+}
+
+/**
+ * Class representing a create rect change.
+ * @extends CreateGeomChange
+ */
+class CreateRectChange extends CreateGeomChange {
+  /**
+   * Create a create rect change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   */
+  constructor(parentItem, xfo) {
+    super('Create Rect');
+
+    this.rect = new zeaEngine.Rect(0, 0);
+    this.rect.lineThickness = 0.05;
+    // const material = new Material('rect', 'LinesShader');
+    const material = new zeaEngine.Material('circle', 'FatLinesShader');
+    material.getParameter('Color').setValue(new zeaEngine.Color(0.7, 0.2, 0.2));
+    this.geomItem = new zeaEngine.GeomItem('Rect');
+    this.geomItem.setGeometry(this.rect);
+    this.geomItem.setMaterial(material);
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    if (updateData.baseSize) {
+      this.rect.setSize(updateData.baseSize[0], updateData.baseSize[1]);
+    }
+    if (updateData.tr) {
+      const xfo = this.geomItem.getParameter('LocalXfo').getValue();
+      xfo.tr.fromJSON(updateData.tr);
+      this.geomItem.getParameter('LocalXfo').setValue(xfo);
+    }
+
+    this.emit('updated', updateData);
+  }
+}
+UndoRedoManager.registerChange('CreateRectChange', CreateRectChange);
+
+/**
+ * Class representing a create rect tool.
+ * @extends CreateGeomTool
+ */
+class CreateRectTool extends CreateGeomTool {
+  /**
+   * Create a create rect tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.change = new CreateRectChange(parentItem, xfo);
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo;
+    this.invxfo = xfo.inverse();
+    this.stage = 1;
+    this._size = 0.0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    if (this.stage == 1) {
+      const delta = this.invxfo.transformVec3(pt)
+
+      ;(this._size = Math.abs(delta.x)), Math.abs(delta.y);
+
+      // const delta = pt.subtract(this.xfo.tr)
+      this.change.update({
+        baseSize: [Math.abs(delta.x), Math.abs(delta.y)],
+        tr: this.xfo.tr.add(delta.scale(0.5)),
+      });
+    } else {
+      const vec = this.invxfo.transformVec3(pt);
+      this.change.update({ height: vec.y });
+    }
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   * @param {any} viewport - The viewport param.
+   */
+  createRelease(pt, viewport) {
+    if (this._size == 0) {
+      this.appData.undoRedoManager.undo(false);
+    }
+    this.stage = 0;
+    this.emit('actionFinished');
+  }
+}
+
+/**
+ * Class representing a create freehand line change.
+ * @extends CreateGeomChange
+ */
+class CreateFreehandLineChange extends CreateGeomChange {
+  /**
+   * Create a create freehand line change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   * @param {any} color - The color value.
+   * @param {any} thickness - The thickness value.
+   */
+  constructor(parentItem, xfo, color, thickness) {
+    super('Create Freehand Line');
+
+    this.used = 0;
+    this.vertexCount = 100;
+
+    this.line = new zeaEngine.Lines();
+    this.line.setNumVertices(this.vertexCount);
+    this.line.setNumSegments(this.vertexCount - 1);
+    this.line.vertices.setValue(0, new zeaEngine.Vec3());
+
+    // const material = new Material('freeHandLine', 'LinesShader');
+    // this.line.lineThickness = 0.5;
+    // const material = new Material('freeHandLine', 'LinesShader');
+    const material = new zeaEngine.Material('freeHandLine', 'FatLinesShader');
+
+    this.geomItem = new zeaEngine.GeomItem('freeHandLine');
+    this.geomItem.setGeometry(this.line);
+    this.geomItem.setMaterial(material);
+
+    if (color) {
+      material.getParameter('Color').setValue(color);
+    }
+
+    if (thickness) {
+      this.line.lineThickness = thickness;
+      // this.line.addVertexAttribute('lineThickness', Float32, 0.0);
+    }
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    // console.log("update:", this.used)
+
+    this.used++;
+
+    let realloc = false;
+    if (this.used >= this.line.getNumSegments()) {
+      this.vertexCount = this.vertexCount + 100;
+      this.line.setNumVertices(this.vertexCount);
+      this.line.setNumSegments(this.vertexCount - 1);
+      realloc = true;
+    }
+
+    this.line.vertices.setValue(this.used, updateData.point);
+    // this.line.getVertexAttributes().lineThickness.setValue(this.used, updateData.lineThickness);
+    this.line.setSegment(this.used - 1, this.used - 1, this.used);
+
+    if (realloc) {
+      this.line.geomDataTopologyChanged.emit({
+        indicesChanged: true,
+      });
+    } else {
+      this.line.geomDataChanged.emit({
+        indicesChanged: true,
+      });
+    }
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} appData - The appData param.
+   * @return {any} The return value.
+   */
+  toJSON(context) {
+    const j = super.toJSON(context);
+    j.lineThickness = this.line.lineThickness;
+    j.color = this.geomItem.getMaterial().getParameter('Color').getValue();
+    return j
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} j - The j param.
+   * @param {any} appData - The appData param.
+   */
+  fromJSON(j, context) {
+    // Need to set line thickness before the geom is added to the tree.
+    if (j.lineThickness) {
+      this.line.lineThickness = j.lineThickness;
+      // this.line.addVertexAttribute('lineThickness', Float32, 0.0);
+    }
+
+    const color = new zeaEngine.Color(0.7, 0.2, 0.2);
+    if (j.color) {
+      color.fromJSON(j.color);
+    }
+    this.geomItem.getMaterial().getParameter('Color').setValue(color);
+
+    super.fromJSON(j, context);
+  }
+}
+UndoRedoManager.registerChange(
+  'CreateFreehandLineChange',
+  CreateFreehandLineChange
+);
+
+/**
+ * Class representing a create freehand line tool.
+ * @extends CreateLineTool
+ */
+class CreateFreehandLineTool extends CreateLineTool {
+  /**
+   * Create a create freehand line tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.mp = this.addParameter(
+      new zeaEngine.BooleanParameter('Modulate Thickness By Stroke Speed', false)
+    );
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    const color = this.cp.getValue();
+    const lineThickness = this.tp.getValue();
+    this.change = new CreateFreehandLineChange(
+      parentItem,
+      xfo,
+      color,
+      lineThickness
+    );
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo;
+    this.invxfo = xfo.inverse();
+    this.stage = 1;
+    this.prevP = xfo.tr;
+    this.length = 0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    const p = this.invxfo.transformVec3(pt);
+    const delta = p.subtract(this.prevP).length();
+    if (delta > 0.001) {
+      this.change.update({
+        point: p,
+      });
+    }
+
+    this.length += delta;
+    this.prevP = p;
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   */
+  createRelease(pt) {
+    if (this.length == 0) {
+      this.appData.undoRedoManager.undo(false);
+    }
+    this.stage = 0;
+    this.emit('actionFinished');
+  }
+}
+
+/**
+ * Class representing a create sphere change.
+ * @extends CreateGeomChange
+ */
+class CreateSphereChange extends CreateGeomChange {
+  /**
+   * Create a create sphere change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   */
+  constructor(parentItem, xfo) {
+    super('Create Sphere', parentItem);
+
+    this.sphere = new zeaEngine.Sphere(0, 64, 32);
+    const material = new zeaEngine.Material('Sphere', 'SimpleSurfaceShader');
+    this.geomItem = new zeaEngine.GeomItem('Sphere');
+    this.geomItem.setGeometry(this.sphere);
+    this.geomItem.setMaterial(material);
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    this.sphere.radius = updateData.radius;
+    this.emit('updated', updateData);
+  }
+
+  /**
+   * The toJSON method.
+   * @return {any} The return value.
+   */
+  toJSON() {
+    const j = super.toJSON();
+    j.radius = this.geomItem.getGeometry().radius;
+    return j
+  }
+
+  /**
+   * The changeFromJSON method.
+   * @param {any} j - The j param.
+   */
+  changeFromJSON(j) {
+    if (j.radius) this.geomItem.getGeometry().radius = j.radius;
+  }
+}
+UndoRedoManager.registerChange('CreateSphereChange', CreateSphereChange);
+
+/**
+ * Class representing a create sphere tool.
+ * @extends CreateGeomTool
+ */
+class CreateSphereTool extends CreateGeomTool {
+  /**
+   * Create a create sphere tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.change = new CreateSphereChange(parentItem, xfo);
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo;
+    this.stage = 1;
+    this.radius = 0.0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    this.radius = pt.distanceTo(this.xfo.tr);
+    this.change.update({ radius: this.radius });
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   */
+  createRelease(pt) {
+    if (this.radius == 0) {
+      this.appData.undoRedoManager.undo(false);
+    }
+    this.stage = 0;
+    this.emit('actionFinished');
+  }
+}
+
+/**
+ * Class representing a create cuboid change.
+ * @extends CreateGeomChange
+ */
+class CreateCuboidChange extends CreateGeomChange {
+  /**
+   * Create a create cuboid change.
+   * @param {any} parentItem - The parentItem value.
+   * @param {any} xfo - The xfo value.
+   */
+  constructor(parentItem, xfo) {
+    super('Create Cuboid');
+
+    this.cuboid = new zeaEngine.Cuboid(0, 0, 0, true);
+    const material = new zeaEngine.Material('Cuboid', 'SimpleSurfaceShader');
+    this.geomItem = new zeaEngine.GeomItem('Cuboid');
+    this.geomItem.setGeometry(this.cuboid);
+    this.geomItem.setMaterial(material);
+
+    if (parentItem && xfo) {
+      this.setParentAndXfo(parentItem, xfo);
+    }
+  }
+
+  /**
+   * The update method.
+   * @param {any} updateData - The updateData param.
+   */
+  update(updateData) {
+    if (updateData.baseSize) {
+      this.cuboid.setBaseSize(updateData.baseSize[0], updateData.baseSize[1]);
+    }
+    if (updateData.tr) {
+      const xfo = this.geomItem.getParameter('LocalXfo').getValue();
+      xfo.tr.fromJSON(updateData.tr);
+      this.geomItem.getParameter('LocalXfo').setValue(xfo);
+    }
+    if (updateData.height) {
+      this.cuboid.z = updateData.height;
+    }
+    this.emit('updated', updateData);
+  }
+}
+UndoRedoManager.registerChange('CreateCuboidChange', CreateCuboidChange);
+
+/**
+ * Class representing a create cuboid tool.
+ * @extends CreateGeomTool
+ */
+class CreateCuboidTool extends CreateGeomTool {
+  /**
+   * Create a create cuboid tool.
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+  }
+
+  /**
+   * The createStart method.
+   * @param {any} xfo - The xfo param.
+   * @param {any} parentItem - The parentItem param.
+   */
+  createStart(xfo, parentItem) {
+    this.change = new CreateCuboidChange(parentItem, xfo);
+    this.appData.undoRedoManager.addChange(this.change);
+
+    this.xfo = xfo;
+    this.invxfo = xfo.inverse();
+    this.stage = 1;
+    this._height = 0.0;
+  }
+
+  /**
+   * The createMove method.
+   * @param {any} pt - The pt param.
+   */
+  createMove(pt) {
+    if (this.stage == 1) {
+      const delta = this.invxfo.transformVec3(pt);
+
+      // const delta = pt.subtract(this.xfo.tr)
+      this.change.update({
+        baseSize: [Math.abs(delta.x), Math.abs(delta.y)],
+        tr: this.xfo.tr.add(delta.scale(0.5)),
+      });
+    } else {
+      const vec = this.invxfo.transformVec3(pt);
+      this.change.update({ height: vec.y });
+    }
+  }
+
+  /**
+   * The createRelease method.
+   * @param {any} pt - The pt param.
+   * @param {any} viewport - The viewport param.
+   */
+  createRelease(pt, viewport) {
+    if (this.stage == 1) {
+      this.stage = 2;
+      this.pt1 = pt;
+
+      const quat = new zeaEngine.Quat();
+      quat.setFromAxisAndAngle(new zeaEngine.Vec3(1, 0, 0), Math.PI * 0.5);
+      this.constructionPlane.ori = this.constructionPlane.ori.multiply(quat);
+      this.constructionPlane.tr = pt;
+      this.invxfo = this.constructionPlane.inverse();
+    } else if (this.stage == 2) {
+      this.stage = 0;
+      this.emit('actionFinished');
+    }
+  }
+}
+
+/**
+ * Class representing a scene widget tool.
+ * @extends BaseTool
+ */
+class HandleTool extends BaseTool {
+  /**
+   * Create a scene widget tool
+   * @param {any} appData - The appData value.
+   */
+  constructor(appData) {
+    super(appData);
+
+    this.activeHandle = undefined;
+    this.capturedItems = [];
+    this.mouseOverItems = [];
+  }
+
+  /**
+   * The activateTool method.
+   */
+  activateTool() {
+    super.activateTool();
+    console.log('activateTool.HandleTool');
+
+    this.appData.renderer.getDiv().style.cursor = 'crosshair';
+
+    const addIconToController = (controller) => {
+      // The tool might already be deactivated.
+      if (!this.__activated) return
+      const geon = new zeaEngine.Sphere(0.02 * 0.75);
+      const mat = new zeaEngine.Material('Cross', 'FlatSurfaceShader');
+      mat.getParameter('BaseColor').setValue(new zeaEngine.Color('#03E3AC'));
+      mat.visibleInGeomDataBuffer = false;
+      const geomItem = new zeaEngine.GeomItem('HandleToolTip', geon, mat);
+      controller.getTipItem().removeAllChildren();
+      controller.getTipItem().addChild(geomItem, false);
+    };
+    const addIconToControllers = (xrvp) => {
+      for (const controller of xrvp.getControllers()) {
+        addIconToController(controller);
+      }
+      this.addIconToControllerId = xrvp.on('controllerAdded', 
+        addIconToController
+      );
+    };
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      addIconToControllers(xrvp);
+    });
+  }
+
+  /**
+   * The deactivateTool method.
+   */
+  deactivateTool() {
+    super.deactivateTool();
+
+    this.appData.renderer.getXRViewport().then((xrvp) => {
+      // for(let controller of xrvp.getControllers()) {
+      //   controller.getTipItem().removeAllChildren();
+      // }
+      xrvp.removeListenerById('controllerAdded', this.addIconToControllerId);
+    });
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    //
+    if (!this.activeHandle) {
+      // event.viewport.renderGeomDataFbo();
+      const intersectionData = event.viewport.getGeomDataAtPos(event.mousePos);
+      if (intersectionData == undefined) return
+      if (intersectionData.geomItem.getOwner() instanceof Handle) {
+        this.activeHandle = intersectionData.geomItem.getOwner();
+        this.activeHandle.handleMouseDown(
+          Object.assign(event, { intersectionData })
+        );
+        return true
+      }
+    }
+  }
+
+  /**
+   * The onMouseMove method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseMove(event) {
+    if (this.activeHandle) {
+      this.activeHandle.handleMouseMove(event);
+      return true
+    } else {
+      // If the buttons are pressed, we know we are not searching
+      // for a handle to drag. (Probably anothet tool in the stack is doing something)
+      if (event.button == 0 && event.buttons == 1) return false
+
+      const intersectionData = event.viewport.getGeomDataAtPos(event.mousePos);
+      if (
+        intersectionData != undefined &&
+        intersectionData.geomItem.getOwner() instanceof Handle
+      ) {
+        const handle = intersectionData.geomItem.getOwner();
+        if (this.__highlightedHandle) this.__highlightedHandle.unhighlight();
+
+        this.__highlightedHandle = handle;
+        this.__highlightedHandle.highlight();
+        return true
+      } else if (this.__highlightedHandle) {
+        this.__highlightedHandle.unhighlight();
+        this.__highlightedHandle = undefined;
+      }
+    }
+  }
+
+  /**
+   * The onMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseUp(event) {
+    if (this.activeHandle) {
+      this.activeHandle.handleMouseUp(event);
+      this.activeHandle = undefined;
+      return true
+    }
+  }
+
+  /**
+   * The onWheel method.
+   * @param {any} event - The event param.
+   */
+  onWheel(event) {
+    if (this.activeHandle) {
+      this.activeHandle.onWheel(event);
+    }
+  }
+
+  // ///////////////////////////////////
+  // Touch events
+
+  /**
+   * The onTouchStart method.
+   * @param {any} event - The event param.
+   */
+  onTouchStart(event) {}
+
+  /**
+   * The onTouchMove method.
+   * @param {any} event - The event param.
+   */
+  onTouchMove(event) {}
+
+  /**
+   * The onTouchEnd method.
+   * @param {any} event - The event param.
+   */
+  onTouchEnd(event) {}
+
+  /**
+   * The onTouchCancel method.
+   * @param {any} event - The event param.
+   */
+  onTouchCancel(event) {}
+
+  // ///////////////////////////////////
+  // VRController events
+
+  /**
+   * The __prepareVREvent method.
+   * @param {any} event - The event that occurs.
+   * @private
+   */
+  __prepareVREvent(event) {
+    const id = event.controller.getId();
+    event.setCapture = (item) => {
+      this.capturedItems[id] = item;
+    };
+    event.getCapture = () => {
+      return this.capturedItems[id]
+    };
+    event.releaseCapture = () => {
+      this.capturedItems[id] = null;
+    };
+  }
+
+  /**
+   * The onVRControllerButtonDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonDown(event) {
+    const id = event.controller.getId();
+    if (this.capturedItems[id]) {
+      this.__prepareVREvent(event);
+      this.capturedItems[id].onMouseDown(event);
+    } else {
+      const intersectionData = event.controller.getGeomItemAtTip();
+      if (intersectionData != undefined) {
+        event.intersectionData = intersectionData;
+        event.geomItem = intersectionData.geomItem;
+        this.__prepareVREvent(event);
+        intersectionData.geomItem.onMouseDown(event);
+      }
+    }
+  }
+
+  /**
+   * The onVRPoseChanged method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRPoseChanged(event) {
+    for (const controller of event.controllers) {
+      const id = controller.getId();
+      if (this.capturedItems[id]) {
+        this.capturedItems[id].onMouseMove(event);
+      } else {
+        const intersectionData = controller.getGeomItemAtTip();
+        if (intersectionData != undefined) {
+          event.intersectionData = intersectionData;
+          event.geomItem = intersectionData.geomItem;
+          if (intersectionData.geomItem != this.mouseOverItems[id]) {
+            if (this.mouseOverItems[id])
+              this.mouseOverItems[id].onMouseLeave(event);
+            this.mouseOverItems[id] = intersectionData.geomItem;
+            this.mouseOverItems[id].onMouseEnter(event);
+          }
+          intersectionData.geomItem.onMouseMove(event);
+        } else if (this.mouseOverItems[id]) {
+          this.mouseOverItems[id].onMouseLeave(event);
+          this.mouseOverItems[id] = null;
+        }
+      }
+    }
+  }
+
+  /**
+   * The onVRControllerButtonUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onVRControllerButtonUp(event) {
+    this.__prepareVREvent(event);
+    const id = event.controller.getId();
+    if (this.capturedItems[id]) {
+      this.capturedItems[id].onMouseUp(event);
+    } else {
+      const controller = event.controller;
+      const intersectionData = controller.getGeomItemAtTip();
+      if (intersectionData != undefined) {
+        event.intersectionData = intersectionData;
+        event.geomItem = intersectionData.geomItem;
+        intersectionData.geomItem.onMouseUp(event);
+      }
+    }
+  }
+}
+
+/** Class representing a slider scene widget.
+ * @extends BaseLinearMovementHandle
+ */
+class SliderHandle extends BaseLinearMovementHandle {
+  /**
+   * Create a slider scene widget.
+   * @param {any} name - The name value.
+   * @param {any} length - The length value.
+   * @param {any} radius - The radius value.
+   * @param {any} color - The color value.
+   */
+  constructor(name, length = 0.5, radius = 0.02, color = new zeaEngine.Color('#F9CE03')) {
+    super(name);
+
+    this.lengthParam = this.addParameter(new zeaEngine.NumberParameter('Length', length));
+    this.handleRadiusParam = this.addParameter(
+      new zeaEngine.NumberParameter('Handle Radius', radius)
+    );
+    this.barRadiusParam = this.addParameter(
+      new zeaEngine.NumberParameter('Bar Radius', radius * 0.25)
+    );
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('Color', color));
+    this.hilghlightColorParam = this.addParameter(
+      new zeaEngine.ColorParameter('Highlight Color', new zeaEngine.Color(1, 1, 1))
+    );
+
+    this.handleMat = new zeaEngine.Material('handle', 'FlatSurfaceShader');
+    this.handleMat
+      .getParameter('BaseColor')
+      .setValue(this.colorParam.getValue());
+    // const baseBarMat = new Material('baseBar', 'FlatSurfaceShader');
+    // baseBarMat.replaceParameter(this.colorParam);
+    const topBarMat = new zeaEngine.Material('topBar', 'FlatSurfaceShader');
+    topBarMat.getParameter('BaseColor').setValue(new zeaEngine.Color(0.5, 0.5, 0.5));
+
+    const barGeom = new zeaEngine.Cylinder(radius * 0.25, 1, 64, 2, true, true);
+    const handleGeom = new zeaEngine.Sphere(radius, 64);
+
+    this.handle = new zeaEngine.GeomItem('handle', handleGeom, this.handleMat);
+    this.baseBar = new zeaEngine.GeomItem('baseBar', barGeom, this.handleMat);
+    this.topBar = new zeaEngine.GeomItem('topBar', barGeom, topBarMat);
+    this.handleXfo = new zeaEngine.Xfo();
+    this.baseBarXfo = new zeaEngine.Xfo();
+    this.topBarXfo = new zeaEngine.Xfo();
+
+    this.barRadiusParam.on('valueChanged', () => {
+      barGeom.getParameter('radius').setValue(this.barRadiusParam.getValue());
+    });
+    this.handleRadiusParam.on('valueChanged', () => {
+      handleGeom
+        .getParameter('radius')
+        .setValue(this.handleRadiusParam.getValue());
+    });
+    this.lengthParam.on('valueChanged', () => {
+      this.__updateSlider(this.value);
+    });
+    this.colorParam.on('valueChanged', () => {
+      this.handleMat
+        .getParameter('BaseColor')
+        .setValue(this.colorParam.getValue());
+    });
+
+    this.addChild(this.handle);
+    this.addChild(this.baseBar);
+    this.addChild(this.topBar);
+
+    this.__updateSlider(0);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.handleMat
+      .getParameter('BaseColor')
+      .setValue(this.hilghlightColorParam.getValue());
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.handleMat
+      .getParameter('BaseColor')
+      .setValue(this.colorParam.getValue());
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   */
+  setTargetParam(param) {
+    this.param = param;
+    const __updateSlider = () => {
+      this.__updateSlider(param.getValue());
+    };
+    __updateSlider();
+    param.on('valueChanged', __updateSlider);
+  }
+
+  // eslint-disable-next-line require-jsdoc
+  __updateSlider(value) {
+    this.value = value;
+    const range =
+      this.param && this.param.getRange() ? this.param.getRange() : [0, 1];
+    const v = Math.remap(value, range[0], range[1], 0, 1);
+    const length = this.lengthParam.getValue();
+    this.baseBarXfo.sc.z = v * length;
+    this.handleXfo.tr.z = v * length;
+    this.topBarXfo.tr.z = v * length;
+    this.topBarXfo.sc.z = (1 - v) * length;
+    this.handle.setLocalXfo(this.handleXfo, zeaEngine.ValueSetMode.GENERATED_VALUE);
+    this.baseBar.setLocalXfo(this.baseBarXfo, zeaEngine.ValueSetMode.GENERATED_VALUE);
+    this.topBar.setLocalXfo(this.topBarXfo, zeaEngine.ValueSetMode.GENERATED_VALUE);
+  }
+
+  // ///////////////////////////////////
+  // Interaction events
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    // Hilight the material.
+    this.handleXfo.sc.x = this.handleXfo.sc.y = this.handleXfo.sc.z = 1.2;
+    this.handle.setLocalXfo(this.handleXfo, zeaEngine.ValueSetMode.GENERATED_VALUE);
+    if (!this.param) {
+      return
+    }
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(this.param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const length = this.lengthParam.getValue();
+    const range =
+      this.param && this.param.getRange() ? this.param.getRange() : [0, 1];
+    const value = Math.clamp(
+      Math.remap(event.value, 0, length, range[0], range[1]),
+      range[0],
+      range[1]
+    );
+    if (!this.param) {
+      this.__updateSlider(value);
+      this.value = value;
+      return
+    }
+    if (this.change) {
+      this.change.update({
+        value,
+      });
+    } else {
+      this.param.setValue(value);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+    // unhilight the material.
+    this.handleXfo.sc.x = this.handleXfo.sc.y = this.handleXfo.sc.z = 1.0;
+    this.handle.setLocalXfo(this.handleXfo, zeaEngine.ValueSetMode.GENERATED_VALUE);
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} context - The context param.
+   * @param {any} flags - The flags param.
+   * @return {any} The return value.
+   */
+  toJSON(context, flags = 0) {
+    const json = super.toJSON(context, flags | SAVE_FLAG_SKIP_CHILDREN);
+    if (this.param) json.targetParam = this.param.getPath();
+    return json
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} json - The json param.
+   * @param {any} context - The context param.
+   * @param {any} flags - The flags param.
+   */
+  fromJSON(json, context, flags) {
+    super.fromJSON(json, context, flags);
+
+    if (json.targetParam) {
+      context.resolvePath(json.targetParam).then((param) => {
+        this.setTargetParam(param);
+      });
+    }
+  }
+}
+
+zeaEngine.sgFactory.registerClass('SliderHandle', SliderHandle);
+
+/** Class representing a slider scene widget.
+ * @extends BaseAxialRotationHandle
+ */
+class ArcSlider extends BaseAxialRotationHandle {
+  /**
+   * Create a slider scene widget.
+   * @param {any} name - The name value.
+   * @param {any} length - The length value.
+   * @param {any} radius - The radius value.
+   * @param {any} color - The color value.
+   */
+  constructor(
+    name,
+    arcRadius = 1,
+    arcAngle = 1,
+    handleRadius = 0.02,
+    color = new zeaEngine.Color(1, 1, 0)
+  ) {
+    super(name);
+    this.arcRadiusParam = this.addParameter(
+      new zeaEngine.NumberParameter('Arc Radius', arcRadius)
+    );
+    this.arcAngleParam = this.addParameter(
+      new zeaEngine.NumberParameter('Arc Angle', arcAngle)
+    );
+    this.handleRadiusParam = this.addParameter(
+      new zeaEngine.NumberParameter('Handle Radius', handleRadius)
+    );
+    // this.barRadiusParam = this.addParameter(
+    //   new NumberParameter('Bar Radius', radius * 0.25)
+    // );
+    this.colorParam = this.addParameter(new zeaEngine.ColorParameter('Color', color));
+    this.hilghlightColorParam = this.addParameter(
+      new zeaEngine.ColorParameter('Highlight Color', new zeaEngine.Color(1, 1, 1))
+    );
+
+    this.handleMat = new zeaEngine.Material('handleMat', 'HandleShader');
+    const arcGeom = new zeaEngine.Circle(arcRadius, arcAngle, 64);
+    const handleGeom = new zeaEngine.Sphere(handleRadius, 64);
+
+    this.handle = new zeaEngine.GeomItem('handle', handleGeom, this.handleMat);
+    this.arc = new zeaEngine.GeomItem('arc', arcGeom, this.handleMat);
+    this.handleXfo = new zeaEngine.Xfo();
+    this.handleGeomOffsetXfo = new zeaEngine.Xfo();
+    this.handleGeomOffsetXfo.tr.x = arcRadius;
+    this.handle.getParameter('GeomOffsetXfo').setValue(this.handleGeomOffsetXfo);
+
+    // this.barRadiusParam.on('valueChanged', () => {
+    //   arcGeom.getParameter('radius').setValue(this.barRadiusParam.getValue());
+    // });
+
+    this.range = [0, arcAngle];
+    this.arcAngleParam.on('valueChanged', () => {
+      const arcAngle = this.arcAngleParam.getValue();
+      arcGeom.getParameter('Angle').setValue(arcAngle);
+      this.range = [0, arcAngle];
+    });
+    this.arcRadiusParam.on('valueChanged', () => {
+      const arcRadius = this.arcRadiusParam.getValue();
+      arcGeom.getParameter('Radius').setValue(arcRadius);
+      this.handleGeomOffsetXfo.tr.x = arcRadius;
+      this.handle
+        .getParameter('GeomOffsetXfo')
+        .setValue(this.handleGeomOffsetXfo);
+    });
+    this.handleRadiusParam.on('valueChanged', () => {
+      handleGeom
+        .getParameter('radius')
+        .setValue(this.handleRadiusParam.getValue());
+    });
+    this.colorParam.on('valueChanged', () => {
+      this.handleMat
+        .getParameter('BaseColor')
+        .setValue(this.colorParam.getValue());
+    });
+
+    this.addChild(this.handle);
+    this.addChild(this.arc);
+
+    // this.__updateSlider(0);
+    this.setTargetParam(this.handle.getParameter('GlobalXfo'), false);
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The onMouseEnter method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseEnter(event) {
+    if (
+      event.intersectionData &&
+      event.intersectionData.geomItem == this.handle
+    )
+      this.highlight();
+  }
+
+  /**
+   * The onMouseLeave method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseLeave(event) {
+    this.unhighlight();
+  }
+
+  /**
+   * The onMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  onMouseDown(event) {
+    // We do not want to handle events
+    // that have propagated from children of
+    // the slider.
+    if (
+      event.intersectionData &&
+      event.intersectionData.geomItem == this.handle
+    )
+      super.onMouseDown(event);
+  }
+
+  /**
+   * The highlight method.
+   */
+  highlight() {
+    this.handleMat
+      .getParameter('BaseColor')
+      .setValue(this.hilghlightColorParam.getValue());
+  }
+
+  /**
+   * The unhighlight method.
+   */
+  unhighlight() {
+    this.handleMat
+      .getParameter('BaseColor')
+      .setValue(this.colorParam.getValue());
+  }
+
+  // /**
+  //  * The setTargetParam method.
+  //  * @param {any} param - The param param.
+  //  */
+  // setTargetParam(param) {
+  //   this.param = param;
+  //   const __updateSlider = () => {
+  //     this.__updateSlider(param.getValue());
+  //   };
+  //   __updateSlider();
+  //   param.on('valueChanged', __updateSlider);
+  // }
+
+  // eslint-disable-next-line require-jsdoc
+  // __updateSlider(value) {
+  //   this.value = value
+  //   const range =
+  //     this.param && this.param.getRange() ? this.param.getRange() : [0, 1];
+  //   const v = Math.remap(value, range[0], range[1], 0, 1);
+  //   const length = this.arcAngleParam.getValue();
+  //   this.handleXfo.ori.setFromAxisAndAngle(this.axis, ) = v * length;
+  //   this.handle.setLocalXfo(this.handleXfo, ValueSetMode.GENERATED_VALUE);
+  // }
+
+  // ///////////////////////////////////
+  // Interaction events
+
+  /**
+   * The getBaseXfo method.
+   */
+  getBaseXfo() {
+    return this.handle.getParameter('GlobalXfo').getValue()
+  }
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.baseXfo = this.getGlobalXfo().clone();
+    this.baseXfo.sc.set(1, 1, 1);
+    this.deltaXfo = new zeaEngine.Xfo();
+    // this.offsetXfo = this.baseXfo.inverse().multiply(this.param.getValue());
+
+    this.vec0 = this.getGlobalXfo().ori.getXaxis();
+    // this.grabCircleRadius = this.arcRadiusParam.getValue();
+    this.vec0.normalizeInPlace();
+
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(this.param);
+      event.undoRedoManager.addChange(this.change);
+    }
+
+    // Hilight the material.
+    this.handleGeomOffsetXfo.sc.x = this.handleGeomOffsetXfo.sc.y = this.handleGeomOffsetXfo.sc.z = 1.2;
+    this.handle.getParameter('GeomOffsetXfo').setValue(this.handleGeomOffsetXfo);
+
+    this.emit('dragStart');
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const vec1 = event.holdPos.subtract(this.baseXfo.tr);
+    vec1.normalizeInPlace();
+
+    let angle = this.vec0.angleTo(vec1);
+    if (this.vec0.cross(vec1).dot(this.baseXfo.ori.getZaxis()) < 0)
+      angle = -angle;
+
+    if (this.range) {
+      angle = Math.clamp(angle, this.range[0], this.range[1]);
+    }
+
+    if (event.shiftKey) {
+      // modulat the angle to X degree increments.
+      const increment = Math.degToRad(22.5);
+      angle = Math.floor(angle / increment) * increment;
+    }
+
+    this.deltaXfo.ori.setFromAxisAndAngle(new Vec3(0, 0, 1), angle);
+
+    const newXfo = this.baseXfo.multiply(this.deltaXfo);
+    const value = newXfo; //.multiply(this.offsetXfo);
+
+    if (this.change) {
+      this.change.update({
+        value,
+      });
+    } else {
+      const param = this.param ? this.param : this.getParameter('GlobalXfo');
+      param.setValue(value);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+    this.handleGeomOffsetXfo.sc.x = this.handleGeomOffsetXfo.sc.y = this.handleGeomOffsetXfo.sc.z = 1.0;
+    this.handle.getParameter('GeomOffsetXfo').setValue(this.handleGeomOffsetXfo);
+
+    this.emit('dragEnd');
+  }
+
+  /**
+   * The toJSON method.
+   * @param {any} context - The context param.
+   * @param {any} flags - The flags param.
+   * @return {any} The return value.
+   */
+  toJSON(context, flags = 0) {
+    const json = super.toJSON(context, flags | SAVE_FLAG_SKIP_CHILDREN);
+    if (this.param) json.targetParam = this.param.getPath();
+    return json
+  }
+
+  /**
+   * The fromJSON method.
+   * @param {any} json - The json param.
+   * @param {any} context - The context param.
+   * @param {any} flags - The flags param.
+   */
+  fromJSON(json, context, flags) {
+    super.fromJSON(json, context, flags);
+
+    if (json.targetParam) {
+      context.resolvePath(json.targetParam).then((param) => {
+        this.setTargetParam(param);
+      });
+    }
+  }
+}
+
+zeaEngine.sgFactory.registerClass('ArcSlider', ArcSlider);
+
+/** Class representing a planar movement scene widget.
+ * @extends Handle
+ */
+class ScreenSpaceMovementHandle extends Handle {
+  /**
+   * Create a planar movement scene widget.
+   */
+  constructor(name) {
+    super(name);
+  }
+
+  /**
+   * The setTargetParam method.
+   * @param {any} param - The param param.
+   * @param {boolean} track - The track param.
+   */
+  setTargetParam(param, track = true) {
+    this.param = param;
+    if (track) {
+      const __updateGizmo = () => {
+        this.setGlobalXfo(param.getValue());
+      };
+      __updateGizmo();
+      param.on('valueChanged', __updateGizmo);
+    }
+  }
+
+  /**
+   * The getTargetParam method.
+   */
+  getTargetParam() {
+    return this.param ? this.param : this.getParameter('GlobalXfo')
+  }
+
+  // ///////////////////////////////////
+  // Mouse events
+
+  /**
+   * The handleMouseDown method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseDown(event) {
+    this.gizmoRay = new zeaEngine.Ray();
+    // this.gizmoRay.dir = event.viewport.getCamera().getGlobalXfo().ori.getZaxis().negate()
+    this.gizmoRay.dir = event.mouseRay.dir.negate();
+    const param = this.getTargetParam();
+    const baseXfo = param.getValue();
+    this.gizmoRay.pos = baseXfo.tr;
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.grabPos = event.mouseRay.pointAtDist(dist);
+    this.onDragStart(event);
+    return true
+  }
+
+  /**
+   * The handleMouseMove method.
+   * @param {any} event - The event param.
+   */
+  handleMouseMove(event) {
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.holdPos = event.mouseRay.pointAtDist(dist);
+    this.onDrag(event);
+    return true
+  }
+
+  /**
+   * The handleMouseUp method.
+   * @param {any} event - The event param.
+   * @return {any} The return value.
+   */
+  handleMouseUp(event) {
+    const dist = event.mouseRay.intersectRayPlane(this.gizmoRay);
+    event.releasePos = event.mouseRay.pointAtDist(dist);
+    this.onDragEnd(event);
+    return true
+  }
+
+  // ///////////////////////////////////
+  // Interaction events
+
+  /**
+   * The onDragStart method.
+   * @param {any} event - The event param.
+   */
+  onDragStart(event) {
+    this.grabPos = event.grabPos;
+    const param = this.getTargetParam();
+    this.baseXfo = param.getValue();
+    if (event.undoRedoManager) {
+      this.change = new ParameterValueChange$1(param);
+      event.undoRedoManager.addChange(this.change);
+    }
+  }
+
+  /**
+   * The onDrag method.
+   * @param {any} event - The event param.
+   */
+  onDrag(event) {
+    const dragVec = event.holdPos.subtract(this.grabPos);
+
+    const newXfo = this.baseXfo.clone();
+    newXfo.tr.addInPlace(dragVec);
+
+    if (this.change) {
+      this.change.update({
+        value: newXfo,
+      });
+    } else {
+      const param = this.getTargetParam();
+      param.setValue(newXfo);
+    }
+  }
+
+  /**
+   * The onDragEnd method.
+   * @param {any} event - The event param.
+   */
+  onDragEnd(event) {
+    this.change = null;
+  }
+}
+
+exports.ArcSlider = ArcSlider;
+exports.AxialRotationHandle = AxialRotationHandle;
+exports.Change = Change;
+exports.CreateCircleTool = CreateCircleTool;
+exports.CreateCuboidTool = CreateCuboidTool;
+exports.CreateFreehandLineTool = CreateFreehandLineTool;
+exports.CreateLineTool = CreateLineTool;
+exports.CreateRectTool = CreateRectTool;
+exports.CreateSphereTool = CreateSphereTool;
+exports.HandleTool = HandleTool;
+exports.LinearMovementHandle = LinearMovementHandle;
+exports.OpenVRUITool = OpenVRUITool;
+exports.ParameterValueChange = ParameterValueChange$1;
+exports.PlanarMovementHandle = PlanarMovementHandle;
+exports.ScreenSpaceMovementHandle = ScreenSpaceMovementHandle;
+exports.SelectionManager = SelectionManager;
+exports.SelectionTool = SelectionTool;
+exports.SliderHandle = SliderHandle;
+exports.ToolManager = ToolManager;
+exports.TreeItemAddChange = TreeItemAddChange;
+exports.TreeItemMoveChange = TreeItemMoveChange;
+exports.TreeItemsRemoveChange = TreeItemsRemoveChange;
+exports.UndoRedoManager = UndoRedoManager;
+exports.VIEW_TOOL_MODELS = VIEW_TOOL_MODELS;
+exports.VRHoldObjectsTool = VRHoldObjectsTool;
+exports.VRUITool = VRUITool;
+exports.ViewTool = ViewTool;
