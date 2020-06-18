@@ -139,7 +139,7 @@ const userData = {
 const session = new Session(userData, socketUrl);
 
 let roomId = urlParams.get('room-id');
-session.joinRoom(document.location.origin+roomId);
+session.joinRoom(document.location.href+roomId);
 
 const sessionSync = new SessionSync(session, appData, userData, {});
 sessionSync.syncStateMachines(stateMachine)
