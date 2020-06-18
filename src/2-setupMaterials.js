@@ -1,4 +1,4 @@
-import { Color, Group, Material, EnvMap } from "../dist/zea-engine/dist/index.esm.js"
+import { Color, Group, Material, EnvMap } from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
 
 const setupMaterials = (asset, scene) => {
 

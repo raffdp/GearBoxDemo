@@ -11,7 +11,7 @@ import {
   GeomItem,
   Label,
   BillboardItem
-} from "../dist/zea-engine/dist/index.esm.js"
+} from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
 
 const setupExplode = (asset) => {
   

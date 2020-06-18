@@ -1,5 +1,5 @@
-import { Color, EulerAngles, Xfo, Vec3, Group, GearsOperator, NumberParameter } from "../dist/zea-engine/dist/index.esm.js"
-import { SliderHandle } from "../dist/zea-ux/dist/index.rawimport.js"
+import { Color, EulerAngles, Xfo, Vec3, Group, GearsOperator, NumberParameter } from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
+import { SliderHandle } from "https://unpkg.com/@zeainc/zea-ux/dist/index.rawimport.js"
 
 const setupGears = (asset) => {
 

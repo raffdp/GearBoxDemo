@@ -1,5 +1,5 @@
-import { Xfo, EulerAngles } from "../dist/zea-engine/dist/index.esm.js"
-import { CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
+import { Xfo, EulerAngles } from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
+import { CADAsset } from "https://unpkg.com/@zeainc/zea-cad/dist/index.rawimport.js"
 
 const loadModel = () => {
   

@@ -1,4 +1,4 @@
-import { Vec3, Group } from "../dist/zea-engine/dist/index.esm.js"
+import { Vec3, Group } from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
 const setupCutaway = (asset) => {
 
   const cutAwayGroup = new Group('cutAwayGroup');

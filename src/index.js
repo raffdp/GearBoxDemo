@@ -1,6 +1,6 @@
 
-import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "../dist/zea-engine/dist/index.esm.js"
-import { GLCADPass, CADAsset } from "../dist/zea-cad/dist/index.rawimport.js"
+import { Color, Vec3, EnvMap, Scene, GLRenderer, PassType } from "https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js"
+import { GLCADPass, CADAsset } from "https://unpkg.com/@zeainc/zea-cad/dist/index.rawimport.js"
 
 import loadModel from "./1-loadModel.js"
 import setupMaterials from "./2-setupMaterials.js"
@@ -59,7 +59,7 @@ scene.getRoot().addChild(asset)
 
 ////////////////////////////////////
 // Setup the Left side Tree view.
-import { SelectionManager, UndoRedoManager } from "../dist/zea-ux/dist/index.rawimport.js"
+import { SelectionManager, UndoRedoManager } from "https://unpkg.com/@zeainc/zea-ux/dist/index.rawimport.js"
 
 const appData = {
   scene,
@@ -107,7 +107,7 @@ document.addEventListener("keydown", event => {
 
 // ////////////////////////////////////
 // // Setup Collaboration
-import { Session, SessionSync } from "../dist/zea-collab/dist/index.rawimport.js"
+import { Session, SessionSync } from "https://unpkg.com/@zeainc/zea-collab/dist/index.rawimport.js"
 
 const socketUrl = 'https://websocket-staging.zea.live';
 
