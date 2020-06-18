@@ -74,7 +74,7 @@ const setupMaterials = (asset, scene) => {
       }
     } else if (mode == 1) {
       asset.getParameter('Display Edges').setValue(true)
-      asset.getParameter('Edge Color').setValue(new Color(0.2, 0.2, 0.2, 1))
+      asset.getParameter('Edge Color').setValue(new Color(0.1, 0.1, 0.1, 1))
       // scene.getSettings().getParameter('EnvMap').setValue(null);
       const EmissiveStrength = 0.9
       const Roughness = 1.0
