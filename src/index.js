@@ -47,7 +47,7 @@ asset.once('loaded', ()=>{
   renderer.frameAll()
 })
 
-const setRenderingMode = setupMaterials(asset, scene)
+window.setRenderingMode = setupMaterials(asset, scene)
 setupCutaway(asset);
 setupGears(asset);
 setupExplode(asset);
@@ -162,26 +162,6 @@ const userChip = document.getElementById(
   "zea-user-chip"
 );
 userChip.userData = userData
-
-////////////////////////////////////
-// Rendering Styles
-
-const RealisticRenderingMenu = document.getElementById(
-  "RealisticRendering"
-);
-
-RealisticRenderingMenu.addEventListener('click', ()=>{
-  setRenderingMode(0)
-})
-
-const IllustrationRenderingMenu = document.getElementById(
-  "IllustrationRendering"
-);
-
-IllustrationRenderingMenu.addEventListener('click', ()=>{
-  setRenderingMode(1)
-})
-
 
 ////////////////////////////////////
 // Display the Fps
