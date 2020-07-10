@@ -1,1 +1,1 @@
-http-server -p8088
+yarn run start

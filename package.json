@@ -11,5 +11,11 @@
     "@zeainc/zea-web-components": "^0.0.40",
     "socket.io-client": "^2.3.0"
   },
-  "private": true
+  "devDependencies": {
+    "es-dev-server": "^1.56.1"
+  },
+  "private": true,
+  "scripts": {
+    "start": "es-dev-server --node-resolve --watch --port 8088"
+  }
 }
