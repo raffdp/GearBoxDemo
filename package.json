@@ -2,7 +2,7 @@
   "name": "gearbox-demo",
   "version": "1.0.0",
   "main": "index.js",
-  "license": "Private",
+  "license": "UNLICENSED",
   "dependencies": {
     "@zeainc/zea-cad": "^1.0.4",
     "@zeainc/zea-collab": "^2.1.0",
@@ -10,5 +10,6 @@
     "@zeainc/zea-ux": "^1.2.9",
     "@zeainc/zea-web-components": "^0.0.40",
     "socket.io-client": "^2.3.0"
-  }
+  },
+  "private": true
 }
