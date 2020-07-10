@@ -1,15 +1,15 @@
-
 export class FPSDisplay extends HTMLElement {
   constructor() {
     super()
-    const shadowRoot = this.attachShadow({ mode: 'open' });
+    const shadowRoot = this.attachShadow({ mode: 'open' })
 
-    this.div = document.createElement('div');
+    this.div = document.createElement('div')
     this.div.classList.add('fps-display')
     shadowRoot.appendChild(this.div)
 
-    const styleTag = document.createElement('style');
-    styleTag.appendChild(document.createTextNode(`
+    const styleTag = document.createElement('style')
+    styleTag.appendChild(
+      document.createTextNode(`
 
     .fps-display {
       position: fixed;
@@ -17,21 +17,21 @@ export class FPSDisplay extends HTMLElement {
       right: 20px;
       color: black;
     }
-`
-));
-    shadowRoot.appendChild(styleTag);
+`)
+    )
+    shadowRoot.appendChild(styleTag)
   }
 
   set renderer(renderer) {
-    let frameCounter = 0;
-    renderer.on('redrawOccured', () =>{
-      frameCounter++;
-    });
-    setInterval(()=>{
+    let frameCounter = 0
+    renderer.on('redrawOccured', () => {
+      frameCounter++
+    })
+    setInterval(() => {
       this.div.textContent = `Fps: ${frameCounter * 2}`
-      frameCounter = 0;
+      frameCounter = 0
     }, 500)
   }
 }
 
-customElements.define('zea-fps-display', FPSDisplay);
+customElements.define('zea-fps-display', FPSDisplay)

@@ -2,55 +2,68 @@
 <html>
   <head>
     <title>Zea-Gearbox Demo</title>
-    <meta charset="UTF-8"/>
-    <link rel="shortcut icon" href="img/favicon-32x32.png" type="image/x-icon">
-    <link rel="stylesheet" type="text/css" href="./src/App.css">
-    <script type="module" src="./dist/zea-web-components/dist/zeainc-zea-web-components/zeainc-zea-web-components.js"></script>
-    <script type="module" src="./src/zea-fps-display.js"></script>
+    <meta charset="UTF-8" />
+    <link
+      rel="shortcut icon"
+      href="img/favicon-32x32.png"
+      type="image/x-icon"
+    />
+    <link rel="stylesheet" type="text/css" href="./src/App.css" />
+    <script
+      src="./dist/zea-web-components/dist/zeainc-zea-web-components/zeainc-zea-web-components.js"
+      type="module"
+    ></script>
+    <script src="./src/zea-fps-display.js" type="module"></script>
     <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
   </head>
   <body>
     <div class="App">
-    <zea-layout
-      orientation="vertical"
-      cell-a-size="45"
-      resize-cell-a="false"
-      cell-b-size="100%"
-      cell-c-size="5px"
-      resize-cell-c="false"
-    >
-      <div slot="a" class="App-header">
-        <img class="App-logo" src="img/logo-zea.svg" height="30px"/>
-        <div class="UserChipSetHolder">
-          <zea-user-chip-set id="zea-user-chip-set"></zea-user-chip-set>
+      <zea-layout
+        orientation="vertical"
+        cell-a-size="45"
+        resize-cell-a="false"
+        cell-b-size="100%"
+        cell-c-size="5px"
+        resize-cell-c="false"
+      >
+        <div slot="a" class="App-header">
+          <img class="App-logo" src="img/logo-zea.svg" height="30px" />
+          <div class="UserChipSetHolder">
+            <zea-user-chip-set id="zea-user-chip-set"></zea-user-chip-set>
+          </div>
+          <div class="MenuHolder">
+            <zea-menu type="dropdown" show-anchor="true">
+              <zea-menu-item>
+                Rendering Style
+                <zea-menu-subitems>
+                  <zea-menu-item class="MenuItem" onclick="setRenderingMode(0)">
+                    <zea-icon name="eye"></zea-icon> Realistic
+                  </zea-menu-item>
+                  <zea-menu-item class="MenuItem" onclick="setRenderingMode(1)">
+                    <zea-icon name="eye"></zea-icon> Illustration
+                  </zea-menu-item>
+                </zea-menu-subitems>
+              </zea-menu-item>
+            </zea-menu>
+          </div>
+
+          <zea-user-chip id="zea-user-chip"></zea-user-chip>
         </div>
-        <div class="MenuHolder">
-          <zea-menu type="dropdown" show-anchor="true">
-            <zea-menu-item>
-              Rendering Style
-              <zea-menu-subitems>
-                <zea-menu-item class="MenuItem" onclick="setRenderingMode(0)">
-                  <zea-icon name="eye"></zea-icon> Realistic
-                </zea-menu-item>
-                <zea-menu-item class="MenuItem" onclick="setRenderingMode(1)">
-                  <zea-icon name="eye"></zea-icon> Illustration
-                </zea-menu-item>
-              </zea-menu-subitems>
-            </zea-menu-item>
-          </zea-menu>
-        </div>
-        
-        <zea-user-chip id="zea-user-chip"></zea-user-chip> 
-      </div>
-      <zea-layout slot="b" cell-a-size="200" cell-b-size="100%" cell-c-size="3px" resize-cell-c="false">
-        <zea-scroll-pane slot="a">
-          <zea-tree-view id="zea-tree-view"></zea-tree-view>
-        </zea-scroll-pane>
-        <div slot="b" id="renderer"></div>
+        <zea-layout
+          slot="b"
+          cell-a-size="200"
+          cell-b-size="100%"
+          cell-c-size="3px"
+          resize-cell-c="false"
+        >
+          <zea-scroll-pane slot="a">
+            <zea-tree-view id="zea-tree-view"></zea-tree-view>
+          </zea-scroll-pane>
+          <div slot="b" id="renderer"></div>
+        </zea-layout>
       </zea-layout>
-    </zea-layout>
-    <!-- <div slot="b" id="renderer"></div> -->
-  </div>
+      <!-- <div slot="b" id="renderer"></div> -->
+    </div>
   </body>
-  <script type="module" src="./src/index.js"></script>
+  <script src="./src/index.js" type="module"></script>
 </html>

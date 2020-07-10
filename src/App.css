@@ -4,36 +4,36 @@ body,
   height: 100%;
 }
 
-:root  {
-  --ion-color-primary: #F9CE03;
-  --ion-color-primary-tint: #FBE167;
+:root {
+  --ion-color-primary: #f9ce03;
+  --ion-color-primary-tint: #fbe167;
   --theme-font-family: 'Roboto', sans-serif;
-  --color-primary-1: #F9CE03;
-  --color-primary-2: #FBE167;
-  --color-primary-3: #594F1F;
-  --color-secondary-1: #8B52AF;
-  --color-secondary-2: #B892CE;
-  --color-secondary-3: #F2EBF7;
-  --color-warning-1: #E52011;
-  --color-warning-2: #EF7970;
-  --color-warning-3: #FAD2CF;
-  --color-success-1: #8BC34A;
-  --color-success-2: #B9DB92;
-  --color-success-3: #E8F3DB;
-  --color-background-1: #FFFFFF;
-  --color-background-2: #FFFFFF;
-  --color-background-3: #F5F5F5;
-  --color-background-4: #FFFFFF;
+  --color-primary-1: #f9ce03;
+  --color-primary-2: #fbe167;
+  --color-primary-3: #594f1f;
+  --color-secondary-1: #8b52af;
+  --color-secondary-2: #b892ce;
+  --color-secondary-3: #f2ebf7;
+  --color-warning-1: #e52011;
+  --color-warning-2: #ef7970;
+  --color-warning-3: #fad2cf;
+  --color-success-1: #8bc34a;
+  --color-success-2: #b9db92;
+  --color-success-3: #e8f3db;
+  --color-background-1: #ffffff;
+  --color-background-2: #ffffff;
+  --color-background-3: #f5f5f5;
+  --color-background-4: #ffffff;
   --color-foreground-1: #333333;
-  --color-foreground-2: #7A7A7A;
+  --color-foreground-2: #7a7a7a;
   --color-foreground-3: #989898;
-  --color-grey-1: #F5F5F5;
-  --color-grey-2: #EAEAEA;
-  --color-grey-3: #D6D6D6;
-  --color-button-text-1: #FFFFFF;
+  --color-grey-1: #f5f5f5;
+  --color-grey-2: #eaeaea;
+  --color-grey-3: #d6d6d6;
+  --color-button-text-1: #ffffff;
   --color-button-text-2: #333333;
-  --color-disabled-1: #B8B8B8;
-  --color-disabled-2: #E8E8E8;
+  --color-disabled-1: #b8b8b8;
+  --color-disabled-2: #e8e8e8;
   --color-shadow: #00000026;
 }
 
@@ -51,7 +51,6 @@ code {
     monospace;
 }
 
-
 .App {
   text-align: center;
   width: 100%;
@@ -61,7 +60,6 @@ code {
 }
 .wrap {
   overflow: hidden;
-
 }
 .App-logo {
   height: 30px;
@@ -79,8 +77,7 @@ code {
   text-align: left;
   margin: 5px;
   display: flex;
-} 
-
+}
 
 .UserChipSetHolder {
   min-width: 100px;
@@ -93,7 +90,7 @@ code {
 }
 
 .MenuItem {
- border: 1px solid blue;
+  border: 1px solid blue;
 }
 
 .App-link {
