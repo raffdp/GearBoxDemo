@@ -1,3 +1,3 @@
 # Gearbox Demo
 
-Sample application demonstrating Loading CAD data, Gear Operators, Cutaways, and Exploded views.
+Open-source demo for gear operators (kinematics), cutaways, exploded views, rendering styles, and collaboration.
