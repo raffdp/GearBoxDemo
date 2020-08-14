@@ -3,7 +3,7 @@ import {
   Xfo,
   Vec3,
   Group,
-  ExplodePartsOperator,
+  NumberParameter,
   RouterOperator,
   Material,
   TreeItem,
@@ -11,7 +11,8 @@ import {
   GeomItem,
   Label,
   BillboardItem,
-} from 'https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js'
+} from '../dist/zea-engine/dist/index.esm.js'
+import { ExplodePartsOperator } from '../dist/zea-kinematics/dist/index.rawimport.js'
 
 const setupExplode = (asset) => {
   const opExplodeFront1 = new ExplodePartsOperator('opExplodeFront1')
@@ -26,20 +27,34 @@ const setupExplode = (asset) => {
   opExplodeBack1.getParameter('Stages').setValue(8)
   opExplodeBack1.getParameter('Cascade').setValue(true)
 
-  const explodedAmount = new RouterOperator('ExplodeAmount')
-  explodedAmount.addRoute().setParam(opExplodeFront1.getParameter('Explode'))
-  explodedAmount.addRoute().setParam(opExplodeBack1.getParameter('Explode'))
-  asset.addChild(explodedAmount)
+  const explodedAmountParam = asset.addParameter(
+    new NumberParameter('ExplodeAmount', 0)
+  )
+  const explodedAmountRouter = asset.addChild(
+    new RouterOperator('ExplodeAmountRouter')
+  )
+  explodedAmountRouter.getInput('Input').setParam(explodedAmountParam)
+  explodedAmountRouter
+    .addRoute()
+    .setParam(opExplodeFront1.getParameter('Explode'))
+  explodedAmountRouter
+    .addRoute()
+    .setParam(opExplodeBack1.getParameter('Explode'))
 
-  const labelOpacity = new RouterOperator('LabelOpacity')
-  asset.addChild(labelOpacity)
+  const labelOpacityParam = asset.addParameter(
+    new NumberParameter('LabelOpacity', 0)
+  )
+  const labelOpacityRouter = asset.addChild(
+    new RouterOperator('LabelOpacityRouter')
+  )
+  labelOpacityRouter.getInput('Input').setParam(labelOpacityParam)
 
   const labelTree = new TreeItem('labels')
   const labelOutlineColor = new Color('#3B3B3B')
   const linesMaterial = new Material('LabelLinesMaterial', 'LinesShader')
   linesMaterial.getParameter('BaseColor').setValue(labelOutlineColor)
-  labelOpacity.addRoute().setParam(linesMaterial.getParameter('Opacity'))
-  // linesMaterial.getParameter('Opacity').setValue(0.0);
+  labelOpacityRouter.addRoute().setParam(linesMaterial.getParameter('Opacity'))
+  // linesMaterial.getParameter('Opacity').setValue(0.0)
   let index = 0
 
   const labelBackgroundColor = new Color('#EEEEEE')
@@ -56,18 +71,21 @@ const setupExplode = (asset) => {
 
     const billboard = new BillboardItem('billboard' + index, label)
     const xfo = new Xfo(pos)
-    billboard.setLocalXfo(xfo)
+    billboard.getParameter('LocalXfo').setValue(xfo)
     billboard.getParameter('PixelsPerMeter').setValue(1500)
     billboard.getParameter('AlignedToCamera').setValue(true)
     // billboard.getParameter('Alpha').setValue(0.0);
-    labelOpacity.addRoute().setParam(billboard.getParameter('Alpha'))
+    labelOpacityRouter.addRoute().setParam(billboard.getParameter('Alpha'))
     labelTree.addChild(billboard)
 
     const line = new Lines()
     line.setNumVertices(2)
     line.setNumSegments(1)
-    line.setSegment(0, 0, 1)
-    line.setVertex(1, basePose.subtract(pos))
+    line.setSegmentVertexIndices(0, 0, 1)
+    line
+      .getVertexAttribute('positions')
+      .getValueRef(1)
+      .setFromOther(basePose.subtract(pos))
     const lineItem = new GeomItem('Line', line, linesMaterial)
 
     billboard.addChild(lineItem, false)
@@ -743,9 +761,11 @@ const setupExplode = (asset) => {
       part.getOutput().setParam(group.getParameter('GlobalXfo'))
     }
   })
+  // explodedAmountParam.setValue(0.5)
+  // explodedAmountParam.setValue(0)
 
-  explodedAmount.getParameter('Input').setValue(0)
-  labelOpacity.getParameter('Input').setValue(0)
+  // labelOpacityParam.setValue(0)
+  // const explodedAmountParam = opExplodeFront1.getParameter('Explode')
   // asset.on('loaded', ()=>{
   //   let explodedAmountP = 0;
   //   let animatingValue = false;
@@ -754,12 +774,12 @@ const setupExplode = (asset) => {
   //       // Check to see if the video has progressed to the next frame.
   //       // If so, then we emit and update, which will cause a redraw.
   //       animatingValue = true;
-  //       explodedAmountP += 0.01;
+  //       explodedAmountP += 0.002;
   //       const t = Math.smoothStep(0.0, 1.0, explodedAmountP);
   //       // opExplodeFront1.getParameter('Explode').setValue(explodedAmount);
   //       // opExplodeFront2.getParameter('Explode').setValue(explodedAmount);
   //       // opExplodeBack1.getParameter('Explode').setValue(explodedAmount);
-  //       explodedAmount.getParameter('Input').setValue(t);
+  //       explodedAmountParam.setValue(t);
   //       // renderer.requestRedraw();
   //       if (explodedAmountP < 1.0) {
   //           timeoutId = setTimeout(timerCallback, 20); // Sample at 50fps.

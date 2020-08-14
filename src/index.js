@@ -5,11 +5,9 @@ import {
   Scene,
   GLRenderer,
   PassType,
-} from 'https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js'
-import {
-  GLCADPass,
-  CADAsset,
-} from 'https://unpkg.com/@zeainc/zea-cad/dist/index.rawimport.js'
+  MathFunctions,
+} from '../dist/zea-engine/dist/index.esm.js'
+import { GLCADPass } from '../dist/zea-cad/dist/index.rawimport.js'
 
 import loadModel from './1-loadModel.js'
 import setupMaterials from './2-setupMaterials.js'
@@ -21,7 +19,7 @@ import setupStates from './6-setupStates.js'
 const domElement = document.getElementById('renderer')
 
 const scene = new Scene()
-// scene.setupGrid(1.0, 10);
+scene.setupGrid(1.0, 10)
 
 const renderer = new GLRenderer(domElement, {
   webglOptions: {
@@ -61,9 +59,9 @@ renderer.getViewport().on('mouseDownOnGeom', (event) => {
 // Load the Model
 // Page 1 - load and setup the cad Model.
 const asset = loadModel()
-asset.once('loaded', () => {
-  renderer.frameAll()
-})
+// asset.once('loaded', () => {
+//   renderer.frameAll()
+// })
 
 window.setRenderingMode = setupMaterials(asset, scene)
 setupCutaway(asset)
@@ -80,7 +78,7 @@ scene.getRoot().addChild(asset)
 import {
   SelectionManager,
   UndoRedoManager,
-} from 'https://unpkg.com/@zeainc/zea-ux/dist/index.rawimport.js'
+} from '../dist/zea-ux/dist/index.rawimport.js'
 
 const appData = {
   scene,
@@ -125,7 +123,7 @@ document.addEventListener('keydown', (event) => {
 import {
   Session,
   SessionSync,
-} from 'https://unpkg.com/@zeainc/zea-collab/dist/index.rawimport.js'
+} from '../dist/zea-collab/dist/index.rawimport.js'
 
 const socketUrl = 'https://websocket-staging.zea.live'
 
@@ -153,8 +151,8 @@ const lastNames = [
   'Moreno',
 ]
 const userData = {
-  given_name: firstNames[Math.randomInt(0, firstNames.length)],
-  family_name: lastNames[Math.randomInt(0, lastNames.length)],
+  given_name: firstNames[MathFunctions.randomInt(0, firstNames.length)],
+  family_name: lastNames[MathFunctions.randomInt(0, lastNames.length)],
   id: Math.random().toString(36).slice(2, 12),
   color: color.toHex(),
 }

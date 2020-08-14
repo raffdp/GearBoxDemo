@@ -1,1 +1,1 @@
-yarn run start
+http-server

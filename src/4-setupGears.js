@@ -4,10 +4,10 @@ import {
   Xfo,
   Vec3,
   Group,
-  GearsOperator,
   NumberParameter,
-} from 'https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js'
-import { SliderHandle } from 'https://unpkg.com/@zeainc/zea-ux/dist/index.rawimport.js'
+} from '../dist/zea-engine/dist/index.esm.js'
+import { GearsOperator } from '../dist/zea-kinematics/dist/index.rawimport.js'
+import { SliderHandle } from '../dist/zea-ux/dist/index.rawimport.js'
 
 const setupGears = (asset) => {
   const gearsOp = new GearsOperator('Gears')
@@ -17,7 +17,24 @@ const setupGears = (asset) => {
 
   asset.addChild(gearsOp)
 
+  asset.addParameter(new NumberParameter('GearSliderValue'))
+
   asset.once('loaded', () => {
+    const slider = new SliderHandle('GearSlider')
+    const xfo = new Xfo()
+    xfo.ori.setFromEulerAngles(
+      new EulerAngles(Math.PI * 0.5, 0, Math.PI, 'ZXY')
+    )
+    xfo.tr.set(0.067, -0.21, 0.12)
+    slider.getParameter('LocalXfo').setValue(xfo)
+    slider.getParameter('Length').setValue(0.02)
+    slider.getParameter('Bar Radius').setValue(0.0)
+    slider.getParameter('Handle Radius').setValue(0.015)
+    slider.colorParam.setValue(new Color('#F9CE03'))
+    slider.setTargetParam(asset.getParameter('GearSliderValue'))
+    slider.getParameter('Visible').setValue(false)
+    asset.addChild(slider)
+
     {
       const group = new Group('FRONT_PROPELLER_HOUSING')
       asset.addChild(group)
@@ -309,23 +326,6 @@ const setupGears = (asset) => {
     ////////////////////////////////
     // Setup the gear shifter slider.
 
-    asset.addParameter(new NumberParameter('GearSliderValue'))
-
-    const slider = new SliderHandle('GearSlider')
-    const xfo = new Xfo()
-    xfo.ori.setFromEulerAngles(
-      new EulerAngles(Math.PI * 0.5, 0, Math.PI, 'ZXY')
-    )
-    xfo.tr.set(0.067, -0.21, 0.12)
-    slider.setLocalXfo(xfo)
-    slider.getParameter('Length').setValue(0.02)
-    slider.getParameter('Bar Radius').setValue(0.0)
-    slider.getParameter('Handle Radius').setValue(0.015)
-    slider.colorParam.setValue(new Color('#F9CE03'))
-    slider.setTargetParam(asset.getParameter('GearSliderValue'))
-    slider.getParameter('Visible').setValue(false)
-    asset.addChild(slider)
-
     {
       const group = new Group('FRONT_PROPELLER_HOUSING')
       group.getParameter('InitialXfoMode').setValue('average')
@@ -339,12 +339,12 @@ const setupGears = (asset) => {
         ['.', 'GEAR_SHAFT_ASSM_ASM', 'DOWEL_PIN_005', 'DOWEL_PIN'],
       ])
       const sliderParam = asset.getParameter('GearSliderValue')
-      const initialXfo = group.getGlobalXfo().clone()
+      const initialXfo = group.getParameter('GlobalXfo').getValue().clone()
       sliderParam.on('valueChanged', () => {
         const value = sliderParam.getValue()
-        const xfo = group.getGlobalXfo().clone()
+        const xfo = group.getParameter('GlobalXfo').getValue().clone()
         xfo.tr.y = initialXfo.tr.y + value * 0.02
-        group.setGlobalXfo(xfo)
+        group.getParameter('GlobalXfo').setValue(xfo)
 
         if (value < 0.3) {
           if (currGearSetting != 1) setGearBoxSetting(1)

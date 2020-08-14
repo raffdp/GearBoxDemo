@@ -1,7 +1,7 @@
 import {
   Vec3,
   Group,
-} from 'https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js'
+} from '../dist/zea-engine/dist/index.esm.js'
 const setupCutaway = (asset) => {
   const cutAwayGroup = new Group('cutAwayGroup')
   asset.addChild(cutAwayGroup)
@@ -149,7 +149,6 @@ const setupCutaway = (asset) => {
 
   cutAwayGroup.getParameter('CutAwayEnabled').setValue(true)
   cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
-  // cutAwayGroup.getParameter('CutPlaneDist').setValue(0)
   cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17)
 
   // asset.once('loaded', ()=>{

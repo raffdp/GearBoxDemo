@@ -1,12 +1,12 @@
+import { Vec3 } from '../dist/zea-engine/dist/index.esm.js'
 import {
-  Vec3,
   StateMachine,
   State,
   SetCameraPositionAndTarget,
   SetParameterValue,
   GeomClicked,
   SwitchState,
-} from 'https://unpkg.com/@zeainc/zea-engine/dist/index.esm.js'
+} from '../dist/zea-statemachine/dist/index.rawimport.js'
 
 const setupStates = (asset, renderer) => {
   const stateMachine = new StateMachine('States')
@@ -37,7 +37,7 @@ const setupStates = (asset, renderer) => {
       if (cutAwayGroup) {
         const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
-        setCut.getOutput('Param').setParam(cutDistParam)
+        setCut.setParam(cutDistParam)
         setCut.getParameter('Value').setValue(-0.17)
         state.addActivationAction(setCut)
       }
@@ -71,14 +71,14 @@ const setupStates = (asset, renderer) => {
       if (cutAwayGroup) {
         const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
-        setCut.getOutput('Param').setParam(cutDistParam)
+        setCut.setParam(cutDistParam)
         setCut.getParameter('Value').setValue(0.0)
         setCut.getParameter('InterpTime').setValue(2.0)
         state.addActivationAction(setCut)
 
         const showHandle = new SetParameterValue()
         const slider = asset.getChildByName('GearSlider')
-        showHandle.getOutput('Param').setParam(slider.getParameter('Visible'))
+        showHandle.setParam(slider.getParameter('Visible'))
         showHandle.getParameter('Value').setValue(true)
         showHandle.getParameter('InterpTime').setValue(0.0)
         setCut.addChild(showHandle)
@@ -97,7 +97,7 @@ const setupStates = (asset, renderer) => {
       {
         const hideHandle = new SetParameterValue()
         const slider = asset.getChildByName('GearSlider')
-        hideHandle.getOutput('Param').setParam(slider.getParameter('Visible'))
+        hideHandle.setParam(slider.getParameter('Visible'))
         hideHandle.getParameter('Value').setValue(false)
         hideHandle.getParameter('InterpTime').setValue(0.0)
         state.addDeactivationAction(hideHandle)
@@ -113,26 +113,22 @@ const setupStates = (asset, renderer) => {
       if (cutAwayGroup) {
         const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist')
         const setCut = new SetParameterValue()
-        setCut.getOutput('Param').setParam(cutDistParam)
+        setCut.setParam(cutDistParam)
         setCut.getParameter('Value').setValue(-0.17)
         setCut.getParameter('InterpTime').setValue(2.0)
         state.addActivationAction(setCut)
 
-        const explodedAmount = asset.getChildByName('ExplodeAmount')
+        const explodedAmount = asset.getParameter('ExplodeAmount')
         if (explodedAmount) {
           const setExplode = new SetParameterValue()
-          setExplode
-            .getOutput('Param')
-            .setParam(explodedAmount.getParameter('Input'))
+          setExplode.setParam(explodedAmount)
           setExplode.getParameter('Value').setValue(1.0)
           setExplode.getParameter('InterpTime').setValue(3.0)
           setCut.addChild(setExplode)
 
-          const labelOpacity = asset.getChildByName('LabelOpacity')
+          const labelOpacity = asset.getParameter('LabelOpacity')
           const showLabels = new SetParameterValue()
-          showLabels
-            .getOutput('Param')
-            .setParam(labelOpacity.getParameter('Input'))
+          showLabels.setParam(labelOpacity)
           showLabels.getParameter('Value').setValue(1.0)
           showLabels.getParameter('InterpTime').setValue(1.0)
           setExplode.addChild(showLabels)
@@ -161,20 +157,18 @@ const setupStates = (asset, renderer) => {
         state.addStateEvent(geomClicked)
       }
 
-      const explodedAmount = asset.getChildByName('ExplodeAmount')
+      const explodedAmount = asset.getParameter('ExplodeAmount')
       if (explodedAmount) {
         const setExplode = new SetParameterValue()
-        setExplode
-          .getOutput('Param')
-          .setParam(explodedAmount.getParameter('Input'))
+        setExplode.setParam(explodedAmount)
         setExplode.getParameter('Value').setValue(0.0)
         setExplode.getParameter('InterpTime').setValue(2.0)
         state.addDeactivationAction(setExplode)
       }
 
-      const labelOpacity = asset.getChildByName('LabelOpacity')
+      const labelOpacity = asset.getParameter('LabelOpacity')
       const hideLabels = new SetParameterValue()
-      hideLabels.getOutput('Param').setParam(labelOpacity.getParameter('Input'))
+      hideLabels.setParam(labelOpacity)
       hideLabels.getParameter('Value').setValue(0.0)
       hideLabels.getParameter('InterpTime').setValue(0.5)
       state.addDeactivationAction(hideLabels)
@@ -184,7 +178,6 @@ const setupStates = (asset, renderer) => {
 
     stateMachine.activateState('Initial')
   })
-
   return stateMachine
 }
 export default setupStates
