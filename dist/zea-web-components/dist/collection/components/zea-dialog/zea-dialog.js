@@ -9,6 +9,8 @@ export class ZeaDialog {
         this.allowClose = true;
         this.showBackdrop = true;
         this.addPadding = true;
+        this.showTitle = true;
+        this.fullScreenMobile = true;
     }
     /**
      */
@@ -17,7 +19,7 @@ export class ZeaDialog {
     }
     /**
      */
-    onBackdropClick() {
+    closeDialog() {
         if (this.allowClose) {
             this.shown = false;
             this.dialogClose.emit(this.hostElement);
@@ -74,10 +76,14 @@ export class ZeaDialog {
                 shown: this.shown,
                 'with-padding': this.addPadding,
             } },
-            this.showBackdrop && (h("div", { class: "backdrop", onClick: this.onBackdropClick.bind(this) })),
-            h("div", { class: "zea-dialog-container", ref: (el) => this.setupContainer(el) },
-                h("div", { class: "zea-dialog-title" },
-                    h("slot", { name: "title" })),
+            this.showBackdrop && (h("div", { class: "backdrop", onClick: this.closeDialog.bind(this) })),
+            h("div", { class: {
+                    'zea-dialog-container': true,
+                    'full-screen-mobile': this.fullScreenMobile,
+                }, ref: (el) => this.setupContainer(el) },
+                this.showTitle && (h("div", { class: "zea-dialog-title" },
+                    this.allowClose && (h("zea-icon", { name: "arrow-back", onClick: this.closeDialog.bind(this) })),
+                    h("slot", { name: "title" }))),
                 h("div", { class: "zea-dialog-body" },
                     h("slot", { name: "body" })),
                 h("div", { class: "zea-dialog-footer" },
@@ -179,6 +185,42 @@ export class ZeaDialog {
                 "text": ""
             },
             "attribute": "add-padding",
+            "reflect": false,
+            "defaultValue": "true"
+        },
+        "showTitle": {
+            "type": "boolean",
+            "mutable": false,
+            "complexType": {
+                "original": "boolean",
+                "resolved": "boolean",
+                "references": {}
+            },
+            "required": false,
+            "optional": false,
+            "docs": {
+                "tags": [],
+                "text": ""
+            },
+            "attribute": "show-title",
+            "reflect": false,
+            "defaultValue": "true"
+        },
+        "fullScreenMobile": {
+            "type": "boolean",
+            "mutable": false,
+            "complexType": {
+                "original": "boolean",
+                "resolved": "boolean",
+                "references": {}
+            },
+            "required": false,
+            "optional": false,
+            "docs": {
+                "tags": [],
+                "text": ""
+            },
+            "attribute": "full-screen-mobile",
             "reflect": false,
             "defaultValue": "true"
         }

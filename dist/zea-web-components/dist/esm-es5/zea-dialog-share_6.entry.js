@@ -5,8 +5,8 @@ var __spreadArrays = (this && this.__spreadArrays) || function () {
             r[k] = a[j];
     return r;
 };
-import { r as registerInstance, h, d as getElement } from './index-12ee0265.js';
-var zeaDialogShareCss = ".zea-dialog-share{color:var(--color-freground-1)}";
+import { r as registerInstance, h, d as getElement, c as createEvent } from './index-12ee0265.js';
+var zeaDialogShareCss = ".zea-dialog-share{color:var(--color-freground-1)}.scrollpane-container{width:100%;height:100%;padding:10px;-webkit-box-sizing:border-box;box-sizing:border-box}";
 var ZeaDialogShare = /** @class */ (function () {
     function ZeaDialogShare(hostRef) {
         registerInstance(this, hostRef);
@@ -26,7 +26,7 @@ var ZeaDialogShare = /** @class */ (function () {
      */
     ZeaDialogShare.prototype.render = function () {
         var _this = this;
-        return (h("zea-dialog", { ref: function (el) { return (_this.dialog = el); }, width: "fit-content", class: "share-dialog", shown: this.shown }, h("h3", { slot: "title" }, "Share"), h("div", { slot: "body" }, h("zea-tabs", { orientation: "horizontal", density: "small" }, h("div", { slot: "tab-bar" }, "Share Link"), h("div", null, h("zea-qr-code", { scale: 4 }), h("zea-copy-link", null)), h("div", { slot: "tab-bar" }, "Send SMS"), h("div", null, "Tab Content 2"), h("div", { slot: "tab-bar" }, "Send Email"), h("div", null, "Tab Content 3")))));
+        return (h("zea-dialog", { ref: function (el) { return (_this.dialog = el); }, width: "fit-content", class: "share-dialog", shown: this.shown }, h("div", { slot: "title" }, "Share"), h("div", { slot: "body" }, h("div", { class: "scrollpane-container" }, h("zea-scroll-pane", null, h("zea-tabs", { orientation: "horizontal", density: "small" }, h("div", { slot: "tab-bar" }, "Share Link"), h("div", null, h("zea-qr-code", { scale: 4 }), h("zea-copy-link", null)), h("div", { slot: "tab-bar" }, "Send SMS"), h("div", null, "Tab Content 2"), h("div", { slot: "tab-bar" }, "Send Email"), h("div", null, "Tab Content 3")))))));
     };
     return ZeaDialogShare;
 }());
@@ -256,33 +256,43 @@ var ZeaLayout = /** @class */ (function () {
     return ZeaLayout;
 }());
 ZeaLayout.style = zeaLayoutCss;
-var zeaNavigationDrawerCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-navigation-drawer{color:var(--color-foreground-1);display:inline-block;vertical-align:middle}.drawer{position:fixed;top:0;left:0;-webkit-transform:translateX(-100%);transform:translateX(-100%);width:192px;height:100vh;background-color:var(--color-background-4);z-index:10000000;-webkit-transition:-webkit-transform 0.3s;transition:-webkit-transform 0.3s;transition:transform 0.3s;transition:transform 0.3s, -webkit-transform 0.3s;-webkit-transition-timing-function:ease-out;transition-timing-function:ease-out}.shown .drawer{left:0;-webkit-transform:translateX(0);transform:translateX(0)}.toggle{position:relative;z-index:10000010;margin-right:12px;margin-left:7px;background-color:transparent;border-radius:50%;padding:4px;display:inline-block}.toggle:hover{background-color:var(--color-grey-3)}.drawer-content{padding-top:80px;padding-left:9px;font-size:14px}";
+var zeaNavigationDrawerCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-navigation-drawer{color:var(--color-foreground-1);display:inline-block;vertical-align:middle}.drawer{position:fixed;top:0;left:0;-webkit-transform:translateX(-100%);transform:translateX(-100%);width:192px;height:100vh;background-color:var(--color-background-1);z-index:10000000;-webkit-transition:-webkit-transform 0.3s;transition:-webkit-transform 0.3s;transition:transform 0.3s;transition:transform 0.3s, -webkit-transform 0.3s;-webkit-transition-timing-function:ease-out;transition-timing-function:ease-out}.shown .drawer{left:0;-webkit-transform:translateX(0);transform:translateX(0)}.toggle{position:relative;z-index:10000010;margin-right:12px;margin-left:7px;background-color:transparent;border-radius:50%;padding:4px;display:inline-block}.toggle:hover{background-color:var(--color-grey-3)}.drawer-content{padding-top:80px;padding-left:9px;font-size:14px}@media only screen and (max-width: 667px){.drawer{width:80%}}";
 var ZeaNavigationDrawer = /** @class */ (function () {
     function ZeaNavigationDrawer(hostRef) {
         registerInstance(this, hostRef);
         /**
          */
         this.shown = false;
+        this.navDrawerOpen = createEvent(this, "navDrawerOpen", 7);
+        this.navDrawerClosed = createEvent(this, "navDrawerClosed", 7);
     }
     /**
      * Listen to click events on the whole document
      * @param {any} e The event
      */
-    ZeaNavigationDrawer.prototype.handleClick = function () {
-        // if (!e.composedPath().includes(this.container)) {
-        this.shown = false;
-        // }
+    ZeaNavigationDrawer.prototype.handleClick = function (e) {
+        if (!e.composedPath().includes(this.container) ||
+            !e.composedPath().includes(this.toggleButton)) {
+            this.shown = false;
+            this.navDrawerClosed.emit(this);
+        }
     };
     /**
      */
     ZeaNavigationDrawer.prototype.onToggleClick = function () {
         this.shown = !this.shown;
+        if (this.shown) {
+            this.navDrawerOpen.emit(this);
+        }
+        else {
+            this.navDrawerClosed.emit(this);
+        }
     };
     /**
      */
     ZeaNavigationDrawer.prototype.render = function () {
         var _this = this;
-        return (h("div", { ref: function (el) { return (_this.container = el); }, class: { 'zea-navigation-drawer': true, shown: this.shown } }, h("div", { class: "drawer" }, h("div", { class: "drawer-content" }, h("slot", null))), h("div", { class: "toggle", onClick: this.onToggleClick.bind(this) }, h("zea-icon", { size: 30, name: "menu" }))));
+        return (h("div", { ref: function (el) { return (_this.container = el); }, class: { 'zea-navigation-drawer': true, shown: this.shown } }, h("div", { class: "drawer" }, h("div", { class: "drawer-content" }, h("slot", null))), h("div", { class: "toggle", ref: function (el) { return (_this.toggleButton = el); }, onClick: this.onToggleClick.bind(this) }, h("zea-icon", { size: 30, name: "menu" }))));
     };
     return ZeaNavigationDrawer;
 }());
@@ -298,12 +308,12 @@ var ZeaPanelProgressBar = /** @class */ (function () {
      */
     ZeaPanelProgressBar.prototype.render = function () {
         var _this = this;
-        return (h("div", { class: "zea-panel-progress-bar" }, h("zea-dialog", { shown: true, allowClose: false, width: '300px' }, h("div", { slot: "body" }, h("slot", null), h("zea-progress-bar", { ref: function (el) { return (_this.progressBar = el); }, type: "indeterminate" })))));
+        return (h("div", { class: "zea-panel-progress-bar" }, h("zea-dialog", { shown: true, allowClose: false, showTitle: false, fullScreenMobile: false, width: '300px' }, h("div", { slot: "body" }, h("slot", null), h("zea-progress-bar", { ref: function (el) { return (_this.progressBar = el); }, type: "indeterminate" })))));
     };
     return ZeaPanelProgressBar;
 }());
 ZeaPanelProgressBar.style = zeaPanelProgressBarCss;
-var zeaUserChipSetCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-chip-set{color:var(--color-foreground-1);display:-ms-flexbox;display:flex;position:relative}zea-user-chip{margin-left:-8px;width:36px;height:36px;border:1px solid transparent;border-radius:19px}.overflow-thumb{border:2px solid var(--color-background-3);background-color:var(--color-background-3);width:36px;height:36px;color:var(--color-foreground-2);display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center;position:relative;font-size:13px;margin-left:-8px;border-radius:19px;-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.overflow-tooltip{position:absolute;top:35px;padding:4px 7px;border-radius:4px;font-size:12px;color:var(--color-foreground-1);background-color:var(--color-grey-3);z-index:10000;white-space:nowrap;display:none}.overflow-thumb:hover .overflow-tooltip{display:block}.overflow-list{max-height:calc(100vh - 60px);width:-webkit-min-content;width:-moz-min-content;width:min-content;overflow-y:auto;background-color:var(--color-background-2);display:none}.overflow-list.shown{display:block}.overflow-list zea-user-card{display:block;}.overflow-entry{display:-ms-flexbox;display:flex;-ms-flex-align:stretch;align-items:stretch}.overflow-entry-collapser{padding-left:8px;padding-top:14px;padding-right:8px}";
+var zeaUserChipSetCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-chip-set{color:var(--color-foreground-1);display:-ms-flexbox;display:flex;position:relative}zea-user-chip{margin-left:-8px;width:36px;height:36px;border:1px solid transparent;border-radius:19px}.overflow-thumb{border:2px solid var(--color-background-3);background-color:var(--color-background-3);width:36px;height:36px;color:var(--color-foreground-2);display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center;position:relative;font-size:13px;margin-left:-8px;border-radius:19px;-webkit-box-sizing:border-box;box-sizing:border-box;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.overflow-tooltip{position:absolute;top:35px;padding:4px 7px;border-radius:4px;font-size:12px;color:var(--color-foreground-1);background-color:var(--color-grey-3);z-index:10000;white-space:nowrap;display:none}.overflow-thumb:hover .overflow-tooltip{display:block}.overflow-list{max-height:calc(100vh - 60px);width:-webkit-min-content;width:-moz-min-content;width:min-content;overflow-y:auto;background-color:var(--color-background-2);display:none}.overflow-list.shown{display:block;position:absolute}.overflow-list zea-user-card{display:block;}.overflow-entry{display:-ms-flexbox;display:flex;-ms-flex-align:stretch;align-items:stretch}.overflow-entry-collapser{padding-left:8px;padding-top:14px;padding-right:8px}";
 var ZeaUserChipSet = /** @class */ (function () {
     function ZeaUserChipSet(hostRef) {
         registerInstance(this, hostRef);
@@ -338,7 +348,10 @@ var ZeaUserChipSet = /** @class */ (function () {
      * Called when the component first loads
      */
     ZeaUserChipSet.prototype.componentWillLoad = function () {
-        this.setupSession();
+        var _this = this;
+        setTimeout(function () {
+            _this.setupSession();
+        }, 500);
     };
     /**
      * Set up the sesion subscriptions
@@ -372,6 +385,16 @@ var ZeaUserChipSet = /** @class */ (function () {
                 userDatas.splice(index, 1);
                 _this.userDatas = userDatas;
             });
+            this.session.sub('userChanged', function (newUserData) {
+                _this.session.users[newUserData.id] = newUserData;
+                var userDatas = [];
+                for (var u in _this.session.users) {
+                    if (_this.session.users.hasOwnProperty(u)) {
+                        userDatas.push(_this.session.users[u]);
+                    }
+                }
+                _this.userDatas = userDatas;
+            });
         }
         else {
             this.userDatas = [];
@@ -381,8 +404,8 @@ var ZeaUserChipSet = /** @class */ (function () {
      * Activate the current item
      * @param {any} e The event
      */
-    ZeaUserChipSet.prototype.onChipClick = function () {
-        // e.currentTarget.isActive = !e.currentTarget.isActive
+    ZeaUserChipSet.prototype.onChipClick = function (e) {
+        e.stopPropagation();
     };
     /**
      * Render method.
@@ -390,6 +413,8 @@ var ZeaUserChipSet = /** @class */ (function () {
      */
     ZeaUserChipSet.prototype.render = function () {
         var _this = this;
+        if (!this.userDatas)
+            return;
         var shownChips = this.userDatas.slice(0, this.overflowLimit);
         var overflownChips = this.userDatas.slice(this.overflowLimit);
         // let currentZIndex = this.initialZIndex
@@ -398,7 +423,10 @@ var ZeaUserChipSet = /** @class */ (function () {
                 return (h("zea-user-chip", { showImages: _this.showImages, key: userData.id, userData: userData,
                     // style={{ zIndex: `${--currentZIndex}` }}
                     onClick: _this.onChipClick.bind(_this) }));
-            }), overflownChips.length > 0 && (h("div", { class: "overflow" }, h("div", { class: "overflow-thumb", onClick: function () { return (_this.overflowShown = !_this.overflowShown); } }, [
+            }), overflownChips.length > 0 && (h("div", { class: "overflow" }, h("div", { class: "overflow-thumb", onClick: function (e) {
+                _this.overflowShown = !_this.overflowShown;
+                e.stopPropagation();
+            } }, [
             "+" + (this.userDatas.length - this.overflowLimit),
             !this.overflowShown && (h("div", { class: "overflow-tooltip" }, "Show All")),
         ]), h("div", { class: { 'overflow-list': true, shown: this.overflowShown } }, overflownChips.map(function (userData) {

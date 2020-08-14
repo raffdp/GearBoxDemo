@@ -1,4 +1,4 @@
-import { Component, h, Prop, Listen } from '@stencil/core';
+import { Component, h, Prop, Listen, Event } from '@stencil/core';
 /**
  */
 export class ZeaNavigationDrawer {
@@ -11,15 +11,23 @@ export class ZeaNavigationDrawer {
      * Listen to click events on the whole document
      * @param {any} e The event
      */
-    handleClick() {
-        // if (!e.composedPath().includes(this.container)) {
-        this.shown = false;
-        // }
+    handleClick(e) {
+        if (!e.composedPath().includes(this.container) ||
+            !e.composedPath().includes(this.toggleButton)) {
+            this.shown = false;
+            this.navDrawerClosed.emit(this);
+        }
     }
     /**
      */
     onToggleClick() {
         this.shown = !this.shown;
+        if (this.shown) {
+            this.navDrawerOpen.emit(this);
+        }
+        else {
+            this.navDrawerClosed.emit(this);
+        }
     }
     /**
      */
@@ -28,7 +36,7 @@ export class ZeaNavigationDrawer {
             h("div", { class: "drawer" },
                 h("div", { class: "drawer-content" },
                     h("slot", null))),
-            h("div", { class: "toggle", onClick: this.onToggleClick.bind(this) },
+            h("div", { class: "toggle", ref: (el) => (this.toggleButton = el), onClick: this.onToggleClick.bind(this) },
                 h("zea-icon", { size: 30, name: "menu" }))));
     }
     static get is() { return "zea-navigation-drawer"; }
@@ -59,11 +67,42 @@ export class ZeaNavigationDrawer {
             "defaultValue": "false"
         }
     }; }
+    static get events() { return [{
+            "method": "navDrawerOpen",
+            "name": "navDrawerOpen",
+            "bubbles": true,
+            "cancelable": true,
+            "composed": true,
+            "docs": {
+                "tags": [],
+                "text": ""
+            },
+            "complexType": {
+                "original": "any",
+                "resolved": "any",
+                "references": {}
+            }
+        }, {
+            "method": "navDrawerClosed",
+            "name": "navDrawerClosed",
+            "bubbles": true,
+            "cancelable": true,
+            "composed": true,
+            "docs": {
+                "tags": [],
+                "text": ""
+            },
+            "complexType": {
+                "original": "any",
+                "resolved": "any",
+                "references": {}
+            }
+        }]; }
     static get listeners() { return [{
             "name": "click",
             "method": "handleClick",
             "target": "document",
-            "capture": true,
+            "capture": false,
             "passive": false
         }]; }
 }

@@ -230,7 +230,7 @@ const ZeaInput = class {
 };
 ZeaInput.style = zeaInputCss;
 
-const zeaInputTextCss = ":host{display:inline-block;width:100%;-webkit-box-sizing:border-box;box-sizing:border-box}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-input{color:var(--color-foreground-1)}.input-label{color:var(--color-grey-3);position:relative;-webkit-transition:all 0.2s linear;transition:all 0.2s linear;pointer-events:none}.empty .input-label{top:18px;font-size:13px}.not-empty .input-label,.focused .input-label{top:0;font-size:11px}.focused .input-label{color:var(--color-secondary-1)}.input-wrap{display:block;position:relative}input[type='text']{-webkit-box-sizing:border-box;box-sizing:border-box;width:100%;color:var(--color-foreground-2);background-color:transparent;border:none;outline:none;font-size:1em;font-size:13px}.invalid-message{color:var(--color-warning-1);padding:0.3em 0;font-size:12px}.underliner{text-align:center;height:1px;background-color:var(--color-grey-3);overflow:hidden;display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center}.underliner .expander{height:1px;background-color:var(--color-secondary-1);overflow:hidden;display:inline-block;width:0;-webkit-transition:width 0.2s linear;transition:width 0.2s linear}.focused .underliner .expander{width:100%}.invalid .underliner .expander{background-color:var(--color-warning-1);width:100%}.disabled .underliner{background-color:transparent;border-bottom:1px dotted var(--color-grey-3)}";
+const zeaInputTextCss = ":host{display:inline-block;width:100%;-webkit-box-sizing:border-box;box-sizing:border-box}:host(.hidden){display:none}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-input{color:var(--color-foreground-1)}.input-label{color:var(--color-foreground-3);position:relative;-webkit-transition:all 0.2s linear;transition:all 0.2s linear;pointer-events:none}.empty .input-label{top:18px;font-size:13px}.not-empty .input-label,.focused .input-label{top:0;font-size:11px}.focused .input-label{color:var(--color-secondary-1)}.input-wrap{display:block;position:relative}input[type='text']{-webkit-box-sizing:border-box;box-sizing:border-box;width:100%;color:var(--color-foreground-1);background-color:transparent;border:none;outline:none;font-size:1em;font-size:13px}.invalid-message{color:var(--color-warning-1);padding:0.3em 0;font-size:12px}.underliner{text-align:center;height:1px;background-color:var(--color-grey-3);overflow:hidden;display:-ms-flexbox;display:flex;-ms-flex-pack:center;justify-content:center}.underliner .expander{height:1px;background-color:var(--color-secondary-1);overflow:hidden;display:inline-block;width:0;-webkit-transition:width 0.2s linear;transition:width 0.2s linear}.focused .underliner .expander{width:100%}.invalid .underliner .expander{background-color:var(--color-warning-1);width:100%}.disabled .underliner{background-color:transparent;border-bottom:1px dotted var(--color-grey-3)}.hidden{display:none}";
 
 const ZeaInputText = class {
     constructor(hostRef) {
@@ -262,6 +262,9 @@ const ZeaInputText = class {
         /**
          */
         this.showLabel = true;
+        /**
+         */
+        this.hidden = false;
     }
     /**
      */
@@ -314,11 +317,12 @@ const ZeaInputText = class {
      * @return {JSX} The generated html
      */
     render() {
-        return (h("div", { class: `input-wrap ${this.value ? 'not-empty' : 'empty'} ${!this.invalidMessageShown ? 'valid' : 'invalid'} ${this.disabled ? 'disabled' : ''}`, ref: (el) => (this.inputWrapElement = el) }, this.showLabel && h("label", { class: "input-label" }, this.label), h("input", { ref: (el) => (this.inputElement = el),
+        return (h(Host, { class: `${this.hidden ? 'hidden' : ''}` }, h("div", { class: `input-wrap ${this.value ? 'not-empty' : 'empty'} ${!this.invalidMessageShown ? 'valid' : 'invalid'} ${this.disabled ? 'disabled' : ''} ${this.hidden ? 'hidden' : ''}`, ref: (el) => (this.inputWrapElement = el) }, this.showLabel && h("label", { class: "input-label" }, this.label), h("input", { ref: (el) => (this.inputElement = el),
             // placeholder={this.showLabel ? '' : this.label}
             type: "text", value: this.value, onKeyDown: this.onKeyDown.bind(this), onKeyUp: this.onKeyUp.bind(this), onBlur: this.onBlur.bind(this), onFocus: this.onFocus.bind(this), disabled: this.disabled, class: {
-                invalid: (this.autoValidate || this.invalidMessageShown) && !this.isValid,
-            } }), h("div", { class: "underliner" }, h("div", { class: "expander" })), !this.isValid && this.invalidMessageShown && (h("div", { class: "invalid-message" }, this.invalidMessage))));
+                invalid: (this.autoValidate || this.invalidMessageShown) &&
+                    !this.isValid,
+            } }), h("div", { class: "underliner" }, h("div", { class: "expander" })), !this.isValid && this.invalidMessageShown && (h("div", { class: "invalid-message" }, this.invalidMessage)))));
     }
 };
 ZeaInputText.style = zeaInputTextCss;
@@ -818,6 +822,12 @@ const ZeaScrollPane = class {
      *
      */
     onResize() {
+        this.refreshScrollbar();
+    }
+    /**
+     *
+     */
+    onOrientationchange() {
         this.refreshScrollbar();
     }
     /**

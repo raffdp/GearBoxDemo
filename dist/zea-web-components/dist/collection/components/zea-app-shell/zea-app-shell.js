@@ -1,4 +1,4 @@
-import { Component, h, Prop, Listen, Event, Element, } from '@stencil/core';
+import { Component, h, Prop, Listen, Event, Element, forceUpdate, Method, } from '@stencil/core';
 /**
  * Main class for the component
  */
@@ -6,7 +6,7 @@ export class ZeaAppShell {
     constructor() {
         /**
          */
-        this.logoUrl = 'https://storage.googleapis.com/misc-assets/zea-logo.png';
+        this.logoUrl = 'https://storage.googleapis.com/zea-web-components-assets/zea-logo.png';
         /**
          */
         this.userData = {};
@@ -27,10 +27,37 @@ export class ZeaAppShell {
      */
     userRegisteredHandler(event) {
         this.userData = event.detail;
-        this.userData.id = Math.random().toString(36).slice(2, 12);
-        localStorage.setItem('zea-user-data', JSON.stringify(this.userData));
+        if (!this.userData['id']) {
+            this.userData.id = Math.random().toString(36).slice(2, 12);
+            this.userAuthenticated.emit(this.userData);
+        }
+        else if ('pub' in this.session) {
+            this.session.pub('userChanged', this.userData);
+        }
         this.registerDialog.shown = false;
-        this.userAuthenticated.emit(this.userData);
+        localStorage.setItem('zea-user-data', JSON.stringify(this.userData));
+        // this.currentUserChip.forceUpdate()
+        this.currentUserChip.userData = Object.assign({}, this.userData);
+        forceUpdate(this.currentUserChip);
+    }
+    /**
+     */
+    navDrawerOpenHandler() {
+        this.userChipSet.classList.add('nav-drawer-open');
+        this.toolsContainer.classList.add('nav-drawer-open');
+    }
+    /**
+     */
+    navDrawerClosedHandler() {
+        this.userChipSet.classList.remove('nav-drawer-open');
+        this.toolsContainer.classList.remove('nav-drawer-open');
+    }
+    /**
+     */
+    async doUpdate() {
+        console.log('Force updating shell');
+        forceUpdate(this.hostElement);
+        forceUpdate(this.userChipSet);
     }
     /**
      */
@@ -70,11 +97,17 @@ export class ZeaAppShell {
                             "Share"),
                         h("slot", { name: "nav-drawer" })),
                     h("div", { id: "brand", style: { backgroundImage: `url(${this.logoUrl})` } }),
-                    h("zea-user-chip-set", { id: "users-container", session: this.session }),
-                    h("div", { id: "tools-container" },
+                    h("zea-user-chip-set", { ref: (el) => {
+                            this.userChipSet = el;
+                        }, id: "users-container", session: this.session }),
+                    h("div", { id: "tools-container", ref: (el) => {
+                            this.toolsContainer = el;
+                        } },
                         h("div", { id: "main-search" },
                             h("zea-input-search", null))),
-                    h("zea-user-chip", { userData: this.userData, id: "current-user", "profile-card-align": "right", "is-current-user": "true" })),
+                    h("zea-user-chip", { ref: (el) => {
+                            this.currentUserChip = el;
+                        }, userData: Object.assign({}, this.userData), id: "current-user", "profile-card-align": "right", "is-current-user": "true" })),
                 h("zea-layout", { slot: "b", "cell-a-size": this.leftPanelWidth, "cell-c-size": this.rightPanelWidth },
                     h("div", { slot: "a", id: "left-panel-container" },
                         this.leftProgressMessage && (h("zea-panel-progress-bar", { ref: (el) => (this.leftProgressBar = el) }, this.leftProgressMessage)),
@@ -114,7 +147,7 @@ export class ZeaAppShell {
             },
             "attribute": "logo-url",
             "reflect": false,
-            "defaultValue": "'https://storage.googleapis.com/misc-assets/zea-logo.png'"
+            "defaultValue": "'https://storage.googleapis.com/zea-web-components-assets/zea-logo.png'"
         },
         "userData": {
             "type": "any",
@@ -310,10 +343,40 @@ export class ZeaAppShell {
                 "references": {}
             }
         }]; }
+    static get methods() { return {
+        "doUpdate": {
+            "complexType": {
+                "signature": "() => Promise<void>",
+                "parameters": [],
+                "references": {
+                    "Promise": {
+                        "location": "global"
+                    }
+                },
+                "return": "Promise<void>"
+            },
+            "docs": {
+                "text": "",
+                "tags": []
+            }
+        }
+    }; }
     static get elementRef() { return "hostElement"; }
     static get listeners() { return [{
             "name": "userRegistered",
             "method": "userRegisteredHandler",
+            "target": undefined,
+            "capture": false,
+            "passive": false
+        }, {
+            "name": "navDrawerOpen",
+            "method": "navDrawerOpenHandler",
+            "target": undefined,
+            "capture": false,
+            "passive": false
+        }, {
+            "name": "navDrawerClosed",
+            "method": "navDrawerClosedHandler",
             "target": undefined,
             "capture": false,
             "passive": false

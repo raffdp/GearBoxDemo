@@ -20,17 +20,19 @@ export class ZeaDialogShare {
      */
     render() {
         return (h("zea-dialog", { ref: (el) => (this.dialog = el), width: "fit-content", class: "share-dialog", shown: this.shown },
-            h("h3", { slot: "title" }, "Share"),
+            h("div", { slot: "title" }, "Share"),
             h("div", { slot: "body" },
-                h("zea-tabs", { orientation: "horizontal", density: "small" },
-                    h("div", { slot: "tab-bar" }, "Share Link"),
-                    h("div", null,
-                        h("zea-qr-code", { scale: 4 }),
-                        h("zea-copy-link", null)),
-                    h("div", { slot: "tab-bar" }, "Send SMS"),
-                    h("div", null, "Tab Content 2"),
-                    h("div", { slot: "tab-bar" }, "Send Email"),
-                    h("div", null, "Tab Content 3")))));
+                h("div", { class: "scrollpane-container" },
+                    h("zea-scroll-pane", null,
+                        h("zea-tabs", { orientation: "horizontal", density: "small" },
+                            h("div", { slot: "tab-bar" }, "Share Link"),
+                            h("div", null,
+                                h("zea-qr-code", { scale: 4 }),
+                                h("zea-copy-link", null)),
+                            h("div", { slot: "tab-bar" }, "Send SMS"),
+                            h("div", null, "Tab Content 2"),
+                            h("div", { slot: "tab-bar" }, "Send Email"),
+                            h("div", null, "Tab Content 3")))))));
     }
     static get is() { return "zea-dialog-share"; }
     static get encapsulation() { return "shadow"; }

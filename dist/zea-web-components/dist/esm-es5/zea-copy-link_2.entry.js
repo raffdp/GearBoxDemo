@@ -1,7 +1,7 @@
 import { r as registerInstance, h } from './index-12ee0265.js';
-import { a as createCommonjsModule, g as getCjsExportFromNamespace } from './global-6e332181.js';
+import { a as createCommonjsModule } from './global-6e332181.js';
 import { b as bufferEs6 } from './buffer-es6-d7e2ddd2.js';
-var zeaCopyLinkCss = ".zea-copy-link{color:var(--color-foreground-1)}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.label{font-size:1.1em;margin-bottom:5px;margin-top:2em}.link-container{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;background-color:var(--color-background-1);padding:5px}.link{-ms-flex-positive:1;flex-grow:1;border:none;background-color:transparent;outline:none;color:var(--color-foreground-1)}.copy-icon{cursor:pointer}.tooltip{position:absolute;width:64px;font-size:10px;-webkit-transform:translateX(-22px);transform:translateX(-22px);padding:2px;margin-top:5px;border-radius:3px;text-align:center;background-color:var(--color-secondary-1);min-width:-webkit-fit-content;min-width:-moz-fit-content;min-width:fit-content;display:none}.active .tooltip,.copy-icon:hover .tooltip{color:var(--color-foreground-1);display:block}";
+var zeaCopyLinkCss = ".zea-copy-link{color:var(--color-foreground-1)}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.label{font-size:1.1em;margin-bottom:5px;margin-top:2em}.link-container{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;background-color:var(--color-background-1);padding:5px}.link{-ms-flex-positive:1;flex-grow:1;border:none;background-color:transparent;outline:none;color:var(--color-foreground-1)}.copy-icon{cursor:pointer;margin:0 1em}.tooltip{position:absolute;width:64px;font-size:10px;-webkit-transform:translateX(-22px);transform:translateX(-22px);padding:2px;margin-top:5px;border-radius:3px;text-align:center;background-color:var(--color-secondary-1);min-width:-webkit-fit-content;min-width:-moz-fit-content;min-width:fit-content;display:none}.active .tooltip,.copy-icon:hover .tooltip{color:var(--color-foreground-1);display:block}";
 var ZeaCopyLink = /** @class */ (function () {
     function ZeaCopyLink(hostRef) {
         registerInstance(this, hostRef);
@@ -1277,8 +1277,7 @@ var polynomial = createCommonjsModule(function (module, exports) {
         return poly;
     };
 });
-var require$$0 = getCjsExportFromNamespace(bufferEs6);
-var Buffer$1 = require$$0.Buffer;
+var Buffer$1 = bufferEs6.Buffer;
 function ReedSolomonEncoder(degree) {
     this.genPoly = undefined;
     this.degree = degree;

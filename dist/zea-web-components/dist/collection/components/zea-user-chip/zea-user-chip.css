@@ -1,3 +1,7 @@
+:host {
+  z-index: 100000000;
+}
+
 :host,
 input,
 button,
@@ -102,4 +106,18 @@ zea-user-card.align-right {
   left: 0;
   margin-left: 0;
   transform: none;
+}
+
+@media only screen and (max-width: 667px) {
+  zea-user-card {
+    position: fixed;
+    width: 100%;
+    left: 0;
+  }
+}
+
+@media only screen and (max-width: 667px), only screen and (max-height: 667px) {
+  .tooltip {
+    display: none !important;
+  }
 }

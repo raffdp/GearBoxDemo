@@ -1,9 +1,9 @@
 import { r as registerInstance, c as createEvent, h } from './index-12ee0265.js';
 import { d as commonjsRequire } from './global-6e332181.js';
 import './index-27446e12.js';
-import { r } from './zea-collab.esm-2f7d107f.js';
+import { r } from './zea-collab.esm-0b661175.js';
 import './buffer-es6-d7e2ddd2.js';
-import './events-fc0ece3b.js';
+import './events-accbf876.js';
 
 function isNothing(subject) {
   return (typeof subject === 'undefined') || (subject === null);

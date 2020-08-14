@@ -11,10 +11,10 @@
   z-index: 10000020;
   position: relative;
   background-size: contain;
-  background-position: 20px center;
+  background-position: 0px center;
   background-repeat: no-repeat;
   width: 150px;
-  height: 24px;
+  height: 34px;
 }
 
 #left-panel-container,
@@ -26,6 +26,7 @@
 header {
   display: flex;
   align-items: center;
+  background-color: var(--color-grey-1);
 }
 
 #tools-container {
@@ -42,4 +43,27 @@ header zea-user-chip {
   display: inline-block;
   text-align: right;
   margin: 0 20px;
+}
+
+@media only screen and (max-width: 667px) {
+  #main-search {
+    width: auto;
+  }
+
+  zea-user-chip-set {
+    display: none;
+  }
+
+  zea-user-chip-set.nav-drawer-open {
+    display: block;
+    flex-grow: 1;
+  }
+
+  #tools-container.nav-drawer-open {
+    display: none;
+  }
+
+  #brand {
+    width: 50px;
+  }
 }

@@ -29,12 +29,24 @@ export declare class ZeaAppShell {
     registerDialog: any;
     registerForm: any;
     shareDialog: any;
+    currentUserChip: any;
+    userChipSet: any;
+    toolsContainer: any;
     /**
      */
     userAuthenticated: EventEmitter;
     /**
      */
     userRegisteredHandler(event: any): void;
+    /**
+     */
+    navDrawerOpenHandler(): void;
+    /**
+     */
+    navDrawerClosedHandler(): void;
+    /**
+     */
+    doUpdate(): Promise<void>;
     /**
      */
     componentWillLoad(): void;

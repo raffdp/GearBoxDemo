@@ -9,7 +9,7 @@ export class ZeaPanelProgressBar {
      */
     render() {
         return (h("div", { class: "zea-panel-progress-bar" },
-            h("zea-dialog", { shown: true, allowClose: false, width: '300px' },
+            h("zea-dialog", { shown: true, allowClose: false, showTitle: false, fullScreenMobile: false, width: '300px' },
                 h("div", { slot: "body" },
                     h("slot", null),
                     h("zea-progress-bar", { ref: (el) => (this.progressBar = el), type: "indeterminate" })))));

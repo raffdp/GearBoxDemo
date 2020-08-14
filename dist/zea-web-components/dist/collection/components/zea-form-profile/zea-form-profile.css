@@ -14,7 +14,9 @@ zea-form {
   width: 280px;
   display: block;
   padding: 20px;
+  padding-top: 0;
   box-sizing: border-box;
+  margin: 0 auto;
 }
 
 zea-input {

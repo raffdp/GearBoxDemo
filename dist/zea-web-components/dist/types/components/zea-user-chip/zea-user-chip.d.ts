@@ -57,9 +57,8 @@ export declare class ZeaUserChip {
     handleClick(e: any): void;
     /**
      * Handle click on user chip: emit custom zeaUserClicked event
-     * @param {any} userData the userData
      */
-    onChipClick(): void;
+    onChipClick(e: any): void;
     /**
      * On avatar over, fix tooltip position when its out of the screen
      */

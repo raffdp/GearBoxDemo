@@ -29,10 +29,6 @@ export declare class ZeaTreeItemElement {
     /**
      * Placeholder comment
      */
-    componentDidLoad(): void;
-    /**
-     * Placeholder comment
-     */
     initTreeItem(): void;
     /**
      * Placeholder comment

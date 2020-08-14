@@ -11,6 +11,7 @@ export namespace Components {
     interface ZeaAppShell {
         "centerProgressBar": any;
         "centerProgressMessage": string;
+        "doUpdate": () => Promise<void>;
         "leftPanelWidth": string;
         "leftProgressBar": any;
         "leftProgressMessage": string;
@@ -75,8 +76,10 @@ export namespace Components {
     interface ZeaDialog {
         "addPadding": boolean;
         "allowClose": boolean;
+        "fullScreenMobile": boolean;
         "prompt": () => Promise<void>;
         "showBackdrop": boolean;
+        "showTitle": boolean;
         "shown": boolean;
         "width": string;
     }
@@ -241,6 +244,7 @@ export namespace Components {
     interface ZeaInputText {
         "autoValidate": boolean;
         "disabled": boolean;
+        "hidden": boolean;
         "invalidMessage": string;
         "invalidMessageShown": boolean;
         "isValid": boolean;
@@ -599,7 +603,6 @@ export namespace Components {
         "isSelected": boolean;
         "isTreeItem": boolean;
         "isVisible": boolean;
-        "itemContainer": any;
         "label": string;
         "treeItem": any;
     }
@@ -1219,8 +1222,10 @@ declare namespace LocalJSX {
     interface ZeaDialog {
         "addPadding"?: boolean;
         "allowClose"?: boolean;
+        "fullScreenMobile"?: boolean;
         "onDialogClose"?: (event: CustomEvent<any>) => void;
         "showBackdrop"?: boolean;
+        "showTitle"?: boolean;
         "shown"?: boolean;
         "width"?: string;
     }
@@ -1388,6 +1393,7 @@ declare namespace LocalJSX {
     interface ZeaInputText {
         "autoValidate"?: boolean;
         "disabled"?: boolean;
+        "hidden"?: boolean;
         "invalidMessage"?: string;
         "invalidMessageShown"?: boolean;
         "isValid"?: boolean;
@@ -1483,6 +1489,8 @@ declare namespace LocalJSX {
         "type"?: string;
     }
     interface ZeaNavigationDrawer {
+        "onNavDrawerClosed"?: (event: CustomEvent<any>) => void;
+        "onNavDrawerOpen"?: (event: CustomEvent<any>) => void;
         "shown"?: boolean;
     }
     interface ZeaPanelProgressBar {
@@ -1760,7 +1768,6 @@ declare namespace LocalJSX {
         "isSelected"?: boolean;
         "isTreeItem"?: boolean;
         "isVisible"?: boolean;
-        "itemContainer"?: any;
         "label"?: string;
         "treeItem"?: any;
     }

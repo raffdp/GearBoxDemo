@@ -41,6 +41,14 @@ textarea {
   background-color: var(--color-grey-3);
 }
 
+.zea-menu-item:hover {
+  background-color: var(--color-grey-3);
+}
+
+.zea-menu-item.toolbar:hover {
+  background-color: transparent;
+}
+
 .toolbar.pressed .outer-wrap {
   background-color: var(--color-background-2);
 }

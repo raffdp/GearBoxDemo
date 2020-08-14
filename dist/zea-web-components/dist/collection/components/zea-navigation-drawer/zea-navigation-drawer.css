@@ -19,7 +19,7 @@ textarea {
   transform: translateX(-100%);
   width: 192px;
   height: 100vh;
-  background-color: var(--color-background-4);
+  background-color: var(--color-background-1);
   z-index: 10000000;
   transition: transform 0.3s;
   transition-timing-function: ease-out;
@@ -49,4 +49,10 @@ textarea {
   padding-top: 80px;
   padding-left: 9px;
   font-size: 14px;
+}
+
+@media only screen and (max-width: 667px) {
+  .drawer {
+    width: 80%;
+  }
 }

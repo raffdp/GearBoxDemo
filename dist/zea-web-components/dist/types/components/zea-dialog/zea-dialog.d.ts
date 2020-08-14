@@ -5,6 +5,8 @@ export declare class ZeaDialog {
     allowClose: boolean;
     showBackdrop: boolean;
     addPadding: boolean;
+    showTitle: boolean;
+    fullScreenMobile: boolean;
     hostElement: any;
     dialogContainer: HTMLElement;
     dialogClose: EventEmitter;
@@ -13,7 +15,7 @@ export declare class ZeaDialog {
     prompt(): Promise<void>;
     /**
      */
-    onBackdropClick(): void;
+    closeDialog(): void;
     /**
      */
     resetSize(): void;

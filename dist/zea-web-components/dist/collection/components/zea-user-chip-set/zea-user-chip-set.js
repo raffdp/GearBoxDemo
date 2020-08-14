@@ -35,7 +35,9 @@ export class ZeaUserChipSet {
      * Called when the component first loads
      */
     componentWillLoad() {
-        this.setupSession();
+        setTimeout(() => {
+            this.setupSession();
+        }, 500);
     }
     /**
      * Set up the sesion subscriptions
@@ -68,6 +70,16 @@ export class ZeaUserChipSet {
                 userDatas.splice(index, 1);
                 this.userDatas = userDatas;
             });
+            this.session.sub('userChanged', (newUserData) => {
+                this.session.users[newUserData.id] = newUserData;
+                const userDatas = [];
+                for (let u in this.session.users) {
+                    if (this.session.users.hasOwnProperty(u)) {
+                        userDatas.push(this.session.users[u]);
+                    }
+                }
+                this.userDatas = userDatas;
+            });
         }
         else {
             this.userDatas = [];
@@ -77,14 +89,16 @@ export class ZeaUserChipSet {
      * Activate the current item
      * @param {any} e The event
      */
-    onChipClick() {
-        // e.currentTarget.isActive = !e.currentTarget.isActive
+    onChipClick(e) {
+        e.stopPropagation();
     }
     /**
      * Render method.
      * @return {JSX} The generated html
      */
     render() {
+        if (!this.userDatas)
+            return;
         const shownChips = this.userDatas.slice(0, this.overflowLimit);
         const overflownChips = this.userDatas.slice(this.overflowLimit);
         // let currentZIndex = this.initialZIndex
@@ -96,7 +110,10 @@ export class ZeaUserChipSet {
                         onClick: this.onChipClick.bind(this) }));
                 }),
             overflownChips.length > 0 && (h("div", { class: "overflow" },
-                h("div", { class: "overflow-thumb", onClick: () => (this.overflowShown = !this.overflowShown) }, [
+                h("div", { class: "overflow-thumb", onClick: (e) => {
+                        this.overflowShown = !this.overflowShown;
+                        e.stopPropagation();
+                    } }, [
                     `+${this.userDatas.length - this.overflowLimit}`,
                     !this.overflowShown && (h("div", { class: "overflow-tooltip" }, "Show All")),
                 ]),

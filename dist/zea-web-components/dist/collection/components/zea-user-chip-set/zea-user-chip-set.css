@@ -65,6 +65,7 @@ zea-user-chip {
 
 .overflow-list.shown {
   display: block;
+  position: absolute;
 }
 
 .overflow-list zea-user-card {

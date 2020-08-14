@@ -62,10 +62,10 @@ export class ZeaUserChip {
     }
     /**
      * Handle click on user chip: emit custom zeaUserClicked event
-     * @param {any} userData the userData
      */
-    onChipClick() {
+    onChipClick(e) {
         this.zeaUserClicked.emit(this.userData);
+        e.stopPropagation();
     }
     /**
      * On avatar over, fix tooltip position when its out of the screen

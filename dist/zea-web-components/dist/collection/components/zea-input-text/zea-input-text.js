@@ -1,4 +1,4 @@
-import { Component, h, Prop } from '@stencil/core';
+import { Component, h, Host, Prop } from '@stencil/core';
 /**
  * Main class for the component
  */
@@ -31,6 +31,9 @@ export class ZeaInputText {
         /**
          */
         this.showLabel = true;
+        /**
+         */
+        this.hidden = false;
     }
     /**
      */
@@ -83,16 +86,18 @@ export class ZeaInputText {
      * @return {JSX} The generated html
      */
     render() {
-        return (h("div", { class: `input-wrap ${this.value ? 'not-empty' : 'empty'} ${!this.invalidMessageShown ? 'valid' : 'invalid'} ${this.disabled ? 'disabled' : ''}`, ref: (el) => (this.inputWrapElement = el) },
-            this.showLabel && h("label", { class: "input-label" }, this.label),
-            h("input", { ref: (el) => (this.inputElement = el), 
-                // placeholder={this.showLabel ? '' : this.label}
-                type: "text", value: this.value, onKeyDown: this.onKeyDown.bind(this), onKeyUp: this.onKeyUp.bind(this), onBlur: this.onBlur.bind(this), onFocus: this.onFocus.bind(this), disabled: this.disabled, class: {
-                    invalid: (this.autoValidate || this.invalidMessageShown) && !this.isValid,
-                } }),
-            h("div", { class: "underliner" },
-                h("div", { class: "expander" })),
-            !this.isValid && this.invalidMessageShown && (h("div", { class: "invalid-message" }, this.invalidMessage))));
+        return (h(Host, { class: `${this.hidden ? 'hidden' : ''}` },
+            h("div", { class: `input-wrap ${this.value ? 'not-empty' : 'empty'} ${!this.invalidMessageShown ? 'valid' : 'invalid'} ${this.disabled ? 'disabled' : ''} ${this.hidden ? 'hidden' : ''}`, ref: (el) => (this.inputWrapElement = el) },
+                this.showLabel && h("label", { class: "input-label" }, this.label),
+                h("input", { ref: (el) => (this.inputElement = el), 
+                    // placeholder={this.showLabel ? '' : this.label}
+                    type: "text", value: this.value, onKeyDown: this.onKeyDown.bind(this), onKeyUp: this.onKeyUp.bind(this), onBlur: this.onBlur.bind(this), onFocus: this.onFocus.bind(this), disabled: this.disabled, class: {
+                        invalid: (this.autoValidate || this.invalidMessageShown) &&
+                            !this.isValid,
+                    } }),
+                h("div", { class: "underliner" },
+                    h("div", { class: "expander" })),
+                !this.isValid && this.invalidMessageShown && (h("div", { class: "invalid-message" }, this.invalidMessage)))));
     }
     static get is() { return "zea-input-text"; }
     static get encapsulation() { return "shadow"; }
@@ -281,6 +286,24 @@ export class ZeaInputText {
             "attribute": "show-label",
             "reflect": false,
             "defaultValue": "true"
+        },
+        "hidden": {
+            "type": "boolean",
+            "mutable": false,
+            "complexType": {
+                "original": "boolean",
+                "resolved": "boolean",
+                "references": {}
+            },
+            "required": false,
+            "optional": false,
+            "docs": {
+                "tags": [],
+                "text": ""
+            },
+            "attribute": "hidden",
+            "reflect": false,
+            "defaultValue": "false"
         }
     }; }
 }

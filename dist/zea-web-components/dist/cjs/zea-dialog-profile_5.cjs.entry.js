@@ -4,7 +4,7 @@ Object.defineProperty(exports, '__esModule', { value: true });
 
 const index = require('./index-81865576.js');
 
-const zeaDialogProfileCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-dialog-profile{color:var(--color-foreground-1)}.scrollpane-container{width:100%;height:100%;padding:10px;-webkit-box-sizing:border-box;box-sizing:border-box}";
+const zeaDialogProfileCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-dialog-profile{color:var(--color-foreground-1)}.scrollpane-container{width:100%;height:calc(100% - 3em);padding:10px;-webkit-box-sizing:border-box;box-sizing:border-box}";
 
 const ZeaProfileDialog = class {
     constructor(hostRef) {
@@ -27,7 +27,6 @@ const ZeaProfileDialog = class {
     /**
      */
     userRegisteredHandler() {
-        console.log('userRegistered');
         this.shown = false;
     }
     /**
@@ -35,7 +34,7 @@ const ZeaProfileDialog = class {
      * @return {JSX} The generated html
      */
     render() {
-        return (index.h("div", { class: "zea-dialog-profile" }, index.h("zea-dialog", { width: "320px", allowClose: this.allowClose, showBackdrop: true, shown: this.shown, addPadding: false }, index.h("div", { slot: "body" }, index.h("div", { class: "scrollpane-container" }, index.h("zea-scroll-pane", null, index.h("zea-form-profile", { userData: this.userData, showLabels: this.showLabels, welcomeHtml: "My Profile" })))))));
+        return (index.h("div", { class: "zea-dialog-profile" }, index.h("zea-dialog", { width: "320px", allowClose: this.allowClose, showBackdrop: true, shown: this.shown, addPadding: false }, index.h("div", { slot: "title" }, "My Profile"), index.h("div", { slot: "body" }, index.h("div", { class: "scrollpane-container" }, index.h("zea-scroll-pane", null, index.h("zea-form-profile", { userData: this.userData, showLabels: this.showLabels, welcomeHtml: "" })))))));
     }
 };
 ZeaProfileDialog.style = zeaDialogProfileCss;
@@ -122,7 +121,7 @@ const ZeaForm = class {
 };
 ZeaForm.style = zeaFormCss;
 
-const zeaFormProfileCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-form-profile{color:var(--color-foreground-1)}zea-form{width:280px;display:block;padding:20px;-webkit-box-sizing:border-box;box-sizing:border-box}zea-input{margin:2em 0 1em;display:block}zea-input-text{margin:1em 0 0}";
+const zeaFormProfileCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-form-profile{color:var(--color-foreground-1)}zea-form{width:280px;display:block;padding:20px;padding-top:0;-webkit-box-sizing:border-box;box-sizing:border-box;margin:0 auto}zea-input{margin:2em 0 1em;display:block}zea-input-text{margin:1em 0 0}";
 
 const ZeaProfileForm = class {
     constructor(hostRef) {
@@ -156,12 +155,12 @@ const ZeaProfileForm = class {
      * @return {JSX} The generated html
      */
     render() {
-        return (index.h("div", { class: "zea-form-profile" }, index.h("zea-form", { ref: (el) => (this.formElement = el), id: "quick-access-form", submitCallback: this.submitCallback.bind(this), "submit-text": this.submitButtonText, validate: true }, this.welcomeHtml && index.h("div", { innerHTML: this.welcomeHtml }), index.h("zea-input-text", { id: "quick-access-name", label: "First Name (required)", name: "firstName", showLabel: true, required: true, value: this.userData.firstName || '' }), index.h("zea-input-text", { id: "quick-access-lastname", label: "Last Name", showLabel: this.showLabels, name: "lastName", value: this.userData.lastName || '' }), index.h("zea-input-text", { id: "quick-access-email", label: "Email", showLabel: this.showLabels, name: "email", value: this.userData.email || '' }), index.h("zea-input-text", { id: "quick-access-phone", label: "Phone", showLabel: this.showLabels, name: "phone", value: this.userData.phone || '' }), index.h("zea-input-text", { id: "quick-access-company", label: "Company", showLabel: this.showLabels, name: "company", value: this.userData.company || '' }), index.h("zea-input", { id: "quick-access-photo", type: "photo", label: "Photo", showLabel: this.showLabels, name: "avatar", value: this.userData.avatar || '' }), index.h("zea-input", { id: "quick-access-color", type: "color", label: "Color", showLabel: this.showLabels, name: "color", value: this.userData.color || '' }))));
+        return (index.h("div", { class: "zea-form-profile" }, index.h("zea-form", { ref: (el) => (this.formElement = el), id: "quick-access-form", submitCallback: this.submitCallback.bind(this), "submit-text": this.submitButtonText, validate: true }, this.welcomeHtml && index.h("div", { innerHTML: this.welcomeHtml }), index.h("zea-input-text", { id: "quick-access-id", name: "id", showLabel: false, hidden: true, value: this.userData.id || '' }), index.h("zea-input-text", { id: "quick-access-name", label: "First Name (required)", name: "firstName", showLabel: true, required: true, value: this.userData.firstName || '' }), index.h("zea-input-text", { id: "quick-access-lastname", label: "Last Name", showLabel: this.showLabels, name: "lastName", value: this.userData.lastName || '' }), index.h("zea-input-text", { id: "quick-access-email", label: "Email", showLabel: this.showLabels, name: "email", value: this.userData.email || '' }), index.h("zea-input-text", { id: "quick-access-phone", label: "Phone", showLabel: this.showLabels, name: "phone", value: this.userData.phone || '' }), index.h("zea-input-text", { id: "quick-access-company", label: "Company", showLabel: this.showLabels, name: "company", value: this.userData.company || '' }), index.h("zea-input", { id: "quick-access-photo", type: "photo", label: "Photo", showLabel: this.showLabels, name: "avatar", value: this.userData.avatar || '' }), index.h("zea-input", { id: "quick-access-color", type: "color", label: "Color", showLabel: this.showLabels, name: "color", value: this.userData.color || '' }))));
     }
 };
 ZeaProfileForm.style = zeaFormProfileCss;
 
-const zeaUserCardCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-user-card{color:var(--color-foreground-1);font-size:13px}.zea-user-card{min-width:290px;background-color:var(--color-background-2);display:grid;grid-template-columns:-webkit-min-content auto -webkit-min-content;grid-template-columns:min-content auto min-content;-ms-flex-align:start;align-items:flex-start;position:relative;z-index:10000000}.zea-user-card.small{min-width:280px}.user-chip-container,.user-focuser-container{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center}.user-focuser-container zea-icon{}.user-focuser{padding:8px}.zea-user-card .user-info{padding-left:0}.user-name{padding-top:5px;padding-bottom:4px}.user-company{color:var(--color-foreground-3)}.zea-user-card>*{padding:10px}.additional-data{grid-column-start:1;grid-column-end:4;grid-gap:1em;padding:1em;border-top:1px solid var(--color-grey-3);display:none}.additional-data.shown{display:grid}.user-phone,.user-email{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center}.user-phone zea-icon,.user-email zea-icon{-ms-flex-positive:0;flex-grow:0;width:32px}.profile-link{font-size:13px;color:var(--color-secondary-1);margin-top:3px;cursor:pointer}.additional-data-collapser{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;grid-column-start:span 3;padding-left:15px;padding-top:5px}.collapser-label{-ms-flex-positive:1;flex-grow:1}.small{font-size:12px}.small .additional-data{display:none !important}.small .user-company{display:none}.small .user-chip-container{padding:5px}.small .user-focuser-container{padding:0}:host-context(.overflow-entry.shown){-webkit-box-sizing:border-box;box-sizing:border-box;border:1px solid var(--color-grey-3);margin-right:10px}";
+const zeaUserCardCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-user-card{color:var(--color-foreground-1);font-size:13px}.zea-user-card{min-width:290px;background-color:var(--color-background-2);display:grid;grid-template-columns:-webkit-min-content auto -webkit-min-content;grid-template-columns:min-content auto min-content;-ms-flex-align:start;align-items:flex-start;position:relative;z-index:10000000}.zea-user-card.small{min-width:280px}.user-chip-container,.user-focuser-container{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center}.user-focuser-container zea-icon{}.user-focuser{padding:8px}.zea-user-card .user-info{padding-left:0}.user-name{padding-top:5px;padding-bottom:4px}.user-company{color:var(--color-foreground-3)}.zea-user-card>*{padding:10px}.additional-data{grid-column-start:1;grid-column-end:4;grid-gap:1em;padding:1em;border-top:1px solid var(--color-grey-3);display:none}.additional-data.shown{display:grid}.user-phone,.user-email{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center}.user-phone zea-icon,.user-email zea-icon{-ms-flex-positive:0;flex-grow:0;width:32px}.profile-link{font-size:13px;color:var(--color-secondary-1);margin-top:3px;cursor:pointer}.additional-data-collapser{display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;grid-column-start:span 3;padding-left:15px;padding-top:5px}.collapser-label{-ms-flex-positive:1;flex-grow:1}.small{font-size:12px}.small .additional-data{display:none !important}.small .user-company{display:none}.small .user-chip-container{padding:5px}.small .user-focuser-container{padding:0}:host-context(.overflow-entry.shown){-webkit-box-sizing:border-box;box-sizing:border-box;border:1px solid var(--color-grey-3);margin-right:10px}zea-dialog-profile{z-index:100000000}@media only screen and (max-width: 667px){.zea-user-card{width:100%;position:fixed;left:0}}";
 
 const ZeaUserCard = class {
     constructor(hostRef) {
@@ -212,7 +211,7 @@ const ZeaUserCard = class {
 };
 ZeaUserCard.style = zeaUserCardCss;
 
-const zeaUserChipCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-chip{color:var(--color-foreground-1);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.zea-chip-avatar{border:2px solid var(--color-background-2);width:32px;height:32px;border-radius:18px;color:white;display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center;position:relative;font-size:13px}.active .zea-chip-avatar{-webkit-box-shadow:0px 0px 1px 2px var(--color-primary-1);box-shadow:0px 0px 1px 2px var(--color-primary-1)}.avatar-image{position:absolute;top:0;left:0;bottom:0;right:0;border-radius:18px;background-size:cover;background-position:center center}.empty-user-chip{display:none}.small .zea-chip-avatar{width:28px;height:28px;border-radius:36px;font-size:13px}.small .avatar-image{border-radius:36px}.large .zea-chip-avatar{width:60px;height:60px;border-radius:36px;font-size:18px}.large .avatar-image{border-radius:36px}zea-user-card{position:absolute;margin-top:3px}zea-user-card.align-right{margin-left:-256px}.tooltip{position:absolute;padding:4px 7px;border-radius:4px;font-size:12px;color:var(--color-foreground-1);background-color:var(--color-grey-3);z-index:100000000;white-space:nowrap;margin-left:18px;-webkit-transform:translateX(-50%);transform:translateX(-50%);display:none}.zea-chip:hover .tooltip{display:block}.tooltip.bleeded-right{right:0;-webkit-transform:none;transform:none}.tooltip.bleeded-left{left:0;margin-left:0;-webkit-transform:none;transform:none}";
+const zeaUserChipCss = ":host{z-index:100000000}:host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-chip{color:var(--color-foreground-1);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.zea-chip-avatar{border:2px solid var(--color-background-2);width:32px;height:32px;border-radius:18px;color:white;display:-ms-flexbox;display:flex;-ms-flex-align:center;align-items:center;-ms-flex-pack:center;justify-content:center;position:relative;font-size:13px}.active .zea-chip-avatar{-webkit-box-shadow:0px 0px 1px 2px var(--color-primary-1);box-shadow:0px 0px 1px 2px var(--color-primary-1)}.avatar-image{position:absolute;top:0;left:0;bottom:0;right:0;border-radius:18px;background-size:cover;background-position:center center}.empty-user-chip{display:none}.small .zea-chip-avatar{width:28px;height:28px;border-radius:36px;font-size:13px}.small .avatar-image{border-radius:36px}.large .zea-chip-avatar{width:60px;height:60px;border-radius:36px;font-size:18px}.large .avatar-image{border-radius:36px}zea-user-card{position:absolute;margin-top:3px}zea-user-card.align-right{margin-left:-256px}.tooltip{position:absolute;padding:4px 7px;border-radius:4px;font-size:12px;color:var(--color-foreground-1);background-color:var(--color-grey-3);z-index:100000000;white-space:nowrap;margin-left:18px;-webkit-transform:translateX(-50%);transform:translateX(-50%);display:none}.zea-chip:hover .tooltip{display:block}.tooltip.bleeded-right{right:0;-webkit-transform:none;transform:none}.tooltip.bleeded-left{left:0;margin-left:0;-webkit-transform:none;transform:none}@media only screen and (max-width: 667px){zea-user-card{position:fixed;width:100%;left:0}}@media only screen and (max-width: 667px), only screen and (max-height: 667px){.tooltip{display:none !important}}";
 
 const ZeaUserChip = class {
     constructor(hostRef) {
@@ -276,10 +275,10 @@ const ZeaUserChip = class {
     }
     /**
      * Handle click on user chip: emit custom zeaUserClicked event
-     * @param {any} userData the userData
      */
-    onChipClick() {
+    onChipClick(e) {
         this.zeaUserClicked.emit(this.userData);
+        e.stopPropagation();
     }
     /**
      * On avatar over, fix tooltip position when its out of the screen

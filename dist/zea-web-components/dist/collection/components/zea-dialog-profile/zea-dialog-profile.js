@@ -22,7 +22,6 @@ export class ZeaProfileDialog {
     /**
      */
     userRegisteredHandler() {
-        console.log('userRegistered');
         this.shown = false;
     }
     /**
@@ -32,10 +31,11 @@ export class ZeaProfileDialog {
     render() {
         return (h("div", { class: "zea-dialog-profile" },
             h("zea-dialog", { width: "320px", allowClose: this.allowClose, showBackdrop: true, shown: this.shown, addPadding: false },
+                h("div", { slot: "title" }, "My Profile"),
                 h("div", { slot: "body" },
                     h("div", { class: "scrollpane-container" },
                         h("zea-scroll-pane", null,
-                            h("zea-form-profile", { userData: this.userData, showLabels: this.showLabels, welcomeHtml: "My Profile" })))))));
+                            h("zea-form-profile", { userData: this.userData, showLabels: this.showLabels, welcomeHtml: "" })))))));
     }
     static get is() { return "zea-dialog-profile"; }
     static get encapsulation() { return "shadow"; }

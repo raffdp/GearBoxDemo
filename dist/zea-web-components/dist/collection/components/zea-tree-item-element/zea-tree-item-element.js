@@ -29,13 +29,6 @@ export class ZeaTreeItemElement {
     componentWillLoad() {
         if (this.treeItem) {
             this.initTreeItem();
-        }
-    }
-    /**
-     * Placeholder comment
-     */
-    componentDidLoad() {
-        if (this.treeItem) {
             this.updateSelected();
             this.updateVisibility();
             this.updateHighlight();
@@ -171,23 +164,6 @@ export class ZeaTreeItemElement {
         "$": ["zea-tree-item-element.css"]
     }; }
     static get properties() { return {
-        "itemContainer": {
-            "type": "any",
-            "mutable": false,
-            "complexType": {
-                "original": "any",
-                "resolved": "any",
-                "references": {}
-            },
-            "required": false,
-            "optional": false,
-            "docs": {
-                "tags": [],
-                "text": ""
-            },
-            "attribute": "item-container",
-            "reflect": false
-        },
         "label": {
             "type": "string",
             "mutable": false,

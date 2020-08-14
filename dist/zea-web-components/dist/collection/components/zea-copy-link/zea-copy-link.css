@@ -33,6 +33,7 @@ textarea {
 
 .copy-icon {
   cursor: pointer;
+  margin: 0 1em;
 }
 
 .tooltip {

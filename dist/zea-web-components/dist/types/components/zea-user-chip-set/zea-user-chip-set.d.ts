@@ -43,7 +43,7 @@ export declare class ZeaUserChipSet {
      * Activate the current item
      * @param {any} e The event
      */
-    onChipClick(): void;
+    onChipClick(e: any): void;
     /**
      * Render method.
      * @return {JSX} The generated html

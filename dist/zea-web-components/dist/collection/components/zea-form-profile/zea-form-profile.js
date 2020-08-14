@@ -35,6 +35,7 @@ export class ZeaProfileForm {
         return (h("div", { class: "zea-form-profile" },
             h("zea-form", { ref: (el) => (this.formElement = el), id: "quick-access-form", submitCallback: this.submitCallback.bind(this), "submit-text": this.submitButtonText, validate: true },
                 this.welcomeHtml && h("div", { innerHTML: this.welcomeHtml }),
+                h("zea-input-text", { id: "quick-access-id", name: "id", showLabel: false, hidden: true, value: this.userData.id || '' }),
                 h("zea-input-text", { id: "quick-access-name", label: "First Name (required)", name: "firstName", showLabel: true, required: true, value: this.userData.firstName || '' }),
                 h("zea-input-text", { id: "quick-access-lastname", label: "Last Name", showLabel: this.showLabels, name: "lastName", value: this.userData.lastName || '' }),
                 h("zea-input-text", { id: "quick-access-email", label: "Email", showLabel: this.showLabels, name: "email", value: this.userData.email || '' }),

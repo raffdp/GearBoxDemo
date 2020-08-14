@@ -2,8 +2,8 @@ import { r as registerInstance, h } from './index-12ee0265.js';
 import './global-6e332181.js';
 import './index-27446e12.js';
 import './buffer-es6-d7e2ddd2.js';
-import { E, N, y, U as Ue } from './index.esm-f69112c9.js';
-import { u as uxFactory } from './UxFactory-caff4fc5.js';
+import { E, N, y, U as Ue } from './index.esm-ae9384d6.js';
+import { u as uxFactory } from './UxFactory-10f4c9f8.js';
 import { i as iro } from './iro.es-02ba6fa3.js';
 var zeaParamWidgetMaterialColorCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-param-widget-material-color{color:var(--color-foreground-1)}.color-sample{height:30px;line-height:30px;border:1px solid var(--color-foreground-1);margin-bottom:0.5em;text-align:center;font-size:0.8em}";
 var ZeaParamWidgetMaterialColor = /** @class */ (function () {

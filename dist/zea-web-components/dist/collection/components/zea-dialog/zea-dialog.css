@@ -23,6 +23,8 @@ textarea {
   left: 0;
   bottom: 0;
   right: 0;
+  max-width: 100vw;
+  max-height: 100vh;
   font-size: 14px;
   pointer-events: none;
 }
@@ -68,6 +70,13 @@ textarea {
 
 .zea-dialog-title {
   color: var(--color-foreground-1);
+  padding: 2em 2em 0;
+  display: flex;
+  align-items: center;
+}
+
+.zea-dialog-title zea-icon {
+  display: none;
 }
 
 .with-padding .zea-dialog-title {
@@ -95,4 +104,39 @@ textarea {
 
 .with-padding .zea-dialog-footer {
   padding: 0 20px 20px;
+}
+
+@media only screen and (max-width: 667px), only screen and (max-height: 667px) {
+  :host {
+    position: relative;
+    z-index: 1000000000000;
+  }
+
+  .zea-dialog-container.full-screen-mobile {
+    height: 100% !important;
+    width: 100% !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+
+  .zea-dialog-title {
+    color: var(--color-foreground-1);
+    background-color: var(--color-grey-2);
+    padding: 0.5em 1em;
+  }
+
+  .zea-dialog-title zea-icon {
+    margin-right: 1em;
+    display: inline-block;
+  }
+
+  .with-padding .zea-dialog-title {
+    padding: 0.5em 1em;
+  }
+
+  .with-padding .zea-dialog-body {
+    padding: 20px;
+    height: calc(100% - 3em);
+  }
 }

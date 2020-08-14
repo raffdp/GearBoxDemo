@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+:host(.hidden) {
+  display: none;
+}
+
 :host,
 input,
 button,
@@ -17,7 +21,7 @@ textarea {
 }
 
 .input-label {
-  color: var(--color-grey-3);
+  color: var(--color-foreground-3);
   position: relative;
   transition: all 0.2s linear;
   pointer-events: none;
@@ -46,7 +50,7 @@ textarea {
 input[type='text'] {
   box-sizing: border-box;
   width: 100%;
-  color: var(--color-foreground-2);
+  color: var(--color-foreground-1);
   background-color: transparent;
   border: none;
   outline: none;
@@ -89,4 +93,8 @@ input[type='text'] {
 .disabled .underliner {
   background-color: transparent;
   border-bottom: 1px dotted var(--color-grey-3);
+}
+
+.hidden {
+  display: none;
 }

@@ -74,7 +74,11 @@ export class ZeaParamWidgetString {
      */
     render() {
         return (h("div", { class: "zea-param-widget-string", ref: (el) => (this.widgetContainer = el) },
-            h("input", { onInput: this.onInput, onChange: this.onChange, ref: (el) => (this.txtField = el), id: this.parameter.getName(), type: "text", tabindex: "0" })));
+            h("input", { onInput: this.onInput, onChange: this.onChange, onKeyUp: (e) => {
+                    e.stopPropagation();
+                }, onKeyDown: (e) => {
+                    e.stopPropagation();
+                }, ref: (el) => (this.txtField = el), id: this.parameter.getName(), type: "text", tabindex: "0" })));
     }
     static get is() { return "zea-param-widget-string"; }
     static get encapsulation() { return "shadow"; }

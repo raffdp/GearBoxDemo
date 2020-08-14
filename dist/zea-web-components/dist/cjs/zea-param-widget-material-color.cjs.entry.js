@@ -6,8 +6,8 @@ const index = require('./index-81865576.js');
 require('./global-ad93eec5.js');
 require('./index-7e350ca9.js');
 require('./buffer-es6-40c1bb4d.js');
-const index_esm = require('./index.esm-7e77262a.js');
-const UxFactory = require('./UxFactory-c2d7fcf7.js');
+const index_esm = require('./index.esm-88e72f8d.js');
+const UxFactory = require('./UxFactory-5eea3ad5.js');
 const iro_es = require('./iro.es-94b38cd2.js');
 
 const zeaParamWidgetMaterialColorCss = ":host,input,button,select,textarea{font-family:'Roboto', sans-serif}.zea-param-widget-material-color{color:var(--color-foreground-1)}.color-sample{height:30px;line-height:30px;border:1px solid var(--color-foreground-1);margin-bottom:0.5em;text-align:center;font-size:0.8em}";

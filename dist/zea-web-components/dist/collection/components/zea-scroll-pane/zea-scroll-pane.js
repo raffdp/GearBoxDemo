@@ -16,6 +16,12 @@ export class ZeaScrollPane {
     /**
      *
      */
+    onOrientationchange() {
+        this.refreshScrollbar();
+    }
+    /**
+     *
+     */
     onMouseUp() {
         this.vMouseDown = false;
         this.scrollPane.style.userSelect = 'initial';
@@ -105,6 +111,12 @@ export class ZeaScrollPane {
             "target": "window",
             "capture": false,
             "passive": true
+        }, {
+            "name": "orientationchange",
+            "method": "onOrientationchange",
+            "target": "window",
+            "capture": false,
+            "passive": false
         }, {
             "name": "mouseup",
             "method": "onMouseUp",

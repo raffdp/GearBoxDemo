@@ -31,6 +31,9 @@ export declare class ZeaInputText {
     showLabel: boolean;
     /**
      */
+    hidden: boolean;
+    /**
+     */
     inputElement: HTMLInputElement;
     inputWrapElement: HTMLElement;
     /**

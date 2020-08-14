@@ -19,6 +19,10 @@ export declare class ZeaScrollPane {
     /**
      *
      */
+    onOrientationchange(): void;
+    /**
+     *
+     */
     onMouseUp(): void;
     prevClientY: any;
     /**
