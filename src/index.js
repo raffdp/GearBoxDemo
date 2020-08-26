@@ -8,6 +8,7 @@ import {
   MathFunctions,
 } from '../dist/zea-engine/dist/index.esm.js'
 import { GLCADPass } from '../dist/zea-cad/dist/index.rawimport.js'
+import { defineCustomElements, ZeaTreeView } from '../dist/zea-web-components/dist/custom-elements-bundle/index.mjs'
 
 import loadModel from './1-loadModel.js'
 import setupMaterials from './2-setupMaterials.js'
@@ -16,6 +17,7 @@ import setupGears from './4-setupGears.js'
 import setupExplode from './5-setupExplode.js'
 import setupStates from './6-setupStates.js'
 
+defineCustomElements()
 const domElement = document.getElementById('renderer')
 
 const scene = new Scene()
