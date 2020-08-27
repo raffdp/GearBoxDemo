@@ -1,1 +1,0 @@
-import{r,h as t}from"./p-da09bae5.js";const a=class{constructor(t){r(this,t),this.test="Hello World"}render(){return t("div",{class:"zea-input-date"},this.test)}};a.style=".zea-input-date{color:var(--color-freground-1)}";export{a as zea_input_date}

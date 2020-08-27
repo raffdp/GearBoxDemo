@@ -9,13 +9,15 @@
       type="image/x-icon"
     />
     <link rel="stylesheet" type="text/css" href="./src/App.css" />
-    <script
-      src="./dist/zea-web-components/dist/zeainc-zea-web-components/zeainc-zea-web-components.js"
-      type="module"
-    ></script>
     <script src="./src/zea-fps-display.js" type="module"></script>
     <script src="https://unpkg.com/debug@4.1.1/dist/debug.js"></script>
     <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
+    <style>
+      .tree-view-container {
+        height: 100%;
+        overflow: auto;
+      }
+    </style>
   </head>
   <body>
     <div class="App">
@@ -57,9 +59,9 @@
           cell-c-size="3px"
           resize-cell-c="false"
         >
-          <zea-scroll-pane slot="a">
+          <div slot="a" class="tree-view-container">
             <zea-tree-view id="zea-tree-view"></zea-tree-view>
-          </zea-scroll-pane>
+          </div>
           <div slot="b" id="renderer"></div>
         </zea-layout>
       </zea-layout>
