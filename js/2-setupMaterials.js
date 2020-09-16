@@ -1,22 +1,17 @@
-import {
-  Color,
-  Group,
-  Material,
-  EnvMap,
-} from '../dist/zea-engine/dist/index.esm.js'
+const { Color, Group, Material, EnvMap } = globalThis.zeaEngine;
 
 const setupMaterials = (asset, scene) => {
-  const envMap = new EnvMap('SmartLocEnv')
-  envMap.getParameter('FilePath').setUrl('data/HDR_029_Sky_Cloudy_Ref.vlenv')
-  scene.getSettings().getParameter('EnvMap').setValue(envMap)
+  const envMap = new EnvMap('SmartLocEnv');
+  envMap.getParameter('FilePath').setUrl('data/HDR_029_Sky_Cloudy_Ref.vlenv');
+  scene.getSettings().getParameter('EnvMap').setValue(envMap);
 
   const setRenderingMode = (mode) => {
     if (mode == 0) {
-      asset.getParameter('Display Edges').setValue(false)
-      asset.getParameter('Edge Color').setValue(new Color(0.0, 0.0, 0.0, 1))
+      asset.getParameter('Display Edges').setValue(false);
+      asset.getParameter('Edge Color').setValue(new Color(0.0, 0.0, 0.0, 1));
 
       {
-        const material = casingMetalGroup.getParameter('Material').getValue()
+        const material = casingMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.55, 0.05, 0.05),
@@ -26,10 +21,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = blackMetalGroup.getParameter('Material').getValue()
+        const material = blackMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.1, 0.1, 0.1),
@@ -39,10 +34,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = blackRubberGroup.getParameter('Material').getValue()
+        const material = blackRubberGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.01, 0.01, 0.01),
@@ -52,10 +47,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = orangeRubberGroup.getParameter('Material').getValue()
+        const material = orangeRubberGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.01, 0.01, 0.01),
@@ -65,10 +60,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = shinyMetalGroup.getParameter('Material').getValue()
+        const material = shinyMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.65, 0.65, 0.65),
@@ -78,10 +73,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = goldMetalGroup.getParameter('Material').getValue()
+        const material = goldMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color('#d4af37'),
@@ -91,17 +86,17 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.0,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
     } else if (mode == 1) {
-      asset.getParameter('Display Edges').setValue(true)
-      asset.getParameter('Edge Color').setValue(new Color(0.1, 0.1, 0.1, 1))
+      asset.getParameter('Display Edges').setValue(true);
+      asset.getParameter('Edge Color').setValue(new Color(0.1, 0.1, 0.1, 1));
       // scene.getSettings().getParameter('EnvMap').setValue(null);
-      const EmissiveStrength = 0.9
-      const Roughness = 1.0
-      const Reflectance = 0.0
+      const EmissiveStrength = 0.9;
+      const Roughness = 1.0;
+      const Reflectance = 0.0;
       {
-        const material = casingMetalGroup.getParameter('Material').getValue()
+        const material = casingMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.85, 0.55, 0.55),
@@ -111,10 +106,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = blackMetalGroup.getParameter('Material').getValue()
+        const material = blackMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.4, 0.4, 0.4),
@@ -124,10 +119,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = blackRubberGroup.getParameter('Material').getValue()
+        const material = blackRubberGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.2, 0.2, 0.2),
@@ -137,10 +132,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = orangeRubberGroup.getParameter('Material').getValue()
+        const material = orangeRubberGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.2, 0.2, 0.2),
@@ -150,10 +145,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = shinyMetalGroup.getParameter('Material').getValue()
+        const material = shinyMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color(0.65, 0.65, 0.65),
@@ -163,10 +158,10 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.9,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
       {
-        const material = goldMetalGroup.getParameter('Material').getValue()
+        const material = goldMetalGroup.getParameter('Material').getValue();
         material.modifyParams(
           {
             BaseColor: new Color('#d4af37'),
@@ -176,23 +171,23 @@ const setupMaterials = (asset, scene) => {
             EmissiveStrength: 0.9,
           },
           'GLDrawCADSurfaceShader'
-        )
+        );
       }
     }
+  };
+
+  const casingMetalGroup = new Group('casingMetalGroup');
+  {
+    const material = new Material('casingMetal');
+    casingMetalGroup.getParameter('Material').setValue(material);
+    asset.addChild(casingMetalGroup);
   }
 
-  const casingMetalGroup = new Group('casingMetalGroup')
+  const blackMetalGroup = new Group('blackMetalGroup');
   {
-    const material = new Material('casingMetal')
-    casingMetalGroup.getParameter('Material').setValue(material)
-    asset.addChild(casingMetalGroup)
-  }
-
-  const blackMetalGroup = new Group('blackMetalGroup')
-  {
-    const material = new Material('blackMetal')
-    blackMetalGroup.getParameter('Material').setValue(material)
-    asset.addChild(blackMetalGroup)
+    const material = new Material('blackMetal');
+    blackMetalGroup.getParameter('Material').setValue(material);
+    asset.addChild(blackMetalGroup);
   }
 
   // const blackPlasticGroup = new Group('blackPlasticGroup');
@@ -210,48 +205,43 @@ const setupMaterials = (asset, scene) => {
   //   asset.addChild(blackPlasticGroup);
   // }
 
-  const blackRubberGroup = new Group('blackRubberGroup')
+  const blackRubberGroup = new Group('blackRubberGroup');
   {
-    const material = new Material('blackRubber')
-    blackRubberGroup.getParameter('Material').setValue(material)
-    asset.addChild(blackRubberGroup)
+    const material = new Material('blackRubber');
+    blackRubberGroup.getParameter('Material').setValue(material);
+    asset.addChild(blackRubberGroup);
   }
 
-  const orangeRubberGroup = new Group('orangeRubberGroup')
+  const orangeRubberGroup = new Group('orangeRubberGroup');
   {
-    const material = new Material('orangeRubber')
-    orangeRubberGroup.getParameter('Material').setValue(material)
-    asset.addChild(orangeRubberGroup)
+    const material = new Material('orangeRubber');
+    orangeRubberGroup.getParameter('Material').setValue(material);
+    asset.addChild(orangeRubberGroup);
   }
 
-  const shinyMetalGroup = new Group('shinyMetalGroup')
+  const shinyMetalGroup = new Group('shinyMetalGroup');
   {
-    const material = new Material('shinyMetal')
-    shinyMetalGroup.getParameter('Material').setValue(material)
-    asset.addChild(shinyMetalGroup)
+    const material = new Material('shinyMetal');
+    shinyMetalGroup.getParameter('Material').setValue(material);
+    asset.addChild(shinyMetalGroup);
   }
 
-  const goldMetalGroup = new Group('goldMetalGroup')
+  const goldMetalGroup = new Group('goldMetalGroup');
   {
-    const material = new Material('goldMetal')
-    goldMetalGroup.getParameter('Material').setValue(material)
-    asset.addChild(goldMetalGroup)
+    const material = new Material('goldMetal');
+    goldMetalGroup.getParameter('Material').setValue(material);
+    asset.addChild(goldMetalGroup);
   }
-  setRenderingMode(1)
+  setRenderingMode(1);
 
   asset.once('loaded', () => {
     casingMetalGroup.resolveItems([
       ['.', 'MOTOR_HOUSING'],
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'GEAR_SHIFTER_HOUSING',
-        'MANIFOLD_SOLID_BREP #281226',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'MANIFOLD_SOLID_BREP #281226'],
       ['.', 'BODY-2'],
       ['.', 'BODY_1_ASSM_ASM', 'BODY_1'],
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', 'PROPELLER_HOUSING'],
-    ])
+    ]);
 
     blackMetalGroup.resolveItems([
       ['.', 'PROPELLER_SHAFT_NUT'],
@@ -278,48 +268,13 @@ const setupMaterials = (asset, scene) => {
       ['.', '8X30_ALLEN_BOLT_006', '8X30_ALLEN_BOLT'],
 
       ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_004',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_005',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_006',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_007',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_008',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_009',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_010',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_004', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_005', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_006', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_007', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
 
       ['.', 'BODY_FLANGE_COUPLE'],
 
@@ -336,7 +291,7 @@ const setupMaterials = (asset, scene) => {
 
       ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY_012', 'DOVEL_FOR_BODY'],
       ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY'],
-    ])
+    ]);
 
     shinyMetalGroup.resolveItems([
       ['.', 'FRONT_PROPELLER_HOUSING'],
@@ -345,34 +300,14 @@ const setupMaterials = (asset, scene) => {
       ['.', 'GEAR_3'],
       ['.', 'GEAR_4'],
       ['.', 'GEAR_SHAFT_ASSM_ASM', 'GEAR_5'],
-      [
-        '.',
-        'NEEDLE_BEARING_ASSM_ASM',
-        'NEEDLE_BALL',
-        'MANIFOLD_SOLID_BREP #122689',
-      ],
-    ])
+      ['.', 'NEEDLE_BEARING_ASSM_ASM', 'NEEDLE_BALL', 'MANIFOLD_SOLID_BREP #122689'],
+    ]);
 
     goldMetalGroup.resolveItems([
       // Ball Brearing Housing
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_CASE_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_COLLAR_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_CASE_SKF'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_COLLAR_SKF'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF'],
       [
         '.',
         'PROPELLER_HOUSING_ASSM_ASM',
@@ -426,132 +361,28 @@ const setupMaterials = (asset, scene) => {
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_CASE_SKF'],
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_COLLAR_SKF'],
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF'],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_004',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_005',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_006',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_007',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_008',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_009',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_010',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_011',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        '6210_BALL_BEARING_SKF_ASM',
-        '6210_BALL_BEARING_BALL_SKF_012',
-        '6210_BALL_BEARING_BALL_SKF',
-      ],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_004', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_005', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_006', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_007', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_008', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_009', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_010', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_011', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_012', '6210_BALL_BEARING_BALL_SKF'],
 
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_INNERFACE_',
-      ],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_INNERFACE_'],
       ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_COLLAR'],
       ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL'],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_004',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_005',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_006',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_007',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_008',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_009',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_010',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_011',
-        'SKF_6209-C3_BALL',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'SKF_6209_CE_BEARING_ASM',
-        'SKF_6209-C3_BALL_012',
-        'SKF_6209-C3_BALL',
-      ],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_004', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_005', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_006', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_007', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_008', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_009', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_010', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_011', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_012', 'SKF_6209-C3_BALL'],
 
       ['.', 'GEAR_SHAFT_ASSM_ASM'],
       ['.', 'NEEDLE_BEARING_ASSM_ASM'],
@@ -559,7 +390,7 @@ const setupMaterials = (asset, scene) => {
 
       ['.', 'DOVEL_FOR_SHIFTER_HOUSING'],
       ['.', 'DOVEL_FOR_SHIFTER_HOUSING_029', 'DOVEL_FOR_SHIFTER_HOUSING'],
-    ])
+    ]);
 
     blackRubberGroup.resolveItems([
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '60-80-10_OIL_SEAL'],
@@ -581,19 +412,9 @@ const setupMaterials = (asset, scene) => {
 
       ['.', 'BODY_FLANGE'],
       ['.', 'GASKET_FOR_SHIFTER'],
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'U-SEAL_FOR_GEAR_HOUSING_003',
-        'U-SEAL_FOR_GEAR_HOUSING',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003', 'U-SEAL_FOR_GEAR_HOUSING'],
 
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'U-SEAL_FOR_GEAR_HOUSING',
-        'U-SEAL_FOR_GEAR_HOUSING',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING', 'U-SEAL_FOR_GEAR_HOUSING'],
       ['.', 'O-RING_FOR_SHIFTER_SHAFT_032', 'O-RING_FOR_SHIFTER_SHAFT'],
       ['.', 'GEAR_HOUSING_ASSM_ASM', 'O-RING_FOR_SHIFTER_HOUSING'],
 
@@ -602,13 +423,13 @@ const setupMaterials = (asset, scene) => {
 
       ['.', 'BUNDH_PLUG_ASSM_ASM', '20_MM_O_RING_FOR_BUNDH_PLUG'],
       ['.', 'BUNDH_PLUG_ASSM_ASM_062', '20_MM_O_RING_FOR_BUNDH_PLUG'],
-    ])
+    ]);
 
     orangeRubberGroup.resolveItems([
       ['.', 'WASHER_1'],
       ['.', 'GASKET_FOR_BODY'],
-    ])
-  })
-  return setRenderingMode
-}
-export default setupMaterials
+    ]);
+  });
+  return setRenderingMode;
+};
+export default setupMaterials;

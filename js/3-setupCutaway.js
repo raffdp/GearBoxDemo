@@ -1,10 +1,8 @@
-import {
-  Vec3,
-  Group,
-} from '../dist/zea-engine/dist/index.esm.js'
+const { Vec3, Group } = globalThis.zeaEngine;
+
 const setupCutaway = (asset) => {
-  const cutAwayGroup = new Group('cutAwayGroup')
-  asset.addChild(cutAwayGroup)
+  const cutAwayGroup = new Group('cutAwayGroup');
+  asset.addChild(cutAwayGroup);
 
   asset.once('loaded', () => {
     cutAwayGroup.resolveItems([
@@ -60,38 +58,13 @@ const setupCutaway = (asset) => {
       ['.', '10MM_SPRING_WASHER'],
       ['.', '10MM_SPRING_WASHER_035', '10MM_SPRING_WASHER'],
 
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'U-SEAL_FOR_GEAR_HOUSING_003',
-        'U-SEAL_FOR_GEAR_HOUSING',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003', 'U-SEAL_FOR_GEAR_HOUSING'],
 
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'U-SEAL_FOR_GEAR_HOUSING',
-        'U-SEAL_FOR_GEAR_HOUSING',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING', 'U-SEAL_FOR_GEAR_HOUSING'],
 
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'GEAR_SHIFTER_HOUSING',
-        'MANIFOLD_SOLID_BREP #281226',
-      ],
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'GEAR_SHIFTER_HOUSING',
-        'OPEN_SHELL #281225',
-      ],
-      [
-        '.',
-        'GEAR_HOUSING_ASSM_ASM',
-        'GEAR_SHIFTER_HOUSING',
-        'OPEN_SHELL #281127',
-      ],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'MANIFOLD_SOLID_BREP #281226'],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'OPEN_SHELL #281225'],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'OPEN_SHELL #281127'],
 
       ['.', 'O-RING_FOR_SHIFTER_SHAFT_032', 'O-RING_FOR_SHIFTER_SHAFT'],
       ['.', 'GEAR_HOUSING_ASSM_ASM', 'O-RING_FOR_SHIFTER_HOUSING'],
@@ -126,30 +99,15 @@ const setupCutaway = (asset) => {
       ['.', '8X30_ALLEN_BOLT_005', '8X30_ALLEN_BOLT'],
       ['.', '8X30_ALLEN_BOLT_006', '8X30_ALLEN_BOLT'],
 
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_008',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_009',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-      [
-        '.',
-        'BODY_1_ASSM_ASM',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING_010',
-        'STUD_FOR_DIFFERENTIAL_MOUNTING',
-      ],
-    ])
-  })
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+    ]);
+  });
 
-  cutAwayGroup.getParameter('CutAwayEnabled').setValue(true)
-  cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1))
-  cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17)
+  cutAwayGroup.getParameter('CutAwayEnabled').setValue(true);
+  cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1));
+  cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17);
 
   // asset.once('loaded', ()=>{
   //   let cutAmount = -0.17;
@@ -170,5 +128,5 @@ const setupCutaway = (asset) => {
   //   };
   //   timeoutId = setTimeout(timerCallback, 200); // half second delay
   // })
-}
-export default setupCutaway
+};
+export default setupCutaway;

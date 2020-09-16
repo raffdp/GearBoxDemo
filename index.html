@@ -3,15 +3,8 @@
   <head>
     <title>Zea-Gearbox Demo</title>
     <meta charset="UTF-8" />
-    <link
-      rel="shortcut icon"
-      href="img/favicon-32x32.png"
-      type="image/x-icon"
-    />
-    <link rel="stylesheet" type="text/css" href="./src/App.css" />
-    <script src="./src/zea-fps-display.js" type="module"></script>
-    <script src="https://unpkg.com/debug@4.1.1/dist/debug.js"></script>
-    <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
+    <link rel="shortcut icon" href="img/favicon-32x32.png" type="image/x-icon" />
+    <link rel="stylesheet" type="text/css" href="./css/styles.css" />
     <style>
       .tree-view-container {
         height: 100%;
@@ -52,13 +45,7 @@
 
           <zea-user-chip id="zea-user-chip"></zea-user-chip>
         </div>
-        <zea-layout
-          slot="b"
-          cell-a-size="200"
-          cell-b-size="100%"
-          cell-c-size="3px"
-          resize-cell-c="false"
-        >
+        <zea-layout slot="b" cell-a-size="200" cell-b-size="100%" cell-c-size="3px" resize-cell-c="false">
           <div slot="a" class="tree-view-container">
             <zea-tree-view id="zea-tree-view"></zea-tree-view>
           </div>
@@ -68,5 +55,19 @@
       <!-- <div slot="b" id="renderer"></div> -->
     </div>
   </body>
-  <script src="./src/index.js" type="module"></script>
+
+  <script defer crossorigin src="https://cdn.jsdelivr.net/npm/@zeainc/zea-engine@2.0.0"></script>
+  <script defer crossorigin src="https://cdn.jsdelivr.net/npm/@zeainc/zea-ux@2.0.0"></script>
+  <script defer crossorigin src="https://cdn.jsdelivr.net/npm/@zeainc/zea-kinematics@2.0.0"></script>
+  <script defer crossorigin src="https://cdn.jsdelivr.net/npm/@zeainc/zea-cad@2.0.0"></script>
+  <script
+    crossorigin
+    type="module"
+    src="https://cdn.jsdelivr.net/npm/@zeainc/zea-web-components@rc/dist/zea-web-components/zea-web-components.esm.js"
+  ></script>
+  <script src="./js/zea-fps-display.js" type="module"></script>
+  <script src="https://unpkg.com/debug@4.1.1/dist/debug.js"></script>
+  <script src="https://www.unpkg.com/socket.io-client@2.3.0/dist/socket.io.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@zeainc/zea-collab@4.0.0-umd.0"></script>
+  <script src="./js/index.js" type="module"></script>
 </html>
