@@ -1,4 +1,4 @@
-const { Vec3 } = globalThis.zeaEngine;
+const { Vec3 } = window.zeaEngine;
 const {
   StateMachine,
   State,
@@ -6,7 +6,7 @@ const {
   SetParameterValue,
   GeomClicked,
   SwitchState,
-} = globalThis.zeaStateMachine;
+} = window.zeaStateMachine;
 
 const setupStates = (asset, renderer) => {
   const stateMachine = new StateMachine('States');

@@ -1,5 +1,5 @@
-const { Color, Vec3, EnvMap, Scene, GLRenderer, PassType, MathFunctions } = globalThis.zeaEngine;
-const { GLCADPass } = globalThis.zeaCad;
+const { Color, Vec3, EnvMap, Scene, GLRenderer, PassType, MathFunctions } = window.zeaEngine;
+const { GLCADPass } = window.zeaCad;
 
 import loadModel from './1-loadModel.js';
 import setupMaterials from './2-setupMaterials.js';
@@ -61,7 +61,7 @@ scene.getRoot().addChild(asset);
 
 ////////////////////////////////////
 // Setup the Left side Tree view.
-const { SelectionManager, UndoRedoManager } = globalThis.zeaUx;
+const { SelectionManager, UndoRedoManager } = window.zeaUx;
 
 const appData = {
   scene,
@@ -103,7 +103,7 @@ document.addEventListener('keydown', (event) => {
 
 // ////////////////////////////////////
 // // Setup Collaboration
-const { Session, SessionSync } = globalThis.zeaCollab;
+/* const { Session, SessionSync } = window.zeaCollab;
 
 const socketUrl = 'https://websocket-staging.zea.live';
 
@@ -151,7 +151,7 @@ document.addEventListener(
 );
 
 const userChip = document.getElementById('zea-user-chip');
-userChip.userData = userData;
+userChip.userData = userData;*/
 
 ////////////////////////////////////
 // Display the Fps

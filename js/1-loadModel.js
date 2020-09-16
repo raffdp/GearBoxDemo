@@ -1,5 +1,5 @@
-const { Xfo, EulerAngles } = globalThis.zeaEngine;
-const { CADAsset } = globalThis.zeaCad;
+const { Xfo, EulerAngles } = window.zeaEngine;
+const { CADAsset } = window.zeaCad;
 
 const loadModel = () => {
   ////////////////////////////////////

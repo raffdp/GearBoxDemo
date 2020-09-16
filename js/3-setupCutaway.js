@@ -1,4 +1,4 @@
-const { Vec3, Group } = globalThis.zeaEngine;
+const { Vec3, Group } = window.zeaEngine;
 
 const setupCutaway = (asset) => {
   const cutAwayGroup = new Group('cutAwayGroup');

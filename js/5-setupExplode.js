@@ -11,8 +11,8 @@ const {
   GeomItem,
   Label,
   BillboardItem,
-} = globalThis.zeaEngine;
-const { ExplodePartsOperator } = globalThis.zeaKinematics;
+} = window.zeaEngine;
+const { ExplodePartsOperator } = window.zeaKinematics;
 
 const setupExplode = (asset) => {
   const opExplodeFront1 = new ExplodePartsOperator('opExplodeFront1');

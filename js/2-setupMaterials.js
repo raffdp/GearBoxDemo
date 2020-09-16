@@ -1,4 +1,4 @@
-const { Color, Group, Material, EnvMap } = globalThis.zeaEngine;
+const { Color, Group, Material, EnvMap } = window.zeaEngine;
 
 const setupMaterials = (asset, scene) => {
   const envMap = new EnvMap('SmartLocEnv');

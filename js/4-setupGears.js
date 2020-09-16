@@ -1,6 +1,6 @@
-const { Color, EulerAngles, Xfo, Vec3, Group, NumberParameter } = globalThis.zeaEngine;
-const { GearsOperator } = globalThis.zeaKinematics;
-const { SliderHandle } = globalThis.zeaUx;
+const { Color, EulerAngles, Xfo, Vec3, Group, NumberParameter } = window.zeaEngine;
+const { GearsOperator } = window.zeaKinematics;
+const { SliderHandle } = window.zeaUx;
 
 const setupGears = (asset) => {
   const gearsOp = new GearsOperator('Gears');
