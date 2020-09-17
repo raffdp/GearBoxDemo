@@ -1,10 +1,6 @@
 const { Color, Group, Material, EnvMap } = window.zeaEngine;
 
 const setupMaterials = (asset, scene) => {
-  const envMap = new EnvMap('SmartLocEnv');
-  envMap.getParameter('FilePath').setUrl('data/HDR_029_Sky_Cloudy_Ref.vlenv');
-  scene.getSettings().getParameter('EnvMap').setValue(envMap);
-
   const setRenderingMode = (mode) => {
     if (mode == 0) {
       asset.getParameter('Display Edges').setValue(false);
@@ -20,7 +16,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.8,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -33,7 +29,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.7,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -46,7 +42,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.01,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -59,7 +55,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.01,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -72,7 +68,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.95,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -85,7 +81,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance: 0.95,
             EmissiveStrength: 0.0,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
     } else if (mode == 1) {
@@ -105,7 +101,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -118,7 +114,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -131,7 +127,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -144,7 +140,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -157,7 +153,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength: 0.9,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
       {
@@ -170,7 +166,7 @@ const setupMaterials = (asset, scene) => {
             Reflectance,
             EmissiveStrength: 0.9,
           },
-          'GLDrawCADSurfaceShader'
+          'StandardSurfaceShader'
         );
       }
     }
@@ -200,7 +196,7 @@ const setupMaterials = (asset, scene) => {
   //     Roughness: 0.45,
   //     Reflectance: 0.03,
   //     EmissiveStrength: 0.9
-  //   }, "GLDrawCADSurfaceShader")
+  //   }, "StandardSurfaceShader")
   //   blackPlasticGroup.getParameter('Material').setValue(material);
   //   asset.addChild(blackPlasticGroup);
   // }
@@ -237,7 +233,7 @@ const setupMaterials = (asset, scene) => {
   asset.once('loaded', () => {
     casingMetalGroup.resolveItems([
       ['.', 'MOTOR_HOUSING'],
-      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'MANIFOLD_SOLID_BREP #281226'],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING'],
       ['.', 'BODY-2'],
       ['.', 'BODY_1_ASSM_ASM', 'BODY_1'],
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', 'PROPELLER_HOUSING'],
@@ -247,9 +243,9 @@ const setupMaterials = (asset, scene) => {
       ['.', 'PROPELLER_SHAFT_NUT'],
 
       ['.', '10X30_HEX_BOLT'],
-      ['.', '10X30_HEX_BOLT_010', '10X30_HEX_BOLT'],
-      ['.', '10X30_HEX_BOLT_011', '10X30_HEX_BOLT'],
-      ['.', '10X30_HEX_BOLT_012', '10X30_HEX_BOLT'],
+      ['.', '10X30_HEX_BOLT_010'],
+      ['.', '10X30_HEX_BOLT_011'],
+      ['.', '10X30_HEX_BOLT_012'],
 
       ['.', '10X30_HEX_BOLT_051'],
       ['.', '10X30_HEX_BOLT_052'],
@@ -263,18 +259,18 @@ const setupMaterials = (asset, scene) => {
       ['.', '10X30_HEX_BOLT_060'],
 
       ['.', '8X30_ALLEN_BOLT'],
-      ['.', '8X30_ALLEN_BOLT_004', '8X30_ALLEN_BOLT'],
-      ['.', '8X30_ALLEN_BOLT_005', '8X30_ALLEN_BOLT'],
-      ['.', '8X30_ALLEN_BOLT_006', '8X30_ALLEN_BOLT'],
+      ['.', '8X30_ALLEN_BOLT_004'],
+      ['.', '8X30_ALLEN_BOLT_005'],
+      ['.', '8X30_ALLEN_BOLT_006'],
 
       ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_004', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_005', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_006', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_007', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_004'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_005'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_006'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_007'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009'],
+      ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010'],
 
       ['.', 'BODY_FLANGE_COUPLE'],
 
@@ -282,14 +278,14 @@ const setupMaterials = (asset, scene) => {
       ['.', 'BUNDH_PLUG_ASSM_ASM_062', 'BUNDH_PLUG_FOR_BODY'],
 
       ['.', '10X45_HEX_BOT'],
-      ['.', '10X45_HEX_BOT_037', '10X45_HEX_BOT'],
+      ['.', '10X45_HEX_BOT_037'],
       ['.', '10MM_SPRING_WASHER'],
-      ['.', '10MM_SPRING_WASHER_035', '10MM_SPRING_WASHER'],
+      ['.', '10MM_SPRING_WASHER_035'],
 
       ['.', 'GEAR_SHAFT_ASSM_ASM', 'GEAR_SHAFT_1'],
       ['.', 'SHIFTER_HOUSING_PLATE'],
 
-      ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY_012', 'DOVEL_FOR_BODY'],
+      ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY_012'],
       ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY'],
     ]);
 
@@ -300,7 +296,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'GEAR_3'],
       ['.', 'GEAR_4'],
       ['.', 'GEAR_SHAFT_ASSM_ASM', 'GEAR_5'],
-      ['.', 'NEEDLE_BEARING_ASSM_ASM', 'NEEDLE_BALL', 'MANIFOLD_SOLID_BREP #122689'],
+      ['.', 'NEEDLE_BEARING_ASSM_ASM', 'NEEDLE_BALL'],
     ]);
 
     goldMetalGroup.resolveItems([
@@ -308,88 +304,46 @@ const setupMaterials = (asset, scene) => {
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_CASE_SKF'],
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_COLLAR_SKF'],
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF'],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_004',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_005',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_006',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_007',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_008',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_009',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
-      [
-        '.',
-        'PROPELLER_HOUSING_ASSM_ASM',
-        '6308_BALL_BEARING_SKF_ASM',
-        '6308_BALL_BEARING_BALL_SKF_010',
-        '6308_BALL_BEARING_BALL_SKF',
-      ],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_004'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_005'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_006'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_007'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_008'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_009'],
+      ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_010'],
 
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_CASE_SKF'],
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_COLLAR_SKF'],
       ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_004', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_005', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_006', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_007', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_008', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_009', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_010', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_011', '6210_BALL_BEARING_BALL_SKF'],
-      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_012', '6210_BALL_BEARING_BALL_SKF'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_004'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_005'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_006'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_007'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_008'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_009'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_010'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_011'],
+      ['.', '6210_BALL_BEARING_SKF_ASM', '6210_BALL_BEARING_BALL_SKF_012'],
 
       ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_INNERFACE_'],
       ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_COLLAR'],
       ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_004', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_005', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_006', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_007', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_008', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_009', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_010', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_011', 'SKF_6209-C3_BALL'],
-      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_012', 'SKF_6209-C3_BALL'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_004'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_005'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_006'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_007'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_008'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_009'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_010'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_011'],
+      ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_012'],
 
       ['.', 'GEAR_SHAFT_ASSM_ASM'],
       ['.', 'NEEDLE_BEARING_ASSM_ASM'],
       ['.', 'NEEDLE_BEARING_ASSM_ASM_020'],
 
       ['.', 'DOVEL_FOR_SHIFTER_HOUSING'],
-      ['.', 'DOVEL_FOR_SHIFTER_HOUSING_029', 'DOVEL_FOR_SHIFTER_HOUSING'],
+      ['.', 'DOVEL_FOR_SHIFTER_HOUSING_029'],
     ]);
 
     blackRubberGroup.resolveItems([
@@ -412,10 +366,10 @@ const setupMaterials = (asset, scene) => {
 
       ['.', 'BODY_FLANGE'],
       ['.', 'GASKET_FOR_SHIFTER'],
-      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003', 'U-SEAL_FOR_GEAR_HOUSING'],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003'],
 
-      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING', 'U-SEAL_FOR_GEAR_HOUSING'],
-      ['.', 'O-RING_FOR_SHIFTER_SHAFT_032', 'O-RING_FOR_SHIFTER_SHAFT'],
+      ['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING'],
+      ['.', 'O-RING_FOR_SHIFTER_SHAFT_032'],
       ['.', 'GEAR_HOUSING_ASSM_ASM', 'O-RING_FOR_SHIFTER_HOUSING'],
 
       ['.', 'O-RING_FOR_SHIFTER_SHAFT'],

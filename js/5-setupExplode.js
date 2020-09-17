@@ -92,9 +92,9 @@ const setupExplode = (asset) => {
       asset.addChild(group);
       group.resolveItems([
         ['.', '10X30_HEX_BOLT'],
-        ['.', '10X30_HEX_BOLT_010', '10X30_HEX_BOLT'],
-        ['.', '10X30_HEX_BOLT_011', '10X30_HEX_BOLT'],
-        ['.', '10X30_HEX_BOLT_012', '10X30_HEX_BOLT'],
+        ['.', '10X30_HEX_BOLT_010'],
+        ['.', '10X30_HEX_BOLT_011'],
+        ['.', '10X30_HEX_BOLT_012'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -154,55 +154,13 @@ const setupExplode = (asset) => {
         ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_CASE_SKF'],
         ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_COLLAR_SKF'],
         ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF'],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_004',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_005',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_006',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_007',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_008',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_009',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
-        [
-          '.',
-          'PROPELLER_HOUSING_ASSM_ASM',
-          '6308_BALL_BEARING_SKF_ASM',
-          '6308_BALL_BEARING_BALL_SKF_010',
-          '6308_BALL_BEARING_BALL_SKF',
-        ],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_004'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_005'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_006'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_007'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_008'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_009'],
+        ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_BALL_SKF_010'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -226,9 +184,9 @@ const setupExplode = (asset) => {
         ['.', '10X30_HEX_BOLT_060'],
 
         ['.', '8X30_ALLEN_BOLT'],
-        ['.', '8X30_ALLEN_BOLT_004', '8X30_ALLEN_BOLT'],
-        ['.', '8X30_ALLEN_BOLT_005', '8X30_ALLEN_BOLT'],
-        ['.', '8X30_ALLEN_BOLT_006', '8X30_ALLEN_BOLT'],
+        ['.', '8X30_ALLEN_BOLT_004'],
+        ['.', '8X30_ALLEN_BOLT_005'],
+        ['.', '8X30_ALLEN_BOLT_006'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -240,7 +198,7 @@ const setupExplode = (asset) => {
       asset.addChild(group);
       group.resolveItems([
         ['.', '10X45_HEX_BOT'],
-        ['.', '10X45_HEX_BOT_037', '10X45_HEX_BOT'],
+        ['.', '10X45_HEX_BOT_037'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -252,7 +210,7 @@ const setupExplode = (asset) => {
       asset.addChild(group);
       group.resolveItems([
         ['.', '10MM_SPRING_WASHER'],
-        ['.', '10MM_SPRING_WASHER_035', '10MM_SPRING_WASHER'],
+        ['.', '10MM_SPRING_WASHER_035'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -262,7 +220,7 @@ const setupExplode = (asset) => {
       const group = new Group('10X30_HEX_BOLTs');
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
-      group.resolveItems([['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003', 'U-SEAL_FOR_GEAR_HOUSING']]);
+      group.resolveItems([['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING_003']]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
@@ -271,7 +229,7 @@ const setupExplode = (asset) => {
       const group = new Group('10X30_HEX_BOLTs');
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
-      group.resolveItems([['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING', 'U-SEAL_FOR_GEAR_HOUSING']]);
+      group.resolveItems([['.', 'GEAR_HOUSING_ASSM_ASM', 'U-SEAL_FOR_GEAR_HOUSING']]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
       part.getOutput().setParam(group.getParameter('GlobalXfo'));
@@ -281,9 +239,7 @@ const setupExplode = (asset) => {
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
       group.resolveItems([
-        ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'MANIFOLD_SOLID_BREP #281226'],
-        ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'OPEN_SHELL #281225'],
-        ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING', 'OPEN_SHELL #281127'],
+        ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING'],
 
         ['.', 'MOTOR_HOUSING'],
       ]);
@@ -296,7 +252,7 @@ const setupExplode = (asset) => {
       group.getParameter('InitialXfoMode').setValue('average');
       asset.addChild(group);
       group.resolveItems([
-        ['.', 'O-RING_FOR_SHIFTER_SHAFT_032', 'O-RING_FOR_SHIFTER_SHAFT'],
+        ['.', 'O-RING_FOR_SHIFTER_SHAFT_032'],
         ['.', 'GEAR_HOUSING_ASSM_ASM', 'O-RING_FOR_SHIFTER_HOUSING'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
@@ -361,7 +317,7 @@ const setupExplode = (asset) => {
         ['.', 'U-SEAL_FOR_GEAR_HOUSING'],
 
         ['.', 'DOVEL_FOR_SHIFTER_HOUSING'],
-        ['.', 'DOVEL_FOR_SHIFTER_HOUSING_029', 'DOVEL_FOR_SHIFTER_HOUSING'],
+        ['.', 'DOVEL_FOR_SHIFTER_HOUSING_029'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, -1, 0));
@@ -447,7 +403,7 @@ const setupExplode = (asset) => {
       group.resolveItems([
         ['.', 'GEAR_SHAFT_ASSM_ASM', 'SHIFTER'],
         ['.', 'GEAR_SHAFT_ASSM_ASM', 'DOWEL_PIN'],
-        ['.', 'GEAR_SHAFT_ASSM_ASM', 'DOWEL_PIN_005', 'DOWEL_PIN'],
+        ['.', 'GEAR_SHAFT_ASSM_ASM', 'DOWEL_PIN_005'],
       ]);
       const part = opExplodeFront1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, 0, 2));
@@ -463,9 +419,9 @@ const setupExplode = (asset) => {
     //   asset.addChild(group);
     //   group.resolveItems([
     //       [".", "8X30_ALLEN_BOLT"],
-    //       [".", "8X30_ALLEN_BOLT_004", "8X30_ALLEN_BOLT"],
-    //       [".", "8X30_ALLEN_BOLT_005", "8X30_ALLEN_BOLT"],
-    //       [".", "8X30_ALLEN_BOLT_006", "8X30_ALLEN_BOLT"]
+    //       [".", "8X30_ALLEN_BOLT_004"],
+    //       [".", "8X30_ALLEN_BOLT_005"],
+    //       [".", "8X30_ALLEN_BOLT_006"]
     //       ]);
     //   const part = opExplodeFront2.getParameter('Parts').addElement();
     //   part.getParameter("Axis").setValue(new Vec3(0,-1,0))
@@ -503,13 +459,13 @@ const setupExplode = (asset) => {
       asset.addChild(group);
       group.resolveItems([
         ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_004', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_005', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_006', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_007', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
-        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010', 'STUD_FOR_DIFFERENTIAL_MOUNTING'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_004'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_005'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_006'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_007'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_008'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_009'],
+        ['.', 'BODY_1_ASSM_ASM', 'STUD_FOR_DIFFERENTIAL_MOUNTING_010'],
       ]);
       const part = opExplodeBack1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, 1, 0));
@@ -550,15 +506,15 @@ const setupExplode = (asset) => {
         ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_COLLAR'],
         ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_INNERFACE_'],
         ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_004', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_005', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_006', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_007', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_008', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_009', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_010', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_011', 'SKF_6209-C3_BALL'],
-        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_012', 'SKF_6209-C3_BALL'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_004'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_005'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_006'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_007'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_008'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_009'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_010'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_011'],
+        ['.', 'BODY_1_ASSM_ASM', 'SKF_6209_CE_BEARING_ASM', 'SKF_6209-C3_BALL_012'],
       ]);
       const part = opExplodeBack1.getParameter('Parts').addElement();
       part.getParameter('Axis').setValue(new Vec3(0, 1, 0));

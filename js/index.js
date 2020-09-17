@@ -1,4 +1,4 @@
-const { Color, Vec3, EnvMap, Scene, GLRenderer, PassType, MathFunctions } = window.zeaEngine;
+const { SystemDesc, Color, Vec3, EnvMap, Scene, GLRenderer, PassType } = window.zeaEngine;
 const { GLCADPass } = window.zeaCad;
 
 import loadModel from './1-loadModel.js';
@@ -19,6 +19,13 @@ const renderer = new GLRenderer(domElement, {
     canvasPosition: 'relative',
   },
 });
+
+if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
+  const envMap = new EnvMap('SmartLocEnv');
+  envMap.getParameter('FilePath').setUrl('data/HDR_029_Sky_Cloudy_Ref.vlenv');
+  envMap.setHDRTint(new Color(2, 2, 2, 1));
+  scene.getSettings().getParameter('EnvMap').setValue(envMap);
+}
 
 renderer
   .getViewport()
