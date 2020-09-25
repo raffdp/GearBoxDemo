@@ -1,4 +1,4 @@
-const { SystemDesc, Color, Vec3, EnvMap, Scene, GLRenderer, PassType } = window.zeaEngine;
+const { MathFunctions, SystemDesc, Color, Vec3, EnvMap, Scene, GLRenderer, PassType } = window.zeaEngine;
 const { GLCADPass } = window.zeaCad;
 
 import loadModel from './1-loadModel.js';
@@ -110,22 +110,11 @@ document.addEventListener('keydown', (event) => {
 
 // ////////////////////////////////////
 // // Setup Collaboration
-/* const { Session, SessionSync } = window.zeaCollab;
+const { Session, SessionSync } = window.zeaCollab;
 
 const socketUrl = 'https://websocket-staging.zea.live';
 
 const urlParams = new URLSearchParams(window.location.search);
-
-// let userId = urlParams.get('user-id');
-// if (!userId) {
-//   userId = localStorage.getItem('userId');
-//   if(!userId) {
-//     userId = Math.random().toString(36).slice(2, 12);
-//     localStorage.setItem('userId', userId);
-//   }
-// } else {
-//   localStorage.setItem('userId', userId);
-// }
 
 const color = Color.random();
 const firstNames = ['Phil', 'Froilan', 'Alvaro', 'Dan', 'Mike', 'Rob', 'Steve'];
@@ -158,7 +147,7 @@ document.addEventListener(
 );
 
 const userChip = document.getElementById('zea-user-chip');
-userChip.userData = userData;*/
+userChip.userData = userData;
 
 ////////////////////////////////////
 // Display the Fps
