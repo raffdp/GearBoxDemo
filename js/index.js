@@ -79,8 +79,6 @@ const appData = {
 // Changes are recorded to the UndoRedoManager, which is then synchronized using
 // SessionSync below.
 appData.undoRedoManager = new UndoRedoManager();
-renderer.setUndoRedoManager(appData.undoRedoManager);
-
 appData.selectionManager = new SelectionManager(appData);
 
 // // Note: the alpha value determines  the fill of the highlight.

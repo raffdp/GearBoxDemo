@@ -19,8 +19,8 @@ const setupGears = (asset) => {
     xfo.tr.set(0.067, -0.21, 0.12);
     slider.getParameter('LocalXfo').setValue(xfo);
     slider.getParameter('Length').setValue(0.02);
-    slider.getParameter('Bar Radius').setValue(0.0);
-    slider.getParameter('Handle Radius').setValue(0.015);
+    slider.getParameter('BarRadius').setValue(0.0);
+    slider.getParameter('HandleRadius').setValue(0.015);
     slider.colorParam.setValue(new Color('#F9CE03'));
     slider.setTargetParam(asset.getParameter('GearSliderValue'));
     slider.getParameter('Visible').setValue(false);
