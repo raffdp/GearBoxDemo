@@ -26,7 +26,7 @@ if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
   // envMap.getParameter('HeadLightMode').setValue(true)
 
   // renderer.gamma = 2.5;
-  renderer.exposure = 1.2;
+  renderer.exposure = 1.5;
   scene.getSettings().getParameter('EnvMap').setValue(envMap);
 }
 
