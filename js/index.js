@@ -21,9 +21,12 @@ const renderer = new GLRenderer(domElement, {
 });
 
 if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
-  const envMap = new EnvMap('SmartLocEnv');
-  envMap.getParameter('FilePath').setUrl('data/HDR_029_Sky_Cloudy_Ref.vlenv');
-  envMap.setHDRTint(new Color(2, 2, 2, 1));
+  const envMap = new EnvMap('HDR_029_Sky_Cloudy_Ref');
+  envMap.getParameter('FilePath').setValue('data/HDR_029_Sky_Cloudy_Ref.vlenv');
+  // envMap.getParameter('HeadLightMode').setValue(true)
+
+  // renderer.gamma = 2.5;
+  renderer.exposure = 1.2;
   scene.getSettings().getParameter('EnvMap').setValue(envMap);
 }
 
