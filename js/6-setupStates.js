@@ -29,6 +29,9 @@ const setupStates = (asset, renderer) => {
       );
       moveCamera.getParameter('Camera').setValue(renderer.getViewport().getCamera());
       moveCamera.getParameter('InterpTime').setValue(1.0);
+
+      asset.getChildByName('labels').getParameter('Visible').setValue(false);
+
       state.addActivationAction(moveCamera);
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup');
@@ -81,12 +84,12 @@ const setupStates = (asset, renderer) => {
       }
 
       {
-        const switchToInitial = new SwitchState();
-        switchToInitial.getParameter('TargetState').setValue('Exploded');
+        const switchState = new SwitchState();
+        switchState.getParameter('TargetState').setValue('Exploded');
 
         const geomClicked = new GeomClicked();
         geomClicked.getParameter('TreeItem').setValue(cutAwayGroup);
-        geomClicked.addChild(switchToInitial);
+        geomClicked.addChild(switchState);
         state.addStateEvent(geomClicked);
       }
 
@@ -122,12 +125,23 @@ const setupStates = (asset, renderer) => {
           setExplode.getParameter('InterpTime').setValue(3.0);
           setCut.addChild(setExplode);
 
-          const labelOpacity = asset.getParameter('LabelOpacity');
-          const showLabels = new SetParameterValue();
-          showLabels.setParam(labelOpacity);
-          showLabels.getParameter('Value').setValue(1.0);
-          showLabels.getParameter('InterpTime').setValue(1.0);
-          setExplode.addChild(showLabels);
+          {
+            const labelTree = asset.getChildByName('labels');
+            const labelVisibility = labelTree.getParameter('Visible');
+            const makeLabelsVisible = new SetParameterValue();
+            makeLabelsVisible.setParam(labelVisibility);
+            makeLabelsVisible.getParameter('Value').setValue(true);
+            makeLabelsVisible.getParameter('InterpTime').setValue(0);
+            setExplode.addChild(makeLabelsVisible);
+            {
+              const labelOpacity = asset.getParameter('LabelOpacity');
+              const showLabels = new SetParameterValue();
+              showLabels.setParam(labelOpacity);
+              showLabels.getParameter('Value').setValue(1.0);
+              showLabels.getParameter('InterpTime').setValue(1.0);
+              setExplode.addChild(showLabels);
+            }
+          }
         }
 
         const moveCamera = new SetCameraPositionAndTarget();
@@ -142,12 +156,12 @@ const setupStates = (asset, renderer) => {
       }
 
       {
-        const switchToInitial = new SwitchState();
-        switchToInitial.getParameter('TargetState').setValue('Cutaway');
+        const switchState = new SwitchState();
+        switchState.getParameter('TargetState').setValue('Cutaway');
 
         const geomClicked = new GeomClicked();
         geomClicked.getParameter('TreeItem').setValue(cutAwayGroup);
-        geomClicked.addChild(switchToInitial);
+        geomClicked.addChild(switchState);
         state.addStateEvent(geomClicked);
       }
 
@@ -160,12 +174,23 @@ const setupStates = (asset, renderer) => {
         state.addDeactivationAction(setExplode);
       }
 
-      const labelOpacity = asset.getParameter('LabelOpacity');
-      const hideLabels = new SetParameterValue();
-      hideLabels.setParam(labelOpacity);
-      hideLabels.getParameter('Value').setValue(0.0);
-      hideLabels.getParameter('InterpTime').setValue(0.5);
-      state.addDeactivationAction(hideLabels);
+      {
+        const labelTree = asset.getChildByName('labels');
+        const labelVisibility = labelTree.getParameter('Visible');
+        const showLabels = new SetParameterValue();
+        showLabels.setParam(labelVisibility);
+        showLabels.getParameter('Value').setValue(false);
+        showLabels.getParameter('InterpTime').setValue(0);
+        state.addDeactivationAction(showLabels);
+        {
+          const labelOpacity = asset.getParameter('LabelOpacity');
+          const hideLabels = new SetParameterValue();
+          hideLabels.setParam(labelOpacity);
+          hideLabels.getParameter('Value').setValue(0.0);
+          hideLabels.getParameter('InterpTime').setValue(0.5);
+          showLabels.addChild(hideLabels);
+        }
+      }
 
       stateMachine.addState(state);
     }
