@@ -85,11 +85,11 @@ appData.undoRedoManager = new UndoRedoManager();
 appData.selectionManager = new SelectionManager(appData);
 
 // // Note: the alpha value determines  the fill of the highlight.
-// const selectionColor = new Color("#111111");
-// selectionColor.a = 0.1
-// const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
-// appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor)
-// appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor)
+const selectionColor = new Color('#111111');
+selectionColor.a = 0.1;
+const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
+appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor);
+appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor);
 
 const sceneTreeView = document.getElementById('zea-tree-view');
 sceneTreeView.appData = appData;
@@ -111,44 +111,44 @@ document.addEventListener('keydown', (event) => {
 
 // ////////////////////////////////////
 // // Setup Collaboration
-const { Session, SessionSync } = window.zeaCollab;
+// const { Session, SessionSync } = window.zeaCollab;
 
-const socketUrl = 'https://websocket-staging.zea.live';
+// const socketUrl = 'https://websocket-staging.zea.live';
 
-const urlParams = new URLSearchParams(window.location.search);
+// const urlParams = new URLSearchParams(window.location.search);
 
-const color = Color.random();
-const firstNames = ['Phil', 'Froilan', 'Alvaro', 'Dan', 'Mike', 'Rob', 'Steve'];
-const lastNames = ['Taylor', 'Smith', 'Haines', 'Moore', 'Elías Pájaro Torreglosa', 'Moreno'];
-const userData = {
-  given_name: firstNames[MathFunctions.randomInt(0, firstNames.length)],
-  family_name: lastNames[MathFunctions.randomInt(0, lastNames.length)],
-  id: Math.random().toString(36).slice(2, 12),
-  color: color.toHex(),
-};
+// const color = Color.random();
+// const firstNames = ['Phil', 'Froilan', 'Alvaro', 'Dan', 'Mike', 'Rob', 'Steve'];
+// const lastNames = ['Taylor', 'Smith', 'Haines', 'Moore', 'Elías Pájaro Torreglosa', 'Moreno'];
+// const userData = {
+//   given_name: firstNames[MathFunctions.randomInt(0, firstNames.length)],
+//   family_name: lastNames[MathFunctions.randomInt(0, lastNames.length)],
+//   id: Math.random().toString(36).slice(2, 12),
+//   color: color.toHex(),
+// };
 
-const session = new Session(userData, socketUrl);
+// const session = new Session(userData, socketUrl);
 
-let roomId = urlParams.get('room-id');
-session.joinRoom(document.location.href + roomId);
+// let roomId = urlParams.get('room-id');
+// session.joinRoom(document.location.href + roomId);
 
-const sessionSync = new SessionSync(session, appData, userData, {});
-sessionSync.syncStateMachines(stateMachine);
+// const sessionSync = new SessionSync(session, appData, userData, {});
+// sessionSync.syncStateMachines(stateMachine);
 
-const userChipSet = document.getElementById('zea-user-chip-set');
-userChipSet.session = session;
-userChipSet.showImages = true; //boolean('Show Images', true)
+// const userChipSet = document.getElementById('zea-user-chip-set');
+// userChipSet.session = session;
+// userChipSet.showImages = true; //boolean('Show Images', true)
 
-document.addEventListener(
-  'zeaUserClicked',
-  () => {
-    console.log('user clicked');
-  },
-  false
-);
+// document.addEventListener(
+//   'zeaUserClicked',
+//   () => {
+//     console.log('user clicked');
+//   },
+//   false
+// );
 
-const userChip = document.getElementById('zea-user-chip');
-userChip.userData = userData;
+// const userChip = document.getElementById('zea-user-chip');
+// userChip.userData = userData;
 
 ////////////////////////////////////
 // Display the Fps
