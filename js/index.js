@@ -85,7 +85,7 @@ appData.undoRedoManager = new UndoRedoManager();
 appData.selectionManager = new SelectionManager(appData);
 
 // // Note: the alpha value determines  the fill of the highlight.
-const selectionColor = new Color('#111111');
+const selectionColor = new Color('#00ff00');
 selectionColor.a = 0.1;
 const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
 appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor);
