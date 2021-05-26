@@ -43,7 +43,9 @@ cadPass.setShaderPreprocessorValue('#define ENABLE_PBR');
 renderer.addPass(cadPass, PassType.OPAQUE);
 
 renderer.setScene(scene);
-renderer.resumeDrawing();
+
+const camera = renderer.getViewport().getCamera();
+camera.getTargetPostion = camera.getTargetPosition;
 
 renderer.getViewport().on('mouseDownOnGeom', (event) => {
   const intersectionData = event.intersectionData;
@@ -92,8 +94,8 @@ appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(
 appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor);
 
 const sceneTreeView = document.getElementById('zea-tree-view');
-sceneTreeView.appData = appData;
 sceneTreeView.rootItem = scene.getRoot();
+sceneTreeView.appData = appData;
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'f') {
@@ -106,7 +108,7 @@ document.addEventListener('keydown', (event) => {
 // const camera = renderer.getViewport().getCamera();
 // renderer.viewChanged.connect(() =>{
 //   const xfoParam =  camera.getParameter('GlobalXfo')
-//   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPostion().toString())
+//   console.log(xfoParam.getValue().tr.toString(), camera.getTargetPosition().toString())
 // })
 
 // ////////////////////////////////////
