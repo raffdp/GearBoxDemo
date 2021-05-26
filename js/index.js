@@ -11,7 +11,7 @@ import setupStates from './6-setupStates.js';
 const domElement = document.getElementById('renderer');
 
 const scene = new Scene();
-scene.setupGrid(1.0, 10);
+// scene.setupGrid(1.0, 10);
 
 const renderer = new GLRenderer(domElement, {
   webglOptions: {
@@ -30,6 +30,7 @@ if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
   scene.getSettings().getParameter('EnvMap').setValue(envMap);
 }
 
+renderer.outlineThickness = 1.0;
 renderer
   .getViewport()
   .getCamera()
@@ -47,11 +48,14 @@ renderer.setScene(scene);
 const camera = renderer.getViewport().getCamera();
 camera.getTargetPostion = camera.getTargetPosition;
 
-renderer.getViewport().on('mouseDownOnGeom', (event) => {
-  const intersectionData = event.intersectionData;
-  const geomItem = intersectionData.geomItem;
-  console.log(geomItem.getPath());
+renderer.getViewport().on('pointerDown', (event) => {
+  if (event.intersectionData) {
+    const intersectionData = event.intersectionData;
+    const geomItem = intersectionData.geomItem;
+    console.log(geomItem.getPath());
+  }
 });
+renderer.getViewport().getManipulator().getParameter('OrbitAroundCursor').setValue(false);
 
 ////////////////////////////////////
 // Load the Model
@@ -93,9 +97,9 @@ const subtreeColor = selectionColor.lerp(new Color(1, 1, 1, 0), 0.5);
 appData.selectionManager.selectionGroup.getParameter('HighlightColor').setValue(selectionColor);
 appData.selectionManager.selectionGroup.getParameter('SubtreeHighlightColor').setValue(subtreeColor);
 
-const sceneTreeView = document.getElementById('zea-tree-view');
-sceneTreeView.rootItem = scene.getRoot();
-sceneTreeView.appData = appData;
+// const sceneTreeView = document.getElementById('zea-tree-view');
+// sceneTreeView.rootItem = scene.getRoot();
+// sceneTreeView.appData = appData;
 
 document.addEventListener('keydown', (event) => {
   if (event.key === 'f') {
