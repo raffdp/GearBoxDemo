@@ -1,3 +1,4 @@
+
 # Zea Gearbox Showcase
 This showcase demonstrates how a static CAD model can be brought to life with Zea Kinematics. This example shows how a state machine can be used to change the gear ratio of a gearbox, and to transition between cutaway and exploded views.
 
