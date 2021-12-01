@@ -1,11 +1,13 @@
-const { Vec3, Group } = window.zeaEngine;
+const { Vec3, CuttingPlane, Xfo } = window.zeaEngine;
+
+import { resolveItems } from './resolveItems.js';
 
 const setupCutaway = (asset) => {
-  const cutAwayGroup = new Group('cutAwayGroup');
+  const cutAwayGroup = new CuttingPlane('cutAwayGroup');
   asset.addChild(cutAwayGroup);
 
   asset.once('loaded', () => {
-    cutAwayGroup.resolveItems([
+    resolveItems(asset, cutAwayGroup, [
       ['.', 'BODY_1_ASSM_ASM', 'BODY_1'],
       ['.', 'BODY-2'],
       ['.', 'GASKET_FOR_BODY'],
@@ -103,9 +105,15 @@ const setupCutaway = (asset) => {
     ]);
   });
 
-  cutAwayGroup.getParameter('CutAwayEnabled').setValue(true);
-  cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1));
-  cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17);
+  cutAwayGroup.cutAwayEnabledParam.setValue(true);
+  cutAwayGroup.visibleParam.setValue(false);
+  // cutAwayGroup.getParameter('CutPlaneNormal').setValue(new Vec3(0, 0, 1));
+  // cutAwayGroup.getParameter('CutPlaneDist').setValue(-0.17);
+
+  const xfo = new Xfo();
+  xfo.tr.z = -0.17;
+  xfo.ori.setFromAxisAndAngle(new Vec3(1, 0, 0), Math.PI * -0.5);
+  cutAwayGroup.localXfoParam.value = xfo;
 
   // asset.once('loaded', ()=>{
   //   let cutAmount = -0.17;

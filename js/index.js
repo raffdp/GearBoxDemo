@@ -21,13 +21,13 @@ const renderer = new GLRenderer(domElement, {
 });
 
 if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
-  const envMap = new EnvMap('HDR_029_Sky_Cloudy_Ref');
-  envMap.getParameter('FilePath').setValue('data/HDR_029_Sky_Cloudy_Ref.vlenv');
+  const envMap = new EnvMap('EnvMap');
+  envMap.load('data/StudioG.zenv');
   // envMap.getParameter('HeadLightMode').setValue(true)
 
   // renderer.gamma = 2.5;
   renderer.exposure = 1.5;
-  scene.getSettings().getParameter('EnvMap').setValue(envMap);
+  scene.setEnvMap(envMap);
 }
 
 renderer.outlineThickness = 1.0;
@@ -36,12 +36,12 @@ renderer
   .getCamera()
   .setPositionAndTarget(new Vec3({ x: 0.56971, y: -0.83733, z: 0.34243 }), new Vec3({ x: 0.03095, y: -0.05395, z: 0 }));
 
-scene.getSettings().getParameter('BackgroundColor').setValue(new Color('#D9EAFA'));
+renderer.getViewport().backgroundColorParam.setValue(new Color('#D9EAFA'));
 
 const cadPass = new GLCADPass(true);
-cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
-cadPass.setShaderPreprocessorValue('#define ENABLE_PBR');
-renderer.addPass(cadPass, PassType.OPAQUE);
+// cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
+// cadPass.setShaderPreprocessorValue('#define ENABLE_PBR');
+// renderer.addPass(cadPass, PassType.OPAQUE);
 
 renderer.setScene(scene);
 
@@ -61,17 +61,18 @@ renderer.getViewport().getManipulator().getParameter('OrbitAroundCursor').setVal
 // Load the Model
 // Page 1 - load and setup the cad Model.
 const asset = loadModel();
+scene.getRoot().addChild(asset);
 // asset.once('loaded', () => {
 //   renderer.frameAll()
 // })
-
 window.setRenderingMode = setupMaterials(asset, scene);
+
 setupCutaway(asset);
 setupGears(asset);
 setupExplode(asset);
 const stateMachine = setupStates(asset, renderer);
 
-scene.getRoot().addChild(asset);
+/*  
 
 // // https://grabcad.com/library/two-speed-gear-box-1
 
@@ -108,7 +109,7 @@ document.addEventListener('keydown', (event) => {
     cadPass.displayWireframes = !cadPass.displayWireframes;
   }
 });
-
+*/
 // const camera = renderer.getViewport().getCamera();
 // renderer.viewChanged.connect(() =>{
 //   const xfoParam =  camera.getParameter('GlobalXfo')

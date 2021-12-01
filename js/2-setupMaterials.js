@@ -1,11 +1,22 @@
-const { Color, Group, Material, EnvMap } = window.zeaEngine;
+const { Color, Group, Material, MaterialGroup, EnvMap } = window.zeaEngine;
+
+import { resolveItems } from './resolveItems.js';
+
+const modifyParams = (material, params, shaderName) => {
+  material.setShaderName(shaderName);
+  for (let key in params) {
+    const param = material.getParameter(key);
+    param.value = params[key];
+  }
+};
 
 const setupMaterials = (asset, scene) => {
   const setRenderingMode = (mode) => {
     if (mode == 0) {
       {
         const material = casingMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.55, 0.05, 0.05),
             Metallic: 0.75,
@@ -18,7 +29,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = blackMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.1, 0.1, 0.1),
             Metallic: 0.85,
@@ -31,7 +43,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = blackRubberGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.01, 0.01, 0.01),
             Metallic: 0.0,
@@ -44,7 +57,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = orangeRubberGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.01, 0.01, 0.01),
             Metallic: 0.0,
@@ -57,7 +71,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = shinyMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.65, 0.65, 0.65),
             Metallic: 0.95,
@@ -70,7 +85,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = goldMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color('#d4af37'),
             Metallic: 0.99,
@@ -88,7 +104,8 @@ const setupMaterials = (asset, scene) => {
       const Reflectance = 0.0;
       {
         const material = casingMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.85, 0.55, 0.55),
             Metallic: 0.75,
@@ -101,7 +118,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = blackMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.4, 0.4, 0.4),
             Metallic: 0.85,
@@ -114,7 +132,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = blackRubberGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.2, 0.2, 0.2),
             Metallic: 0.0,
@@ -127,7 +146,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = orangeRubberGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.2, 0.2, 0.2),
             Metallic: 0.0,
@@ -140,7 +160,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = shinyMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color(0.65, 0.65, 0.65),
             Metallic: 0.95,
@@ -153,7 +174,8 @@ const setupMaterials = (asset, scene) => {
       }
       {
         const material = goldMetalGroup.getParameter('Material').getValue();
-        material.modifyParams(
+        modifyParams(
+          material,
           {
             BaseColor: new Color('#d4af37'),
             Metallic: 0.99,
@@ -167,14 +189,14 @@ const setupMaterials = (asset, scene) => {
     }
   };
 
-  const casingMetalGroup = new Group('casingMetalGroup');
+  const casingMetalGroup = new MaterialGroup('casingMetalGroup');
   {
     const material = new Material('casingMetal');
     casingMetalGroup.getParameter('Material').setValue(material);
     asset.addChild(casingMetalGroup);
   }
 
-  const blackMetalGroup = new Group('blackMetalGroup');
+  const blackMetalGroup = new MaterialGroup('blackMetalGroup');
   {
     const material = new Material('blackMetal');
     blackMetalGroup.getParameter('Material').setValue(material);
@@ -184,7 +206,7 @@ const setupMaterials = (asset, scene) => {
   // const blackPlasticGroup = new Group('blackPlasticGroup');
   // {
   //   const material = new Material('blackPlastic');
-  //   material.modifyParams({
+  //   modifyParams(material,{
   //     // BaseColor: new Color(0.01, 0.01, .01),
   //     BaseColor: new Color(0.2, 0.2, 0.2),
   //     Metallic: 0.0,
@@ -196,28 +218,28 @@ const setupMaterials = (asset, scene) => {
   //   asset.addChild(blackPlasticGroup);
   // }
 
-  const blackRubberGroup = new Group('blackRubberGroup');
+  const blackRubberGroup = new MaterialGroup('blackRubberGroup');
   {
     const material = new Material('blackRubber');
     blackRubberGroup.getParameter('Material').setValue(material);
     asset.addChild(blackRubberGroup);
   }
 
-  const orangeRubberGroup = new Group('orangeRubberGroup');
+  const orangeRubberGroup = new MaterialGroup('orangeRubberGroup');
   {
     const material = new Material('orangeRubber');
     orangeRubberGroup.getParameter('Material').setValue(material);
     asset.addChild(orangeRubberGroup);
   }
 
-  const shinyMetalGroup = new Group('shinyMetalGroup');
+  const shinyMetalGroup = new MaterialGroup('shinyMetalGroup');
   {
     const material = new Material('shinyMetal');
     shinyMetalGroup.getParameter('Material').setValue(material);
     asset.addChild(shinyMetalGroup);
   }
 
-  const goldMetalGroup = new Group('goldMetalGroup');
+  const goldMetalGroup = new MaterialGroup('goldMetalGroup');
   {
     const material = new Material('goldMetal');
     goldMetalGroup.getParameter('Material').setValue(material);
@@ -226,7 +248,7 @@ const setupMaterials = (asset, scene) => {
   setRenderingMode(1);
 
   asset.once('loaded', () => {
-    casingMetalGroup.resolveItems([
+    resolveItems(asset, casingMetalGroup, [
       ['.', 'MOTOR_HOUSING'],
       ['.', 'GEAR_HOUSING_ASSM_ASM', 'GEAR_SHIFTER_HOUSING'],
       ['.', 'BODY-2'],
@@ -234,7 +256,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', 'PROPELLER_HOUSING'],
     ]);
 
-    blackMetalGroup.resolveItems([
+    resolveItems(asset, blackMetalGroup, [
       ['.', 'PROPELLER_SHAFT_NUT'],
 
       ['.', '10X30_HEX_BOLT'],
@@ -284,7 +306,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'BODY_1_ASSM_ASM', 'DOVEL_FOR_BODY'],
     ]);
 
-    shinyMetalGroup.resolveItems([
+    resolveItems(asset, shinyMetalGroup, [
       ['.', 'FRONT_PROPELLER_HOUSING'],
       ['.', 'GEAR_1'],
       ['.', 'GEAR_2'],
@@ -294,7 +316,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'NEEDLE_BEARING_ASSM_ASM', 'NEEDLE_BALL'],
     ]);
 
-    goldMetalGroup.resolveItems([
+    resolveItems(asset, goldMetalGroup, [
       // Ball Brearing Housing
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_CASE_SKF'],
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '6308_BALL_BEARING_SKF_ASM', '6308_BALL_BEARING_COLLAR_SKF'],
@@ -341,7 +363,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'DOVEL_FOR_SHIFTER_HOUSING1'],
     ]);
 
-    blackRubberGroup.resolveItems([
+    resolveItems(asset, blackRubberGroup, [
       ['.', 'PROPELLER_HOUSING_ASSM_ASM', '60-80-10_OIL_SEAL'],
 
       ['.', 'WASHER_FOR_PROPRLLER_HOSING_MTG'],
@@ -374,7 +396,7 @@ const setupMaterials = (asset, scene) => {
       ['.', 'BUNDH_PLUG_ASSM_ASM1', '20_MM_O_RING_FOR_BUNDH_PLUG'],
     ]);
 
-    orangeRubberGroup.resolveItems([
+    resolveItems(asset, orangeRubberGroup, [
       ['.', 'WASHER_1'],
       ['.', 'GASKET_FOR_BODY'],
     ]);

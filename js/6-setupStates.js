@@ -1,19 +1,13 @@
 const { Vec3 } = window.zeaEngine;
-const {
-  StateMachine,
-  State,
-  SetCameraPositionAndTarget,
-  SetParameterValue,
-  GeomClicked,
-  SwitchState,
-} = window.zeaStateMachine;
+const { StateMachine, State, SetCameraPositionAndTarget, SetParameterValue, GeomClicked, SwitchState } =
+  window.zeaStateMachine;
 
 const setupStates = (asset, renderer) => {
   const stateMachine = new StateMachine('States');
 
-  asset.addChild(stateMachine);
+  // asset.addChild(stateMachine);
 
-  asset.once('loaded', () => {
+  asset.geomLibrary.once('loaded', () => {
     // const casingGroup = new Group('casingGroup');
     // casingGroup.resolveItems([
     //   [".", "BODY-2"],
@@ -36,10 +30,14 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
-        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
         const setCut = new SetParameterValue();
-        setCut.setParam(cutDistParam);
-        setCut.getParameter('Value').setValue(-0.17);
+        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
+        // setCut.setParam(cutDistParam);
+        // setCut.getParameter('Value').setValue(-0.17);
+        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
+        setCut.setParam(cutEnabledParam);
+        setCut.getParameter('Value').setValue(false);
+        setCut.getParameter('InterpTime').setValue(0);
         state.addActivationAction(setCut);
       }
 
@@ -48,7 +46,7 @@ const setupStates = (asset, renderer) => {
         switchToCutAway.getParameter('TargetState').setValue('Cutaway');
 
         const geomClicked = new GeomClicked();
-        geomClicked.getParameter('TreeItem').setValue(cutAwayGroup);
+        geomClicked.getParameter('TreeItem').setValue(asset);
         geomClicked.addChild(switchToCutAway);
         state.addStateEvent(geomClicked);
       }
@@ -68,19 +66,27 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
-        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
         const setCut = new SetParameterValue();
-        setCut.setParam(cutDistParam);
-        setCut.getParameter('Value').setValue(0.0);
-        setCut.getParameter('InterpTime').setValue(2.0);
-        state.addActivationAction(setCut);
+        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
+        // setCut.setParam(cutDistParam);
+        // setCut.getParameter('Value').setValue(0.0);
+        // setCut.getParameter('InterpTime').setValue(2.0);
+
+        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
+        setCut.setParam(cutEnabledParam);
+        setCut.getParameter('Value').setValue(true);
+        setCut.getParameter('InterpTime').setValue(0);
+        // state.addActivationAction(setCut);
+        moveCamera.addChild(setCut);
 
         const showHandle = new SetParameterValue();
         const slider = asset.getChildByName('GearSlider');
         showHandle.setParam(slider.getParameter('Visible'));
         showHandle.getParameter('Value').setValue(true);
         showHandle.getParameter('InterpTime').setValue(0.0);
-        setCut.addChild(showHandle);
+        moveCamera.addChild(showHandle);
+
+        // state.addActivationAction(showHandle);
       }
 
       {
@@ -88,7 +94,7 @@ const setupStates = (asset, renderer) => {
         switchState.getParameter('TargetState').setValue('Exploded');
 
         const geomClicked = new GeomClicked();
-        geomClicked.getParameter('TreeItem').setValue(cutAwayGroup);
+        geomClicked.getParameter('TreeItem').setValue(asset);
         geomClicked.addChild(switchState);
         state.addStateEvent(geomClicked);
       }
@@ -101,6 +107,14 @@ const setupStates = (asset, renderer) => {
         hideHandle.getParameter('InterpTime').setValue(0.0);
         state.addDeactivationAction(hideHandle);
       }
+      {
+        const removeCut = new SetParameterValue();
+        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
+        removeCut.setParam(cutEnabledParam);
+        removeCut.getParameter('Value').setValue(false);
+        removeCut.getParameter('InterpTime').setValue(0.0);
+        state.addDeactivationAction(removeCut);
+      }
 
       stateMachine.addState(state);
     }
@@ -110,20 +124,25 @@ const setupStates = (asset, renderer) => {
 
       const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
-        const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
-        const setCut = new SetParameterValue();
-        setCut.setParam(cutDistParam);
-        setCut.getParameter('Value').setValue(-0.17);
-        setCut.getParameter('InterpTime').setValue(2.0);
-        state.addActivationAction(setCut);
+        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
+        // const setCut = new SetParameterValue();
+        // setCut.setParam(cutDistParam);
+        // setCut.getParameter('Value').setValue(-0.17);
+        // setCut.getParameter('InterpTime').setValue(2.0);
+        // const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
+        // setCut.setParam(cutEnabledParam);
+        // setCut.getParameter('Value').setValue(false);
+        // state.addActivationAction(setCut);
 
+        // let setExplode;
         const explodedAmount = asset.getParameter('ExplodeAmount');
         if (explodedAmount) {
           const setExplode = new SetParameterValue();
           setExplode.setParam(explodedAmount);
           setExplode.getParameter('Value').setValue(1.0);
           setExplode.getParameter('InterpTime').setValue(3.0);
-          setCut.addChild(setExplode);
+          // setCut.addChild(setExplode);
+          state.addActivationAction(setExplode);
 
           {
             const labelTree = asset.getChildByName('labels');
@@ -151,8 +170,8 @@ const setupStates = (asset, renderer) => {
         );
         moveCamera.getParameter('Camera').setValue(renderer.getViewport().getCamera());
         moveCamera.getParameter('InterpTime').setValue(3.0);
-        // state.addActivationAction(moveCamera)
-        setCut.addChild(moveCamera);
+        state.addActivationAction(moveCamera);
+        // setCut.addChild(moveCamera);
       }
 
       {
@@ -160,7 +179,7 @@ const setupStates = (asset, renderer) => {
         switchState.getParameter('TargetState').setValue('Cutaway');
 
         const geomClicked = new GeomClicked();
-        geomClicked.getParameter('TreeItem').setValue(cutAwayGroup);
+        geomClicked.getParameter('TreeItem').setValue(asset);
         geomClicked.addChild(switchState);
         state.addStateEvent(geomClicked);
       }
