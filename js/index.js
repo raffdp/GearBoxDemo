@@ -30,7 +30,7 @@ if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
 }
 
 renderer.outlineThickness = 1.0;
-renderer.outlineSensitivity = 5.0;
+renderer.outlineSensitivity = 1.0;
 renderer
   .getViewport()
   .getCamera()
