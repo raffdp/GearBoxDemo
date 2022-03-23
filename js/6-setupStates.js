@@ -1,9 +1,25 @@
-const { Vec3 } = window.zeaEngine;
+const { Vec3, Xfo, MathFunctions } = window.zeaEngine;
 const { StateMachine, State, SetCameraPositionAndTarget, SetParameterValue, GeomClicked, SwitchState } =
   window.zeaStateMachine;
 
+// This is a hack to enable the state machine to lerp Xfo values.
+// TODO: update the state  machine to lerp Xfos and other math types correctly.
+const lerpFloat = MathFunctions.lerp;
+MathFunctions.lerp = (paramValueStart, paramValueEnd, smoothT) => {
+  if (paramValueStart instanceof Xfo) {
+    const xfo = new Xfo();
+    xfo.tr = paramValueStart.tr.lerp(paramValueEnd.tr, smoothT);
+    xfo.ori = paramValueStart.ori.lerp(paramValueEnd.ori, smoothT);
+    return xfo;
+  } else {
+    return lerpFloat(paramValueStart, paramValueEnd, smoothT);
+  }
+};
+
 const setupStates = (asset, renderer) => {
   const stateMachine = new StateMachine('States');
+  const cutAwayGroup = asset.getChildByName('cutAwayGroup');
+  const cutPlaneParam = cutAwayGroup.getParameter('GlobalXfo');
 
   // asset.addChild(stateMachine);
 
@@ -28,15 +44,12 @@ const setupStates = (asset, renderer) => {
 
       state.addActivationAction(moveCamera);
 
-      const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
         const setCut = new SetParameterValue();
-        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
-        // setCut.setParam(cutDistParam);
-        // setCut.getParameter('Value').setValue(-0.17);
-        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
-        setCut.setParam(cutEnabledParam);
-        setCut.getParameter('Value').setValue(false);
+        setCut.setParam(cutPlaneParam);
+        const xfo = new Xfo();
+        xfo.tr.z = 0.2;
+        setCut.getParameter('Value').setValue(xfo);
         setCut.getParameter('InterpTime').setValue(0);
         state.addActivationAction(setCut);
       }
@@ -64,20 +77,14 @@ const setupStates = (asset, renderer) => {
       moveCamera.getParameter('InterpTime').setValue(2.0);
       state.addActivationAction(moveCamera);
 
-      const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
         const setCut = new SetParameterValue();
-        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
-        // setCut.setParam(cutDistParam);
-        // setCut.getParameter('Value').setValue(0.0);
-        // setCut.getParameter('InterpTime').setValue(2.0);
-
-        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
-        setCut.setParam(cutEnabledParam);
-        setCut.getParameter('Value').setValue(true);
-        setCut.getParameter('InterpTime').setValue(0);
-        // state.addActivationAction(setCut);
-        moveCamera.addChild(setCut);
+        setCut.setParam(cutPlaneParam);
+        const xfo = new Xfo();
+        xfo.tr.z = 0;
+        setCut.getParameter('Value').setValue(xfo);
+        setCut.getParameter('InterpTime').setValue(1.5);
+        state.addActivationAction(setCut);
 
         const showHandle = new SetParameterValue();
         const slider = asset.getChildByName('GearSlider');
@@ -107,14 +114,6 @@ const setupStates = (asset, renderer) => {
         hideHandle.getParameter('InterpTime').setValue(0.0);
         state.addDeactivationAction(hideHandle);
       }
-      {
-        const removeCut = new SetParameterValue();
-        const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
-        removeCut.setParam(cutEnabledParam);
-        removeCut.getParameter('Value').setValue(false);
-        removeCut.getParameter('InterpTime').setValue(0.0);
-        state.addDeactivationAction(removeCut);
-      }
 
       stateMachine.addState(state);
     }
@@ -122,17 +121,14 @@ const setupStates = (asset, renderer) => {
     {
       const state = new State('Exploded');
 
-      const cutAwayGroup = asset.getChildByName('cutAwayGroup');
       if (cutAwayGroup) {
-        // const cutDistParam = cutAwayGroup.getParameter('CutPlaneDist');
-        // const setCut = new SetParameterValue();
-        // setCut.setParam(cutDistParam);
-        // setCut.getParameter('Value').setValue(-0.17);
-        // setCut.getParameter('InterpTime').setValue(2.0);
-        // const cutEnabledParam = cutAwayGroup.getParameter('CutAwayEnabled');
-        // setCut.setParam(cutEnabledParam);
-        // setCut.getParameter('Value').setValue(false);
-        // state.addActivationAction(setCut);
+        const setCut = new SetParameterValue();
+        setCut.setParam(cutPlaneParam);
+        const xfo = new Xfo();
+        xfo.tr.z = 0.2;
+        setCut.getParameter('Value').setValue(xfo);
+        setCut.getParameter('InterpTime').setValue(2.0);
+        state.addActivationAction(setCut);
 
         // let setExplode;
         const explodedAmount = asset.getParameter('ExplodeAmount');

@@ -1,5 +1,4 @@
-const { MathFunctions, SystemDesc, Color, Vec3, EnvMap, Scene, GLRenderer, PassType } = window.zeaEngine;
-const { GLCADPass } = window.zeaCad;
+const { SystemDesc, Color, Vec3, EnvMap, Scene, GLRenderer } = window.zeaEngine;
 
 import loadModel from './1-loadModel.js';
 import setupMaterials from './2-setupMaterials.js';
@@ -31,17 +30,13 @@ if (!SystemDesc.isMobileDevice && renderer.gl.floatTexturesSupported) {
 }
 
 renderer.outlineThickness = 1.0;
+renderer.outlineSensitivity = 5.0;
 renderer
   .getViewport()
   .getCamera()
   .setPositionAndTarget(new Vec3({ x: 0.56971, y: -0.83733, z: 0.34243 }), new Vec3({ x: 0.03095, y: -0.05395, z: 0 }));
 
 renderer.getViewport().backgroundColorParam.setValue(new Color('#D9EAFA'));
-
-const cadPass = new GLCADPass(true);
-// cadPass.setShaderPreprocessorValue('#define ENABLE_CUTAWAYS');
-// cadPass.setShaderPreprocessorValue('#define ENABLE_PBR');
-// renderer.addPass(cadPass, PassType.OPAQUE);
 
 renderer.setScene(scene);
 
@@ -55,7 +50,6 @@ renderer.getViewport().on('pointerDown', (event) => {
     console.log(geomItem.getPath());
   }
 });
-renderer.getViewport().getManipulator().getParameter('OrbitAroundCursor').setValue(false);
 
 ////////////////////////////////////
 // Load the Model
